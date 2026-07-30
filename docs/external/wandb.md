@@ -92,7 +92,7 @@ restoration-pix2pix-v1
 
 | 태그 | 의미 |
 |---|---|
-| `baseline` | 비교 기준선 (학습 없는 전통 영상처리, pyzbar 단독 등) |
+| `baseline` | 비교 기준선 (디코더 단독, 학습 없는 전통 영상처리 등) |
 | `candidate` | 모델 선정 후보로 정식 비교에 들어가는 실행 |
 | `final` | 최종 채택된 실행 |
 | `failed` | 실패했지만 기록으로 남기는 실행 |
@@ -130,8 +130,8 @@ wandb.init(
         "batch_size": 16,
         "lr": 0.001,
         "optimizer": "AdamW",
-        "loss": "L1 + edge + ssim",
-        "loss_weights": {"l1": 1.0, "edge": 0.5, "ssim": 0.3},
+        # 복원 모델일 때만 쓴다 (탐지 모델에는 해당 없음)
+        # "loss_weights": {"l1": 1.0, "edge": 0.5, "ssim": 0.3},
 
         # 환경
         "gpu": "RTX 4090",
@@ -188,7 +188,7 @@ wandb.log({
 })
 ```
 
-SSIM이 높은데 pyzbar가 못 읽는 경우가 생긴다. 그때 눈으로 봐야 원인이 보인다.
+SSIM이 높은데 디코더가 못 읽는 경우가 생긴다. 그때 눈으로 봐야 원인이 보인다.
 
 ---
 

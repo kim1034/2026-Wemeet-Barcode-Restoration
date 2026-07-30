@@ -1,5 +1,11 @@
 # 데이터와 가중치는 Hugging Face Hub에 둔다 (docs/external/huggingface.md)
-downloads/
+#
+# "downloads/" 가 아니라 "downloads/*" 인 이유:
+# 디렉토리 자체를 제외하면 git이 안으로 들어가지 않아서
+# 아래 !downloads/.gitkeep 예외가 무시된다.
+downloads/*
+!downloads/.gitkeep
+
 *.pt
 *.pth
 *.onnx
@@ -21,7 +27,9 @@ downloads/
 # 계획서 원본은 커밋하지 않는다.
 # 1페이지에 팀원 8명의 학번이 있고 이 저장소는 public이다.
 # 팀 내부에서 별도로 공유한다.
+# 단 성과 보고서는 산출물이므로 예외로 허용한다 (기획서 2.2).
 *.pdf
+!docs/reports/*.pdf
 
 # 파이썬
 __pycache__/
