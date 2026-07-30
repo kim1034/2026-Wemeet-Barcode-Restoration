@@ -18,6 +18,11 @@ downloads/
 .env.*
 !.env.example
 
+# 계획서 원본은 커밋하지 않는다.
+# 1페이지에 팀원 8명의 학번이 있고 이 저장소는 public이다.
+# 팀 내부에서 별도로 공유한다.
+*.pdf
+
 # 파이썬
 __pycache__/
 *.py[cod]
