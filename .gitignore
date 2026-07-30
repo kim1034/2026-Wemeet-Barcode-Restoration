@@ -1,0 +1,36 @@
+# 데이터와 가중치는 Hugging Face Hub에 둔다 (docs/external/huggingface.md)
+downloads/
+*.pt
+*.pth
+*.onnx
+
+# 송장 사진이 실수로 커밋되는 것을 막는다.
+# 문서용 이미지와 React 정적 자원은 예외로 허용한다.
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png
+!docs/**/*.jpg
+!web/src/assets/**
+
+# 토큰과 API 키 (HF_TOKEN, WANDB_API_KEY)
+.env
+.env.*
+!.env.example
+
+# 파이썬
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# 실험 기록 로컬 캐시
+wandb/
+runs/
+
+# 에디터·OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
