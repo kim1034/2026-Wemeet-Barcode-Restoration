@@ -929,6 +929,98 @@ git branch -d ai/detection-baseline</pre>
   <!-- 11 ───────────────────────────────────────────── -->
   <section>
     <span class="snum">11</span>
+    <h2>내 파트는 무엇부터?</h2>
+    <p class="key">세 파트 모두 <strong>지금 바로 시작할 수 있는 일이 있습니다.</strong>
+      AI 모델을 기다려야 하는 일은 하나도 없습니다.</p>
+
+    <h3>서로 막는 관계 — 이것만 알면 순서가 보입니다</h3>
+    <figure>
+      <div class="figscroll">
+      <svg viewBox="0 0 760 208" role="img" aria-label="심볼로지 확정이 데이터 작업 전체를 막고, 디코더 선정이 평가 기준을 막고, 검출 모델 확정과 합성 데이터가 기하 추정 학습을 막는 관계">
+        <rect x="10" y="16" width="230" height="52" rx="3" fill="var(--panel)" stroke="var(--scan)" stroke-width="2.5"/>
+        <text x="24" y="38" font-size="14" fill="var(--scan)" font-weight="800" font-family="var(--sans)">바코드 종류 확정</text>
+        <text x="24" y="58" font-size="12.5" fill="var(--ink-soft)" font-family="var(--sans)">팀장 · 9월 1주차 · 최우선</text>
+        <path d="M244 42 L292 42" stroke="var(--scan)" stroke-width="2.5" marker-end="url(#d1)"/>
+        <rect x="296" y="16" width="260" height="52" rx="3" fill="var(--data-bg)" stroke="var(--data)" stroke-width="2"/>
+        <text x="310" y="38" font-size="14" fill="var(--data)" font-weight="700" font-family="var(--sans)">데이터 수집 · 라벨링 · 합성</text>
+        <text x="310" y="58" font-size="12.5" fill="var(--ink-soft)" font-family="var(--sans)">전부 여기에 달려 있다</text>
+        <text x="572" y="46" font-size="12.5" fill="var(--scan)" font-weight="700" font-family="var(--sans)">틀리면 전부 무효</text>
+
+        <rect x="10" y="82" width="230" height="48" rx="3" fill="var(--sw-bg)" stroke="var(--sw)" stroke-width="2"/>
+        <text x="24" y="102" font-size="14" fill="var(--sw)" font-weight="700" font-family="var(--sans)">디코더 선정</text>
+        <text x="24" y="121" font-size="12.5" fill="var(--ink-soft)" font-family="var(--sans)">SW · 9월 1주차</text>
+        <path d="M244 106 L292 106" stroke="var(--ink-soft)" stroke-width="2" marker-end="url(#d2)"/>
+        <rect x="296" y="82" width="260" height="48" rx="3" fill="var(--panel-2)" stroke="var(--rule)"/>
+        <text x="310" y="102" font-size="13.5" fill="var(--ink)" font-family="var(--sans)">평가 기준 · 재시도 순서</text>
+        <text x="310" y="121" font-size="12" fill="var(--ink-soft)" font-family="var(--sans)">기준선 없이는 목표를 정할 수 없다</text>
+
+        <rect x="10" y="144" width="230" height="48" rx="3" fill="var(--ai-bg)" stroke="var(--ai)" stroke-width="2"/>
+        <text x="24" y="164" font-size="14" fill="var(--ai)" font-weight="700" font-family="var(--sans)">검출 모델 확정</text>
+        <text x="24" y="183" font-size="12.5" fill="var(--ink-soft)" font-family="var(--sans)">AI · 9월 4주차</text>
+        <path d="M244 168 L292 168" stroke="var(--ink-soft)" stroke-width="2" marker-end="url(#d2)"/>
+        <rect x="296" y="144" width="260" height="48" rx="3" fill="var(--ai-bg)" stroke="var(--ai)" stroke-width="2"/>
+        <text x="310" y="164" font-size="13.5" fill="var(--ai)" font-weight="700" font-family="var(--sans)">기하 추정 학습</text>
+        <text x="310" y="183" font-size="12" fill="var(--ink-soft)" font-family="var(--sans)">합성 데이터 v1 도 필요하다</text>
+        <path d="M426 130 L426 140" stroke="var(--data)" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#d3)"/>
+        <defs>
+          <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--scan)"/></marker>
+          <marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--ink-soft)"/></marker>
+          <marker id="d3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--data)"/></marker>
+        </defs>
+      </svg>
+      </div>
+      <figcaption><strong>바코드 종류 확정이 가장 급합니다.</strong> 현장 확인이 필요해서 코드로 해결할 수 없고,
+        이게 틀리면 모아둔 데이터가 전부 무효가 됩니다.</figcaption>
+    </figure>
+
+    <h3>지금 바로 할 수 있는 것</h3>
+    <div class="grid">
+      <div class="card ai">
+        <h4><span class="chip k-ai">AI</span> 김시선 · 김대원</h4>
+        <p><strong>GPU 확보 경로 결정</strong> — 없으면 9월 4주차 학습이 시작되지 않습니다</p>
+        <p><code>detection.py</code> 가짜 구현 (중앙 크롭)</p>
+        <p><code>geometry.py</code> 가짜 구현 (<strong>항등 필드</strong> — 안 휘었다고 답하기)</p>
+        <p>전통 영상처리 검출 — 학습이 없어 며칠이면 됩니다</p>
+      </div>
+      <div class="card sw">
+        <h4><span class="chip k-sw">SW</span> 김종연 · 이도훈</h4>
+        <p><strong>디코더 3종 베이스라인 측정</strong> — 최우선. 지금 성공률이 몇 %인지 아무도 모릅니다</p>
+        <p><code>rectify.py</code> — <strong>학습이 없어 지금 바로 진짜로</strong> 만들 수 있습니다. TPS 코드가 설계 문서에 있습니다</p>
+        <p><code>decoding.py</code> — 디코더를 갈아끼울 수 있는 구조로</p>
+      </div>
+      <div class="card data">
+        <h4><span class="chip k-data">데이터</span> 김강민 · 조아라</h4>
+        <p><strong>오픈소스 데이터 실태 파악</strong> — 재라벨링 규모가 여기서 정해집니다</p>
+        <p><code>download.py</code> 구현 — README가 이미 이 명령을 안내하고 있습니다</p>
+        <p>HF 저장소 폴더 구조 규약 세우기</p>
+        <p class="muted">대량 수집은 <strong>심볼로지 확정 후</strong>에 시작합니다</p>
+      </div>
+    </div>
+
+    <h3>파트마다 가장 중요한 한 가지</h3>
+    <ol class="steps">
+      <li><b>AI</b><span><strong>이미지를 만들지 않습니다.</strong> 제어점 24개만 내놓습니다.
+        실험에서 제어점 8개면 35~70° 압축이 복원되고 좌표 오차 8px까지 읽히는 것을 확인했으니,
+        픽셀 단위 정밀도를 목표로 잡지 마세요.</span></li>
+      <li><b>SW</b><span><strong>우리가 지휘자입니다.</strong> "0개면? 2개 이상이면? 먼저 읽어볼까?"
+        판단이 전부 <code>pipeline.py</code>에 모입니다. 그리고 <strong>AI를 기다릴 필요가 없습니다</strong> —
+        3·4단계는 학습이 없습니다.</span></li>
+      <li><b>데이터</b><span><strong>왜곡 파라미터가 곧 정답입니다.</strong> 이미지 쌍을 만들 필요가 없어졌습니다.
+        대신 <code>src</code>/<code>dst</code> 방향을 뒤집지 않도록 주의하세요 —
+        만든 데이터를 직접 펴서 디코더에 넣어보는 것이 가장 싼 검증입니다.</span></li>
+    </ol>
+
+    <div class="callout">
+      <p><strong>첫 주 목표는 "가짜 구현이라도 넣어서 PR을 한 번 통과시키기"입니다.</strong>
+        완성도가 아니라 절차를 한 번 지나가보는 것이 목적입니다.
+        브랜치 → 커밋 → PR → CI → 리뷰 → 머지를 한 번 돌려보면 그다음부터 막히지 않습니다.</p>
+      <p>전체 할 일 목록은 저장소의 <code>docs/parts/README.md</code> 에 체크박스로 정리돼 있습니다.</p>
+    </div>
+  </section>
+
+  <!-- 12 ───────────────────────────────────────────── -->
+  <section>
+    <span class="snum">12</span>
     <h2>일정 — 11월에 끝납니다</h2>
     <p class="key">네 달입니다. 파트마다 바빠지는 달이 다릅니다.</p>
 
@@ -1027,7 +1119,7 @@ git branch -d ai/detection-baseline</pre>
 
   <!-- 11 ───────────────────────────────────────────── -->
   <section>
-    <span class="snum">12</span>
+    <span class="snum">13</span>
     <h2>지금 상태</h2>
     <p class="key">골격까지 되어 있고, 각 단계의 알맹이가 남았습니다.</p>
 
@@ -1058,7 +1150,7 @@ uv run hf auth whoami    <span class="cm"># 계정명이 나오면 성공</span>
 
   <!-- 12 ───────────────────────────────────────────── -->
   <section>
-    <span class="snum">13</span>
+    <span class="snum">14</span>
     <h2>딱 네 개만 외우세요</h2>
 
     <div class="grid">
