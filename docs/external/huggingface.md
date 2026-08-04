@@ -59,17 +59,29 @@ Git 저장소에는 **스크립트만** 올리고 실제 파일은 전부 HF Hub
 4. 발급된 토큰을 로컬에 저장
 
 ```bash
-# 프로젝트 루트에 .env 파일 생성 (git에 올라가지 않음)
-echo 'HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx' >> .env
+# 저장소 루트의 .env.example 을 복사해서 값을 채운다 (.env 는 git에 안 올라간다)
+cp .env.example .env
 ```
 
-**토큰은 절대 커밋하지 않는다.** `.env`는 `.gitignore`에 포함되어 있다. 실수로 커밋하면 HF에서 즉시 폐기하고 재발급해야 한다.
+`.env` 를 열어 `HF_TOKEN=` 뒤에 발급받은 토큰을 붙여넣는다.
+
+**토큰은 절대 커밋하지 않는다.** `.env`는 `.gitignore`에 포함되어 있다. 실수로 커밋하면 HF에서 즉시 폐기하고 재발급해야 한다. `.env.example` 은 커밋되는 파일이므로 **거기에 실제 토큰을 쓰지 않는다.**
 
 로그인은 이렇게 한다.
 
 ```bash
-uv run huggingface-cli login   # 토큰 붙여넣기. 한 번만 하면 저장된다
+uv run hf auth login   # 토큰 붙여넣기. 한 번만 하면 저장된다
 ```
+
+### 명령 이름 주의 — `hf` 이지 `huggingface-cli` 가 아니다
+
+`huggingface-cli` 는 폐기됐다. 실행하면 이렇게 나온다.
+
+```
+Warning: `huggingface-cli` is deprecated and no longer works. Use `hf` instead.
+```
+
+인터넷 문서나 블로그에는 아직 `huggingface-cli` 로 적힌 것이 많다. **`hf` 로 바꿔 읽으면 된다.**
 
 ---
 
@@ -191,11 +203,11 @@ uv run python -m wemeet.data.download
 
 ```bash
 # 데이터셋
-uv run huggingface-cli upload metro-wemeet/barcode-datasets \
+uv run hf upload metro-wemeet/barcode-datasets \
     ./downloads/synthetic/v1 synthetic/v1 --repo-type=dataset
 
 # 가중치
-uv run huggingface-cli upload metro-wemeet/barcode-weights \
+uv run hf upload metro-wemeet/barcode-weights \
     ./runs/detection-v2 detection/v2-yolo-obb --repo-type=model
 ```
 
