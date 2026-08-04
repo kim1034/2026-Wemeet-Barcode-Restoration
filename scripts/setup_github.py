@@ -51,7 +51,7 @@ MILESTONES = [
         "데이터셋 v1, 탐지 모델 확정, 베이스라인 수치 확보",
     ),
     (
-        "2026-10 복원+통합",
+        "2026-10 기하보정+통합",
         "2026-10-31T23:59:59Z",
         "통합 파이프라인 동작, E2E 지연 측정 완료",
     ),
@@ -63,7 +63,7 @@ MILESTONES = [
 ]
 
 M09 = "2026-09 데이터+탐지"
-M10 = "2026-10 복원+통합"
+M10 = "2026-10 기하보정+통합"
 
 # --------------------------------------------------------------------------
 # 이슈
@@ -116,12 +116,15 @@ SW파트. `pyzbar` 는 리눅스에서 시스템 라이브러리 `libzbar0` 가 
 (`import` 시점에 필요하다). CI에서 쓰려면 워크플로에 설치 단계를 추가해야 한다.""",
     },
     {
-        "title": "디코더 베이스라인 측정 — 복원 없이 얼마나 읽히는지",
+        "title": "디코더 베이스라인 측정 — 보정 없이 얼마나 읽히는지",
         "labels": ["part:sw"],
         "milestone": M09,
         "body": """## 무엇을 해야 하나
 
-복원을 붙이지 않은 상태에서 디코더만으로 판독률을 측정한다 (설계 문서 §14 2단계).
+기하 보정을 붙이지 않은 상태에서 디코더만으로 판독률을 측정한다 (설계 문서 §14 2단계).
+
+조기 종료 비율도 같이 재둔다 — 기울기 보정만으로 읽히는 비율이다.
+사전 실험에서 수직 방향 왜곡은 디코딩을 깨지 않는 것을 확인했으므로 예상보다 높을 수 있다.
 
 ## 완료 조건
 
@@ -131,7 +134,7 @@ SW파트. `pyzbar` 는 리눅스에서 시스템 라이브러리 `libzbar0` 가 
 
 **목표 수치를 근거 있게 정하기 위한 기준선이다.** 이 값이 없으면
 "디코딩률 90%"가 쉬운 목표인지 불가능한 목표인지 알 수 없다.
-복원 모델의 기여도도 이 값과의 차이로만 말할 수 있다.
+기하 보정의 기여도도 이 값과의 차이로만 말할 수 있다.
 
 ## 막히면
 
@@ -282,20 +285,28 @@ def detect(image_bgr: np.ndarray) -> list[DetectedBarcode]: ...
 AI파트.""",
     },
     {
-        "title": "Stage 2 restoration.py 스텁 — 평탄화·반사 제거",
+        "title": "Stage 2 geometry.py 스텁 — 기하 추정 (이미지 안 만듦)",
         "labels": ["part:ai"],
         "milestone": M10,
         "body": """## 무엇을 해야 하나
 
-`wemeet/ai/restoration.py` 에 계약대로 함수를 만든다.
+`wemeet/ai/geometry.py` 에 계약대로 함수를 만든다.
 
 ```python
-def restore(target: DetectedBarcode) -> RestoredBarcode: ...
+def estimate_geometry(target: DetectedBarcode) -> GeometryField: ...
 ```
 
-**리스트가 아니라 하나를 받는다.** 탐지 결과가 여러 개일 때 무엇을 복원할지는
-AI파트가 아니라 `pipeline` 이 정할 문제다. 이 경계를 흐리면 두 파트가
-같은 결정을 서로 다르게 구현한다.
+**이미지를 반환하지 않는다.** 얼마나 휘었는지를 제어점 좌표로만 내놓는다.
+`GeometryField` 에 이미지 필드가 없으므로 픽셀을 만들어 넘길 방법이 구조적으로 없다.
+생성 모델이 만든 가짜 바코드는 체크섬을 우연히 통과할 수 있어서(Code128 약 1/103)
+이렇게 막아뒀다.
+
+**리스트가 아니라 하나를 받는다.** 검출 결과가 여러 개일 때 무엇을 보정할지는
+AI파트가 아니라 `pipeline` 이 정할 문제다.
+
+좌표 규칙을 지킬 것 — 크롭 기준, 0~1 정규화, (x, y) 순서,
+`dst`=펴진 격자 / `src`=지금 있는 위치. **방향을 뒤집으면 왜곡이 두 번 적용되는데
+약한 왜곡에서는 우연히 읽혀서 놓치기 쉽다.**
 
 ## 완료 조건
 
@@ -307,7 +318,47 @@ AI파트가 아니라 `pipeline` 이 정할 문제다. 이 경계를 흐리면 �
 AI파트.""",
     },
     {
-        "title": "Stage 3 decoding.py 스텁 + 재시도 루프",
+        "title": "Stage 3 rectify.py — OpenCV 기하 보정",
+        "labels": ["part:sw"],
+        "milestone": M10,
+        "body": """## 무엇을 해야 하나
+
+`wemeet/sw/rectify.py` 를 만든다. AI가 준 제어점으로 이미지를 실제로 편다.
+
+```python
+def apply_field(
+    target: DetectedBarcode,
+    field: GeometryField,
+    interpolation: int = cv2.INTER_CUBIC,
+) -> RectifiedBarcode: ...
+```
+
+학습이 없는 결정론적 코드라 모델을 기다릴 필요가 없다. 지금 바로 진짜로 만들 수 있다.
+
+## 완료 조건
+
+- 항등 대응(src == dst)을 넣으면 `map_x[y, x] ~= x` 다. **이것부터 확인할 것**
+- 35도 압축한 합성 바코드를 정답 제어점으로 보정하면 디코딩이 성공한다
+- **src/dst 를 뒤집으면 디코딩이 실패한다** (방향 함정 테스트)
+- 20ms 안에 끝난다
+
+## TPS 는 직접 계산한다
+
+`cv2.createThinPlateSplineShapeTransformer` 는 **opencv-python 에 없다.**
+contrib(78MB) 에만 있어서 쓰지 않기로 했다. numpy 로 30줄이면 되고,
+검증된 코드가 설계 문서 §9 에 있다. 그대로 쓰면 된다.
+
+## 주의
+
+제어점은 0~1 정규화 좌표다. 픽셀로 바꿔서 TPS 를 풀어야 한다.
+그리고 **새 픽셀을 만들지 마라.** 인페인팅이나 생성을 붙이면 이 설계의 근거가 무너진다.
+
+## 막히면
+
+SW파트. 설계 문서 §9 와 docs/parts/sw.md 의 rectify.py 절을 볼 것.""",
+    },
+    {
+        "title": "Stage 4 decoding.py 스텁 + 반사 대응",
         "labels": ["part:sw"],
         "milestone": M10,
         "body": """## 무엇을 해야 하나
@@ -334,12 +385,13 @@ def decode(image: RestoredBarcode) -> DecodeResult: ...
 SW파트.""",
     },
     {
-        "title": "pipeline.py — 3단계 연결",
+        "title": "pipeline.py — 4단계 연결 + 조기 종료",
         "labels": ["part:sw"],
         "milestone": M10,
         "body": """## 무엇을 해야 하나
 
-`wemeet/sw/pipeline.py` 에서 탐지 → 복원 → 디코딩을 이어 붙인다.
+`wemeet/sw/pipeline.py` 에서 검출 → (1차 디코딩) → 기하 추정 → 기하 보정 → 디코딩을
+이어 붙인다. 1차 디코딩에서 읽히면 뒤 단계를 건너뛴다.
 
 ```python
 def run(image_bgr: np.ndarray) -> PipelineResult: ...
@@ -350,9 +402,10 @@ def run(image_bgr: np.ndarray) -> PipelineResult: ...
 설계 문서 §5의 실패 정책 7가지가 전부 구현되고 테스트로 확인된다.
 
 - 이미지 형식 오류 → `failure_reason="invalid_input"`
-- 탐지 0개 → `failure_reason="not_detected"`, 복원·디코딩 생략
+- 검출 0개 → `failure_reason="not_detected"`, 이후 단계 생략
 - 탐지 2개 이상 → confidence 최상위 1개만 처리, 총 개수를 `candidate_count` 에
-- 복원 실패(예외) → 예외를 잡고 원본 크롭으로 진행, `degraded=True`
+- 기하 추정 실패 또는 신뢰도 0.3 미만 → 보정 없이 진행, `degraded=True`
+- 디코딩 실패 → 보정 파라미터를 바꿔 최대 3회 재시도 (추정은 다시 안 돌린다)
 - 500ms 초과 → **중단하지 않고 완료**, 시간만 기록
 
 ## 원칙
@@ -375,13 +428,13 @@ SW파트.""",
 
 ## 완료 조건
 
-이미지를 올리면 원본·복원 이미지(base64 data URI)와 판독 결과가 함께 온다.
+이미지를 올리면 원본·펴진 이미지(base64 data URI)와 판독 결과가 함께 온다.
 **판독 실패도 HTTP 200** 으로 반환하고 `ok: false` 와 `failure_reason` 을 담는다.
 
 ## 왜 실패에 200인가
 
 판독 실패는 서버 오류가 아니라 **정상적인 처리 결과**다. 4xx/5xx로 주면
-프론트엔드가 예외 처리 경로에서 복원 이미지를 꺼내야 해서 화면 코드가 꼬인다.
+프론트엔드가 예외 처리 경로에서 펴진 이미지를 꺼내야 해서 화면 코드가 꼬인다.
 
 ## 막히면
 
@@ -398,7 +451,7 @@ SW파트.""",
 
 ## 완료 조건
 
-`cd web && npm install && npm run dev` 로 화면이 뜨고, 원본·복원 이미지와
+`cd web && npm install && npm run dev` 로 화면이 뜨고, 원본·펴진 이미지와
 판독 텍스트가 함께 보인다. `web/src/api.ts` 에 응답 타입이 선언돼 있다.
 
 CI에 `npx tsc --noEmit` 과 `npm run build` 단계를 추가한다.
@@ -532,7 +585,7 @@ AI파트 전원이 팀에 들어가 있고, 각자 API 키를 로컬 `.env` 에 
 
 ## 왜 프로젝트를 하나만 쓰나
 
-Stage별로 나누면 탐지와 복원의 추론 시간을 합쳐서 500ms 예산을 확인할 때
+Stage별로 나누면 검출과 기하 추정의 추론 시간을 합쳐서 500ms 예산을 확인할 때
 두 곳을 오가야 한다.
 
 ## 언제까지
