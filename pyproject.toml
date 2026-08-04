@@ -1,0 +1,80 @@
+[project]
+name = "wemeet"
+version = "0.1.0"
+description = "난인식 바코드 복원 파이프라인 (WE-Meet 2026, METRO팀)"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    # 4.8 부터 cv2.barcode 가 main 패키지에 포함된다. 하한을 내리지 말 것
+    "opencv-python>=4.8",
+    "pillow>=10.0",
+    # 디코더 후보 3종 중 2개. docs/decisions/0006 확정 후 하나만 남긴다
+    "pyzbar>=0.1.9",
+    "zxing-cpp>=2.2",
+    # 테스트 픽스처와 합성 원본 렌더링에 쓴다
+    "python-barcode>=0.15",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "import-linter>=2.0",
+    # 실험 기록. 런타임 의존성이 아니다 — AI파트가 학습할 때만 쓴다.
+    # uv 는 dev 그룹을 기본으로 설치하므로 `uv sync` 한 줄은 그대로 유지된다.
+    "wandb>=0.17",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["wemeet"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# ruff 는 마크다운 안의 ```python 블록도 포맷한다. 문서의 코드 예시는 읽기 쉽게
+# 일부러 정렬해둔 것이 많아서(1~2학년이 읽는다) 그것까지 뭉개면 안 된다.
+# 이걸 빼면 CI 의 `ruff format --check .` 가 문서 때문에 실패해서 모든 PR 이 막힌다.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.importlinter]
+root_package = "wemeet"
+
+[[tool.importlinter.contracts]]
+name = "ai는 sw와 data를 import하지 않는다"
+type = "forbidden"
+source_modules = ["wemeet.ai"]
+forbidden_modules = ["wemeet.sw", "wemeet.data"]
+
+[[tool.importlinter.contracts]]
+name = "sw는 data를 import하지 않는다"
+type = "forbidden"
+source_modules = ["wemeet.sw"]
+forbidden_modules = ["wemeet.data"]
+
+[[tool.importlinter.contracts]]
+# sw/pipeline.py 와 sw/server.py 는 아직 없다. import-linter 는 존재하지 않는
+# 모듈을 forbidden_modules 에 넣어도 오류를 내지 않고 통과시킨다(실측 확인).
+# 뒤집어 말하면 오타를 내도 조용히 무력화되므로, 두 파일이 생기는 2단계에
+# "data 에서 sw.pipeline import 가 실제로 막히는지"를 반드시 확인해야 한다.
+name = "data는 sw.decoding까지만 쓴다"
+type = "forbidden"
+source_modules = ["wemeet.data"]
+forbidden_modules = ["wemeet.ai", "wemeet.sw.pipeline", "wemeet.sw.server"]
+
+[[tool.importlinter.contracts]]
+name = "schemas는 아무것도 import하지 않는다"
+type = "forbidden"
+source_modules = ["wemeet.schemas"]
+forbidden_modules = ["wemeet.ai", "wemeet.sw", "wemeet.data"]

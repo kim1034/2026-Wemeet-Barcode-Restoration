@@ -206,9 +206,20 @@ data/...    데이터파트
 
 ## 지금 상태
 
-아직 **코드가 없습니다.** 설계 문서와 협업 규칙만 있는 상태이고, 8월에 골격을 만듭니다.
+**골격까지 만들었습니다.** `uv sync` → `uv run pytest` 가 통과하고, 파트 간 import 규칙이 CI로 강제됩니다.
 
-그래서 위에 적힌 `wemeet/ai/detection.py` 같은 파일은 아직 존재하지 않습니다. 파트별 문서에 "무엇을 만들어야 하는지"가 적혀 있으니 그걸 보고 만들면 됩니다.
+아직 없는 것은 각 단계의 실제 코드입니다.
+
+| 있다 | 없다 (2단계) |
+|---|---|
+| `wemeet/schemas.py` — 파트 간 계약 | `detection.py` / `restoration.py` / `decoding.py` |
+| `tests/` — 계약 검증 + 바코드 픽스처 | `pipeline.py` / `server.py` |
+| CI 3검사 (ruff · import-linter · pytest) | `download.py` / `synthesis.py` / `ground_truth.py` |
+| [구조와 규칙](docs/architecture.md) | `web/` React 화면 |
+
+위 "데이터 받기"의 `wemeet.data.download` 도 2단계에서 만듭니다. 지금은 받아올 데이터 자체가 없습니다.
+
+파트별 문서에 "무엇을 만들어야 하는지"가 적혀 있으니 그걸 보고 만들면 됩니다.
 
 ---
 
@@ -222,6 +233,7 @@ data/...    데이터파트
 | [SW파트가 할 일](docs/parts/sw.md) | SW파트라면 지금 |
 | [데이터파트가 할 일](docs/parts/data.md) | 데이터파트라면 지금 |
 | [작업하는 방법](CONTRIBUTING.md) | 첫 PR을 올릴 때, CI에서 빨간 X가 떴을 때 |
+| [구조와 규칙](docs/architecture.md) | 어느 파일을 부를 수 있는지, 시간 예산이 얼마인지 |
 | [코드 밖에서 해야 하는 일](docs/external/README.md) | 계정·권한·촬영 준비가 필요할 때 |
 | [Hugging Face 사용법](docs/external/huggingface.md) | 데이터나 모델을 올리고 받을 때 |
 | [Weights & Biases 사용법](docs/external/wandb.md) | 모델 학습을 시작할 때 |
