@@ -29,13 +29,12 @@ Settings → Branches → Add rule 에서 아래를 켠다.
 
 - [ ] Require a pull request before merging
 - [ ] Require approvals — **1**
-- [ ] **Require review from Code Owners** ← 이걸 켜야 CODEOWNERS가 강제된다
 - [ ] Require status checks to pass — CI 통과 후 목록에 나타나는 `ci` 선택
 - [ ] Do not allow bypassing the above settings
 
 public 저장소이므로 무료 계정에서 전부 동작한다. 유료가 필요한 것은 private 저장소다.
 
-**주의**: `Require review from Code Owners`를 켜지 않으면 CODEOWNERS 파일은 리뷰어를 자동 제안만 하고 강제하지 않는다. 무관한 파트원의 승인으로 머지가 통과한다.
+**`Require review from Code Owners`는 켜지 않는다.** CODEOWNERS 방식을 채택하지 않았다(설계 문서 §6). 리뷰어는 PR 작성자가 직접 지정한다. 즉 승인 1개는 필요하지만 **그 승인이 담당 파트원의 것인지는 검사하지 않는다** — 이 점을 알고 켜는 것이다.
 
 ### Issue 라벨
 
@@ -206,8 +205,8 @@ OBB(회전 박스) 재라벨링에 쓴다. `labelImg`는 회전 박스를 지원
 
 **GitHub**
 - [ ] 8명 Collaborator 초대 완료
-- [ ] 8명 GitHub 아이디 수집 완료 (CODEOWNERS에 기입)
-- [ ] `main` 브랜치 보호 켜짐 (Code Owners 리뷰 강제 포함)
+- [ ] 8명 GitHub 아이디 수집 완료 (Collaborator 초대에 필요)
+- [ ] `main` 브랜치 보호 켜짐 (PR 필수 + 승인 1개 + CI 통과)
 - [ ] 라벨 6개, 마일스톤 생성
 
 **Hugging Face**
