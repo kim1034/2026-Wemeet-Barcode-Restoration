@@ -19,22 +19,44 @@
 |---|---|---|---|
 | 팀원 8명 Collaborator 초대 | Settings → Collaborators | 팀장 | 착수 전 |
 | 팀원 GitHub 아이디 수집 | — | 팀장 | 착수 전 |
-| `main` 브랜치 보호 규칙 켜기 | Settings → Branches | 팀장 | 착수 전 |
-| Issue 라벨 6개 생성 | Issues → Labels | 팀장 | 착수 전 |
-| 마일스톤 생성 | Issues → Milestones | 팀장 | 착수 전 |
+| Issue 라벨 6개 생성 | `scripts/setup_github.py` | 팀장 | 착수 전 |
+| 마일스톤 4개 생성 | `scripts/setup_github.py` | 팀장 | 착수 전 |
+| 착수 이슈 생성 | `scripts/setup_github.py` | 팀장 | 착수 전 |
 
-### 브랜치 보호 규칙 (`main`)
+라벨·마일스톤·이슈는 손으로 만들지 않고 스크립트 한 번으로 만든다. 무엇을 만들었는지가 코드로 남아서, 나중에 "이 라벨 왜 있지"에 답할 수 있다.
 
-Settings → Branches → Add rule 에서 아래를 켠다.
+```bash
+GH_TOKEN=ghp_xxxx uv run python scripts/setup_github.py
+```
 
-- [ ] Require a pull request before merging
-- [ ] Require approvals — **1**
-- [ ] Require status checks to pass — CI 통과 후 목록에 나타나는 `ci` 선택
-- [ ] Do not allow bypassing the above settings
+`main` 브랜치 보호는 **켜지 않기로 했다** — 아래 절 참고.
 
-public 저장소이므로 무료 계정에서 전부 동작한다. 유료가 필요한 것은 private 저장소다.
+### 브랜치 보호 규칙 (`main`) — **켜지 않는다 (2026-08-04 결정)**
 
-**`Require review from Code Owners`는 켜지 않는다.** CODEOWNERS 방식을 채택하지 않았다(설계 문서 §6). 리뷰어는 PR 작성자가 직접 지정한다. 즉 승인 1개는 필요하지만 **그 승인이 담당 파트원의 것인지는 검사하지 않는다** — 이 점을 알고 켜는 것이다.
+**결론: `main` 브랜치 보호를 쓰지 않는다.** 아래 설정은 하지 않는다.
+
+**왜**: PR을 올리는 인원이 고학년이고, 장치를 늘리는 것보다 규칙으로 두는 편이 팀에 맞다고 판단했다. CODEOWNERS를 폐기한 것과 같은 이유다(설계 문서 §6).
+
+**그래서 지금 실제 상태는 이렇다.**
+
+| 항목 | 강제되나 |
+|---|---|
+| `main` 직접 push 금지 | **아니다.** `git push origin main` 이 그냥 된다 |
+| PR 승인 1개 | **아니다.** 승인 없이 머지 버튼이 눌린다 |
+| CI 통과 후 머지 | **아니다.** 빨간 X여도 머지된다 |
+
+`README.md` 와 `CONTRIBUTING.md` 에도 "규칙이지만 강제하지 않는다"로 적어뒀다. **문서가 "막아뒀다"고 말하는 상태를 만들지 않는 것이 중요하다** — 팀원이 실수로 main에 push했을 때 "문서엔 막혔다고 했는데?"가 되면 문서를 신뢰하지 않게 된다.
+
+나중에 켜고 싶으면 Settings → Branches → Add rule 에서 아래를 고른다. public 저장소이므로 무료 계정에서 전부 동작한다.
+
+```
+Require a pull request before merging
+Require approvals — 1
+Require status checks to pass — 목록에서 ci 선택
+Do not allow bypassing the above settings
+```
+
+`Require review from Code Owners`는 켜지 않는다. CODEOWNERS 파일 자체를 만들지 않았으므로 켜도 동작하지 않는다.
 
 ### Issue 라벨
 
@@ -206,8 +228,7 @@ OBB(회전 박스) 재라벨링에 쓴다. `labelImg`는 회전 박스를 지원
 **GitHub**
 - [ ] 8명 Collaborator 초대 완료
 - [ ] 8명 GitHub 아이디 수집 완료 (Collaborator 초대에 필요)
-- [ ] `main` 브랜치 보호 켜짐 (PR 필수 + 승인 1개 + CI 통과)
-- [ ] 라벨 6개, 마일스톤 생성
+- [ ] `scripts/setup_github.py` 실행 완료 (라벨 6개 + 마일스톤 4개 + 착수 이슈)
 
 **Hugging Face**
 - [ ] 조직 생성, 8명 초대
