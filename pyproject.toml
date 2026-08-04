@@ -1,0 +1,45 @@
+[project]
+name = "wemeet"
+version = "0.1.0"
+description = "난인식 바코드 복원 파이프라인 (WE-Meet 2026, METRO팀)"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    # 4.8 부터 cv2.barcode 가 main 패키지에 포함된다. 하한을 내리지 말 것
+    "opencv-python>=4.8",
+    "pillow>=10.0",
+    # 디코더 후보 3종 중 2개. docs/decisions/0006 확정 후 하나만 남긴다
+    "pyzbar>=0.1.9",
+    "zxing-cpp>=2.2",
+    # 테스트 픽스처와 합성 원본 렌더링에 쓴다
+    "python-barcode>=0.15",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "import-linter>=2.0",
+    # 실험 기록. 런타임 의존성이 아니다 — AI파트가 학습할 때만 쓴다.
+    # uv 는 dev 그룹을 기본으로 설치하므로 `uv sync` 한 줄은 그대로 유지된다.
+    "wandb>=0.17",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["wemeet"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
