@@ -2,6 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **주의 — 계약이 그 뒤에 바뀌었습니다 (2026-08-04).**
+> 이 계획서는 실행 완료됐고 기록으로 남겨둔 것입니다. 여기 적힌 `RestoredBarcode` 는
+> 폐기됐고 `GeometryField` + `RectifiedBarcode` 로 갈라졌습니다. 파이프라인도 3단계 → 4단계가 됐습니다.
+> **현재 계약은 [기하 파이프라인 설계](../specs/2026-08-04-geometry-pipeline-design.md)와 `wemeet/schemas.py` 를 보세요.**
+
 **Goal:** `git clone` → `uv sync` → `uv run pytest` → `uv run lint-imports` 가 전부 통과하는 레포 골격을 만든다. 파트 간 import 규칙이 문서가 아니라 CI로 강제되는 상태까지 간다.
 
 **Architecture:** 파이썬 단일 패키지 `wemeet/` 아래에 파트별 서브패키지(`ai`/`sw`/`data`)와 공용 계약(`schemas.py`)을 둔다. 계약 모듈은 아무것도 import하지 않는 잎(leaf)이고, 의존은 `data → sw → ai → schemas` 방향으로만 흐른다. 이 방향을 `import-linter` 계약으로 CI에서 강제한다.
