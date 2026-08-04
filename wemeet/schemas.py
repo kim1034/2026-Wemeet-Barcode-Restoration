@@ -43,11 +43,24 @@ class GeometryField:
     (Code128 약 1/103). 틀린 번호가 조용히 통과하는 것은 못 읽는 것보다 나쁘다.
 
     좌표계 (반드시 지킬 것):
-      · 기준은 DetectedBarcode.crop_bgr_uint8 이다. 원본 이미지가 아니다.
       · 0.0~1.0 정규화 좌표다. 픽셀이 아니다. (x, y) 순서다.
+      · 기준은 **DetectedBarcode.crop_bgr_uint8 원본 크기**다.
+        모델에 넣으려고 리사이즈한 이미지가 아니고, 원본 사진 전체도 아니다.
       · dst = 펴진 뒤의 격자 위치, src = 그 내용이 지금 있는 위치.
 
-    이 방향을 뒤집으면 왜곡이 두 번 적용된다. 약한 왜곡에서는 우연히
+    왜 픽셀이 아니라 정규화인가:
+      크롭은 매번 크기가 다르다(바코드가 크게 찍히면 800x600, 작게 찍히면
+      200x150). 모델은 고정 크기로 리사이즈해서 받는데, 정규화 좌표는
+      **리사이즈에 불변**이라 되돌릴 때 배율을 알 필요가 없다.
+      픽셀로 계약했다면 "입력이 256인데 원본이 800이었다"는 정보를
+      어딘가로 같이 넘겨야 하고, 그게 빠지면 반드시 사고가 난다.
+
+    letterbox 함정:
+      가로로 긴 크롭을 정사각형에 맞추려고 패딩하면, 모델이 내는 좌표는
+      "패딩된 이미지" 기준이 된다. 그대로 넘기면 위아래로 밀린 채 펴진다.
+      **패딩을 뺀 원본 크롭 기준으로 환산해서 넘겨야 한다.**
+
+    방향을 뒤집으면 왜곡이 두 번 적용된다. 약한 왜곡에서는 우연히
     읽히기도 해서 버그를 놓치기 쉽다 — 사전 실험에서 실제로 겪었다.
     설계 문서(2026-08-04-geometry-pipeline-design.md) §8.5 를 볼 것.
     """
@@ -65,6 +78,15 @@ class GeometryField:
         assert len(self.control_points_dst_norm) >= 4
         assert self.method in ("tps", "perspective")
         assert 0.0 <= self.confidence <= 1.0
+
+        # 픽셀 좌표를 넣는 실수를 여기서 잡는다.
+        # dst 는 우리가 만드는 규칙적인 격자이므로 0~1 을 벗어날 이유가 없다.
+        assert self.control_points_dst_norm.min() >= 0.0
+        assert self.control_points_dst_norm.max() <= 1.0
+        # src 는 크롭 밖을 가리킬 수 있다(바코드가 크롭 경계를 넘은 경우).
+        # 다만 픽셀 값(수십~수백)과는 자릿수가 다르므로 여유를 두고 막는다.
+        assert -0.5 <= self.control_points_src_norm.min()
+        assert self.control_points_src_norm.max() <= 1.5
 
 
 @dataclass
