@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: uv 설치
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 의존성 설치
+        run: uv sync --frozen
+
+      - name: 코드 스타일
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+
+      - name: 파트 간 import 규칙
+        run: uv run lint-imports
+
+      - name: 테스트
+        run: uv run pytest -v
