@@ -109,6 +109,46 @@ def test_기하_추정_신뢰도가_범위를_넘으면_거부된다():
         )
 
 
+def test_픽셀_좌표를_넣으면_거부된다():
+    """정규화(0~1)를 잊고 픽셀 값을 넣는 실수를 계약이 잡는다.
+
+    이걸 놓치면 SW파트가 크롭 크기를 한 번 더 곱해서 좌표가 폭발한다.
+    """
+    px = np.array([[0.0, 0.0], [248.0, 0.0], [0.0, 123.0], [248.0, 123.0]])
+    with pytest.raises(AssertionError):
+        GeometryField(
+            control_points_dst_norm=px,
+            control_points_src_norm=px,
+            method="tps",
+            confidence=0.8,
+        )
+
+
+def test_펴진_격자가_0에서_1을_벗어나면_거부된다():
+    """dst 는 우리가 만드는 규칙적인 격자라 범위를 벗어날 이유가 없다."""
+    grid = np.array([[0.0, 0.0], [1.2, 0.0], [0.0, 1.0], [1.2, 1.0]])
+    with pytest.raises(AssertionError):
+        GeometryField(
+            control_points_dst_norm=grid,
+            control_points_src_norm=grid,
+            method="tps",
+            confidence=0.8,
+        )
+
+
+def test_src는_크롭_경계를_조금_벗어날_수_있다():
+    """바코드가 크롭 밖으로 걸쳐 있으면 src 가 음수가 될 수 있다. 이건 정상이다."""
+    dst = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+    src = dst + np.array([-0.05, 0.03])
+    field = GeometryField(
+        control_points_dst_norm=dst,
+        control_points_src_norm=src,
+        method="tps",
+        confidence=0.8,
+    )
+    assert field.control_points_src_norm.min() < 0.0
+
+
 def test_기하_추정_결과에는_이미지가_없다():
     """AI 가 픽셀을 만들어 반환할 수 없다는 것이 계약이다 (설계 §2.1)."""
     field = _field()
