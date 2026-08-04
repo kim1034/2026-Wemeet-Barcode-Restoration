@@ -310,8 +310,11 @@ AI파트가 아니라 `pipeline` 이 정할 문제다.
 
 ## 완료 조건
 
-반환값이 `RestoredBarcode` 이고 `image_gray_uint8` 이 **흑백 단일 채널**이다
-(계약이 `ndim == 2` 를 검사한다). `uv run pytest` 통과.
+반환값이 `GeometryField` 이고 제어점이 8개 이상이다.
+`uv run pytest` 와 `uv run lint-imports` 가 통과한다.
+
+이미지를 반환하지 않는다는 것을 테스트로 확인할 것 —
+`GeometryField` 에 이미지 필드가 없다.
 
 ## 막히면
 
@@ -366,7 +369,7 @@ SW파트. 설계 문서 §9 와 docs/parts/sw.md 의 rectify.py 절을 볼 것."
 `wemeet/sw/decoding.py` 에 계약대로 함수를 만들고 피드백 루프를 붙인다.
 
 ```python
-def decode(image: RestoredBarcode) -> DecodeResult: ...
+def decode(image: RectifiedBarcode) -> DecodeResult: ...
 ```
 
 ## 완료 조건
