@@ -1,0 +1,856 @@
+<title>METRO 저장소 사용법 — 팀원 안내</title>
+
+<style>
+  :root {
+    /* 바코드 잉크와 송장 용지에서 가져온 중성색. 파트 색은 GitHub 라벨과 같은 값을 쓴다 */
+    --ink:      #15171c;
+    --ink-soft: #4a5058;
+    --paper:    #f1f2f4;
+    --panel:    #ffffff;
+    --rule:     #d2d6dc;
+    --rule-soft:#e6e9ed;
+
+    --scan:     #d92d20;  /* 스캐너 레이저 — 강조는 여기 한 곳에만 */
+    --ok:       #157f52;
+
+    --ai:       #1d63b8;  /* part:ai */
+    --sw:       #0e7a3c;  /* part:sw */
+    --data:     #a97800;  /* part:data */
+
+    --sans: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic",
+            "맑은 고딕", system-ui, sans-serif;
+    --mono: "Cascadia Code", "D2Coding", "Consolas", "SFMono-Regular", ui-monospace, monospace;
+
+    --step--1: clamp(0.78rem, 0.76rem + 0.1vw, 0.84rem);
+    --step-0:  clamp(0.95rem, 0.92rem + 0.15vw, 1.02rem);
+    --step-1:  clamp(1.12rem, 1.05rem + 0.35vw, 1.3rem);
+    --step-2:  clamp(1.45rem, 1.3rem + 0.7vw, 1.9rem);
+    --step-3:  clamp(1.9rem, 1.5rem + 1.8vw, 3rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink:      #e8eaee;
+      --ink-soft: #9aa2ad;
+      --paper:    #101216;
+      --panel:    #171a20;
+      --rule:     #2e343d;
+      --rule-soft:#23282f;
+      --scan:     #ff6b5e;
+      --ok:       #3fbc84;
+      --ai:       #6aa9f0;
+      --sw:       #4cc17c;
+      --data:     #e0b33c;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink:      #e8eaee;
+    --ink-soft: #9aa2ad;
+    --paper:    #101216;
+    --panel:    #171a20;
+    --rule:     #2e343d;
+    --rule-soft:#23282f;
+    --scan:     #ff6b5e;
+    --ok:       #3fbc84;
+    --ai:       #6aa9f0;
+    --sw:       #4cc17c;
+    --data:     #e0b33c;
+  }
+
+  :root[data-theme="light"] {
+    --ink:      #15171c;
+    --ink-soft: #4a5058;
+    --paper:    #f1f2f4;
+    --panel:    #ffffff;
+    --rule:     #d2d6dc;
+    --rule-soft:#e6e9ed;
+    --scan:     #d92d20;
+    --ok:       #157f52;
+    --ai:       #1d63b8;
+    --sw:       #0e7a3c;
+    --data:     #a97800;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.25rem 5rem; }
+
+  /* ── 바코드 띠: 이 프로젝트의 주제 그 자체를 구분선으로 쓴다 ── */
+  .barcode {
+    height: 12px;
+    background-image: repeating-linear-gradient(90deg,
+      var(--ink) 0 2px, transparent 2px 5px,
+      var(--ink) 5px 6px, transparent 6px 11px,
+      var(--ink) 11px 14px, transparent 14px 16px,
+      var(--ink) 16px 17px, transparent 17px 23px);
+    opacity: .55;
+  }
+
+  header.hero {
+    padding: 3.5rem 0 2.25rem;
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--scan);
+  }
+  h1 {
+    font-size: var(--step-3);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede { font-size: var(--step-1); color: var(--ink-soft); max-width: 44ch; margin: 0; }
+
+  section { padding: 2.75rem 0; border-top: 1px solid var(--rule-soft); }
+  section:first-of-type { border-top: none; }
+
+  .snum {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    letter-spacing: .1em;
+  }
+  h2 {
+    font-size: var(--step-2);
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    font-weight: 750;
+    margin: .35rem 0 .75rem;
+    text-wrap: balance;
+  }
+  h3 {
+    font-size: var(--step-1);
+    font-weight: 700;
+    margin: 2rem 0 .5rem;
+    letter-spacing: -0.01em;
+  }
+  p { max-width: 66ch; margin: 0 0 1rem; }
+  .muted { color: var(--ink-soft); }
+
+  figure {
+    margin: 1.5rem 0;
+    padding: 1.25rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; height: auto; min-width: 30rem; }
+  figcaption {
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    margin-top: .9rem;
+    padding-top: .75rem;
+    border-top: 1px dashed var(--rule);
+  }
+
+  code, kbd { font-family: var(--mono); font-size: .92em; }
+  p code, li code, td code {
+    background: var(--rule-soft);
+    padding: .1em .35em;
+    border-radius: 2px;
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--scan);
+    border-radius: 3px;
+    padding: .9rem 1rem;
+    overflow-x: auto;
+    line-height: 1.65;
+    margin: 1rem 0;
+  }
+  pre .cm { color: var(--ink-soft); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+    margin: 1rem 0;
+  }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th {
+    font-size: var(--step--1);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--rule);
+    font-weight: 600;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+
+  ul, ol { max-width: 66ch; padding-left: 1.3rem; }
+  li { margin-bottom: .4rem; }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: .78rem;
+    padding: .1rem .45rem;
+    border-radius: 2px;
+    border: 1px solid currentColor;
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+  .c-ai { color: var(--ai); }
+  .c-sw { color: var(--sw); }
+  .c-data { color: var(--data); }
+
+  .grid2 { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--rule);
+    border-radius: 3px;
+    padding: 1rem 1.1rem;
+  }
+  .card.ai { border-top-color: var(--ai); }
+  .card.sw { border-top-color: var(--sw); }
+  .card.data { border-top-color: var(--data); }
+  .card h4 { margin: 0 0 .5rem; font-size: var(--step-0); font-weight: 700; }
+  .card p { font-size: var(--step--1); margin: 0 0 .5rem; }
+
+  .callout {
+    border: 1px solid var(--scan);
+    border-left-width: 3px;
+    border-radius: 3px;
+    background: var(--panel);
+    padding: 1rem 1.1rem;
+    margin: 1.25rem 0;
+  }
+  .callout strong { color: var(--scan); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .yes { color: var(--ok); font-weight: 700; }
+  .no  { color: var(--scan); font-weight: 700; }
+
+  a { color: var(--scan); text-underline-offset: .18em; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--scan);
+    outline-offset: 3px;
+  }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="barcode" role="presentation"></div>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">METRO · WE-Meet 2026 · 저장소 안내</div>
+    <h1>내 파트만 알면 됩니다</h1>
+    <p class="lede">난인식 바코드 복원 파이프라인 저장소를 처음 여는 사람을 위한 설명입니다.
+      외울 것은 네 개, 명령은 한 줄입니다.</p>
+  </header>
+
+  <!-- ───────────────────────── 01 ───────────────────────── -->
+  <section>
+    <div class="snum">01 / 우리가 없애려는 것</div>
+    <h2>스캔 실패 한 건마다 사람이 공정을 거꾸로 걷습니다</h2>
+    <p>인천세관 통합검사장에서는 컨베이어 위 화물의 바코드를 카메라로 읽습니다.
+      비닐에 빛이 반사되거나 송장이 구겨져 있으면 못 읽고, 그 화물은 <strong>노리드 존</strong>으로 빠집니다.</p>
+
+    <figure>
+      <svg viewBox="0 0 880 210" role="img" aria-label="컨베이어에서 판독 실패한 화물이 노리드 존으로 빠지고, 작업자가 송장을 펴서 X-ray 라인 맨 앞으로 되돌아가는 과정">
+        <!-- 컨베이어 -->
+        <rect x="20" y="70" width="600" height="34" fill="var(--rule-soft)" stroke="var(--rule)"/>
+        <g fill="var(--rule)">
+          <rect x="60" y="104" width="4" height="9"/><rect x="160" y="104" width="4" height="9"/>
+          <rect x="260" y="104" width="4" height="9"/><rect x="360" y="104" width="4" height="9"/>
+          <rect x="460" y="104" width="4" height="9"/><rect x="560" y="104" width="4" height="9"/>
+        </g>
+        <!-- 카메라 -->
+        <rect x="290" y="18" width="62" height="26" rx="2" fill="var(--panel)" stroke="var(--ink)"/>
+        <text x="321" y="35" font-size="11" text-anchor="middle" fill="var(--ink)" font-family="var(--sans)">카메라</text>
+        <path d="M310 44 L300 70 M332 44 L342 70" stroke="var(--scan)" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <!-- 통과 화물 -->
+        <rect x="70" y="46" width="42" height="24" fill="var(--panel)" stroke="var(--ink)"/>
+        <g fill="var(--ink)"><rect x="76" y="52" width="2" height="12"/><rect x="80" y="52" width="1" height="12"/>
+          <rect x="83" y="52" width="3" height="12"/><rect x="88" y="52" width="1" height="12"/>
+          <rect x="91" y="52" width="2" height="12"/><rect x="95" y="52" width="3" height="12"/>
+          <rect x="100" y="52" width="1" height="12"/><rect x="103" y="52" width="2" height="12"/></g>
+        <text x="91" y="86" font-size="10.5" text-anchor="middle" fill="var(--ok)" font-family="var(--sans)">읽힘</text>
+        <!-- 실패 화물 (구겨짐) -->
+        <path d="M290 70 L294 47 L318 44 L340 49 L344 70 Z" fill="var(--panel)" stroke="var(--scan)" stroke-width="1.5"/>
+        <g fill="var(--scan)" opacity=".8">
+          <rect x="299" y="53" width="2" height="12"/><rect x="304" y="55" width="1" height="10"/>
+          <rect x="308" y="52" width="3" height="13"/><rect x="316" y="54" width="1" height="11"/>
+          <rect x="322" y="53" width="2" height="12"/><rect x="330" y="55" width="3" height="10"/></g>
+        <text x="317" y="93" font-size="10.5" text-anchor="middle" fill="var(--scan)" font-family="var(--sans)">못 읽음</text>
+        <!-- 노리드 존 -->
+        <rect x="640" y="58" width="120" height="58" rx="2" fill="none" stroke="var(--scan)" stroke-dasharray="5 4"/>
+        <text x="700" y="82" font-size="12.5" text-anchor="middle" fill="var(--scan)" font-weight="700" font-family="var(--sans)">노리드 존</text>
+        <text x="700" y="100" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--sans)">사람이 처리</text>
+        <path d="M620 87 L634 87" stroke="var(--scan)" stroke-width="1.5" marker-end="url(#ar-red)"/>
+        <!-- 되돌아가는 경로 -->
+        <path d="M700 116 L700 150 Q700 162 688 162 L52 162 Q40 162 40 150 L40 112"
+              fill="none" stroke="var(--scan)" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#ar-red)"/>
+        <text x="368" y="180" font-size="11.5" text-anchor="middle" fill="var(--scan)" font-family="var(--sans)">
+          송장을 손으로 펴서 X-ray 라인 맨 앞까지 되돌아간다
+        </text>
+        <defs>
+          <marker id="ar-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--scan)"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>이 빨간 경로를 없애는 것이 목표입니다. 스캐너를 교체하는 게 아니라,
+        <strong>이미 있는 카메라가 찍은 사진을 소프트웨어로 복원</strong>합니다.</figcaption>
+    </figure>
+
+    <div class="callout">
+      <p><strong>우리가 하지 않는 것.</strong> 바코드가 카메라를 향하게 놓는 일은 기존 설비가 합니다.
+        우리는 <em>정면을 향하고 있는데도</em> 구겨짐과 반사 때문에 안 읽히는 경우만 담당합니다.</p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 02 ───────────────────────── -->
+  <section>
+    <div class="snum">02 / 만드는 것</div>
+    <h2>사진 한 장이 번호가 되기까지 3단계</h2>
+    <p>단계마다 담당 파트가 다릅니다. 그리고 <strong>전체가 0.5초 안에</strong> 끝나야 합니다 — 컨베이어가 멈추지 않으니까요.</p>
+
+    <figure>
+      <svg viewBox="0 0 880 300" role="img" aria-label="사진 입력에서 탐지, 복원, 디코딩을 거쳐 바코드 번호가 나오는 3단계 파이프라인과 단계별 시간 예산">
+        <!-- 입력 -->
+        <rect x="14" y="60" width="86" height="52" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="57" y="82" font-size="11.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--sans)">사진</text>
+        <text x="57" y="98" font-size="11.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--sans)">입력</text>
+        <path d="M102 86 L128 86" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 1 탐지 -->
+        <rect x="130" y="46" width="186" height="80" rx="2" fill="var(--panel)" stroke="var(--ai)" stroke-width="1.5"/>
+        <text x="142" y="40" font-size="10.5" fill="var(--ai)" font-family="var(--mono)">STAGE 1 · AI파트</text>
+        <text x="146" y="74" font-size="14" fill="var(--ink)" font-weight="700" font-family="var(--sans)">탐지</text>
+        <text x="146" y="95" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">바코드만 찾아 잘라낸다</text>
+        <text x="146" y="112" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">비스듬하면 똑바로 세운다</text>
+        <path d="M318 86 L344 86" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 2 복원 -->
+        <rect x="346" y="46" width="186" height="80" rx="2" fill="var(--panel)" stroke="var(--ai)" stroke-width="1.5"/>
+        <text x="358" y="40" font-size="10.5" fill="var(--ai)" font-family="var(--mono)">STAGE 2 · AI파트</text>
+        <text x="362" y="74" font-size="14" fill="var(--ink)" font-weight="700" font-family="var(--sans)">복원</text>
+        <text x="362" y="95" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">구겨진 것을 펴고</text>
+        <text x="362" y="112" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">반사로 날아간 부분을 되살린다</text>
+        <path d="M534 86 L560 86" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 3 디코딩 -->
+        <rect x="562" y="46" width="186" height="80" rx="2" fill="var(--panel)" stroke="var(--sw)" stroke-width="1.5"/>
+        <text x="574" y="40" font-size="10.5" fill="var(--sw)" font-family="var(--mono)">STAGE 3 · SW파트</text>
+        <text x="578" y="74" font-size="14" fill="var(--ink)" font-weight="700" font-family="var(--sans)">디코딩</text>
+        <text x="578" y="95" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">번호로 바꾼다</text>
+        <text x="578" y="112" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">실패하면 3번까지 재시도</text>
+        <path d="M750 86 L776 86" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 출력 -->
+        <rect x="778" y="60" width="88" height="52" rx="2" fill="var(--panel)" stroke="var(--ok)" stroke-width="1.5"/>
+        <text x="822" y="82" font-size="11.5" text-anchor="middle" fill="var(--ok)" font-family="var(--sans)">복원 이미지</text>
+        <text x="822" y="98" font-size="11.5" text-anchor="middle" fill="var(--ok)" font-family="var(--sans)">+ 번호</text>
+
+        <!-- 이 3단계를 잇는 것은 SW파트 -->
+        <path d="M223 132 L223 152 L655 152 L655 132" fill="none" stroke="var(--sw)" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="439" y="169" font-size="11" text-anchor="middle" fill="var(--sw)" font-family="var(--sans)">
+          이 3단계를 이어 붙이는 것도 SW파트 (pipeline.py)
+        </text>
+
+        <!-- 시간 예산 -->
+        <text x="14" y="205" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">시간 예산 · 합계 500MS</text>
+        <g>
+          <rect x="14" y="214" width="164" height="26" fill="var(--ai)" opacity=".85"/>
+          <rect x="178" y="214" width="410" height="26" fill="var(--ai)" opacity=".55"/>
+          <rect x="588" y="214" width="82" height="26" fill="var(--sw)" opacity=".85"/>
+          <rect x="670" y="214" width="164" height="26" fill="var(--sw)" opacity=".45"/>
+        </g>
+        <text x="96"  y="231" font-size="11" text-anchor="middle" fill="#fff" font-family="var(--sans)">탐지 100</text>
+        <text x="383" y="231" font-size="11" text-anchor="middle" fill="#fff" font-family="var(--sans)">복원 250</text>
+        <text x="629" y="231" font-size="11" text-anchor="middle" fill="#fff" font-family="var(--sans)">디코딩 50</text>
+        <text x="752" y="231" font-size="11" text-anchor="middle" fill="#fff" font-family="var(--sans)">재시도 여유 100</text>
+        <text x="14" y="262" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          0.5초는 재시도를 포함한 전체 경로 기준입니다. 복원이 예산의 절반을 씁니다.
+        </text>
+        <text x="14" y="282" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          예산을 넘겨도 중단하지 않습니다 — 시간만 기록하고, 초과 여부는 평가 단계에서 판정합니다.
+        </text>
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--ink-soft)"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>학습에 쓸 데이터를 만드는 것은 <span class="chip c-data">데이터파트</span>입니다.
+        위 그림에는 안 나오지만 이게 없으면 1·2단계가 시작되지 않습니다.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ───────────────────────── 03 ───────────────────────── -->
+  <section>
+    <div class="snum">03 / 시작하기</div>
+    <h2>명령 한 줄이면 환경이 만들어집니다</h2>
+
+    <p><a href="https://docs.astral.sh/uv/">uv</a>를 먼저 설치하고, 그다음은 이 두 줄입니다.</p>
+
+<pre>git clone https://github.com/kim1034/2026-Wemeet-Barcode-Restoration.git
+cd 2026-Wemeet-Barcode-Restoration
+uv sync</pre>
+
+    <p>파이썬 버전(3.12)까지 알아서 맞춰줍니다. <code>activate</code> 같은 건 필요 없습니다.
+      파이썬을 돌릴 때 앞에 <code>uv run</code>을 붙이면 됩니다.</p>
+
+<pre>uv run pytest                            <span class="cm"># 테스트 11개가 통과하면 성공</span>
+uv run python -c "import wemeet; print('설치 완료')"</pre>
+
+    <div class="callout">
+      <p><strong>데이터 받기는 아직 없습니다.</strong> README에 <code>uv run python -m wemeet.data.download</code>가
+        적혀 있지만 그 파일은 아직 만들지 않았습니다. 받아올 데이터 자체가 없어서(수집은 9월)
+        지금은 <code>uv sync</code>까지만 하면 자기 파트 작업을 시작할 수 있습니다.</p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 04 ───────────────────────── -->
+  <section>
+    <div class="snum">04 / 내 자리</div>
+    <h2>폴더 이름이 파이프라인 단계와 그대로 맞습니다</h2>
+
+    <figure>
+      <svg viewBox="0 0 880 330" role="img" aria-label="wemeet 패키지 폴더 구조. schemas.py는 공용이고 ai, sw, data 폴더가 파트별로 나뉘어 있으며 아직 만들지 않은 파일이 표시되어 있다">
+        <text x="14" y="20" font-size="12" fill="var(--ink)" font-family="var(--mono)" font-weight="700">wemeet/</text>
+
+        <!-- schemas -->
+        <rect x="30" y="32" width="330" height="34" rx="2" fill="var(--panel)" stroke="var(--scan)" stroke-width="1.5"/>
+        <text x="42" y="54" font-size="12" fill="var(--ink)" font-family="var(--mono)" font-weight="700">schemas.py</text>
+        <text x="150" y="54" font-size="11" fill="var(--scan)" font-family="var(--sans)">파트 간 약속 · 건드리기 전에 상의</text>
+        <text x="372" y="54" font-size="11" fill="var(--ok)" font-family="var(--sans)">있음</text>
+
+        <!-- ai -->
+        <rect x="30" y="78" width="330" height="76" rx="2" fill="var(--panel)" stroke="var(--ai)" stroke-width="1.5"/>
+        <text x="42" y="98" font-size="12" fill="var(--ai)" font-family="var(--mono)" font-weight="700">ai/</text>
+        <text x="80" y="98" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">김시선, 김대원</text>
+        <text x="50" y="118" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">detection.py</text>
+        <text x="160" y="118" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">1단계 탐지</text>
+        <text x="50" y="136" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">restoration.py</text>
+        <text x="160" y="136" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">2단계 복원</text>
+        <text x="372" y="127" font-size="11" fill="var(--scan)" font-family="var(--sans)">아직 없음 — 만들 차례</text>
+
+        <!-- sw -->
+        <rect x="30" y="166" width="330" height="94" rx="2" fill="var(--panel)" stroke="var(--sw)" stroke-width="1.5"/>
+        <text x="42" y="186" font-size="12" fill="var(--sw)" font-family="var(--mono)" font-weight="700">sw/</text>
+        <text x="80" y="186" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">김종연, 이도훈</text>
+        <text x="50" y="206" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">decoding.py</text>
+        <text x="160" y="206" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">3단계 디코딩</text>
+        <text x="50" y="224" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">pipeline.py</text>
+        <text x="160" y="224" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">3단계 연결</text>
+        <text x="50" y="242" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">server.py</text>
+        <text x="160" y="242" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">FastAPI</text>
+        <text x="372" y="224" font-size="11" fill="var(--scan)" font-family="var(--sans)">아직 없음 — 만들 차례</text>
+
+        <!-- data -->
+        <rect x="30" y="272" width="330" height="46" rx="2" fill="var(--panel)" stroke="var(--data)" stroke-width="1.5"/>
+        <text x="42" y="292" font-size="12" fill="var(--data)" font-family="var(--mono)" font-weight="700">data/</text>
+        <text x="90" y="292" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">김강민, 조아라</text>
+        <text x="50" y="310" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">download · synthesis · ground_truth</text>
+        <text x="372" y="299" font-size="11" fill="var(--scan)" font-family="var(--sans)">아직 없음 — 만들 차례</text>
+
+        <!-- 오른쪽: 이미 있는 것 -->
+        <text x="560" y="20" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">이미 만들어져 있는 것</text>
+        <rect x="560" y="32" width="306" height="34" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="572" y="54" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">tests/</text>
+        <text x="650" y="54" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">계약 검증 + 바코드 생성 픽스처</text>
+        <rect x="560" y="72" width="306" height="34" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="572" y="94" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">.github/workflows/</text>
+        <text x="700" y="94" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">CI 검사 3개</text>
+        <rect x="560" y="112" width="306" height="34" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="572" y="134" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">docs/architecture.md</text>
+        <text x="722" y="134" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">구조와 규칙</text>
+        <rect x="560" y="152" width="306" height="34" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="572" y="174" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">downloads/</text>
+        <text x="660" y="174" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">받은 파일 (git에 안 올라감)</text>
+        <rect x="560" y="192" width="306" height="34" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="572" y="214" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">web/</text>
+        <text x="630" y="214" font-size="11" fill="var(--scan)" font-family="var(--sans)">React 화면 — 아직 없음 (SW파트)</text>
+      </svg>
+      <figcaption><code>detection.py</code>는 1단계, <code>restoration.py</code>는 2단계,
+        <code>decoding.py</code>는 3단계입니다. 파일을 찾을 때 파이프라인 그림을 떠올리면 됩니다.</figcaption>
+    </figure>
+
+    <div class="grid2">
+      <div class="card ai">
+        <h4><span class="chip c-ai">AI</span> 김시선 · 김대원</h4>
+        <p>탐지와 복원 모델. 후보를 비교해서 고르고 근거를 <code>docs/decisions/</code>에 남깁니다.</p>
+        <p class="muted"><code>docs/parts/ai.md</code>를 보세요.</p>
+      </div>
+      <div class="card sw">
+        <h4><span class="chip c-sw">SW</span> 김종연 · 이도훈</h4>
+        <p>디코딩·재시도 루프·3단계 연결·서버·화면. 파이프라인 전체의 주인입니다.</p>
+        <p class="muted"><code>docs/parts/sw.md</code>를 보세요.</p>
+      </div>
+      <div class="card data">
+        <h4><span class="chip c-data">데이터</span> 김강민 · 조아라</h4>
+        <p>데이터 수집·합성·정답 확보. 1학년(이다현·이아침)은 9월 2주차 라벨링부터 합류합니다.</p>
+        <p class="muted"><code>docs/parts/data.md</code>를 보세요.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 05 ───────────────────────── -->
+  <section>
+    <div class="snum">05 / 규칙 하나</div>
+    <h2>화살표는 아래로만 흐릅니다</h2>
+    <p>파트마다 부를 수 있는 것이 정해져 있습니다. 이 방향을 어기면 <strong>순환</strong>이 생기고,
+      파이썬이 <code>ImportError: cannot import name ... from partially initialized module</code>을 냅니다.
+      이 오류는 실행 경로에 따라 나타났다 사라져서 원인 추적이 어렵고, 하필 통합하는 시점에 터집니다.</p>
+
+    <figure>
+      <svg viewBox="0 0 880 300" role="img" aria-label="의존 방향 4층 구조. data가 최상위, 그 아래 sw, ai, 맨 아래 schemas가 있고 화살표는 아래로만 흐른다. ai에서 sw를 부르는 것은 금지되어 있다">
+        <!-- 층 -->
+        <rect x="150" y="18" width="190" height="46" rx="2" fill="var(--panel)" stroke="var(--data)" stroke-width="1.5"/>
+        <text x="245" y="40" font-size="13" text-anchor="middle" fill="var(--data)" font-weight="700" font-family="var(--mono)">data/</text>
+        <text x="245" y="56" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--sans)">아무도 부르지 않는다</text>
+
+        <rect x="150" y="96" width="190" height="46" rx="2" fill="var(--panel)" stroke="var(--sw)" stroke-width="1.5"/>
+        <text x="245" y="118" font-size="13" text-anchor="middle" fill="var(--sw)" font-weight="700" font-family="var(--mono)">sw/</text>
+        <text x="245" y="134" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--sans)">ai 를 불러다 조립한다</text>
+
+        <rect x="150" y="174" width="190" height="46" rx="2" fill="var(--panel)" stroke="var(--ai)" stroke-width="1.5"/>
+        <text x="245" y="196" font-size="13" text-anchor="middle" fill="var(--ai)" font-weight="700" font-family="var(--mono)">ai/</text>
+        <text x="245" y="212" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--sans)">sw 도 data 도 안 부른다</text>
+
+        <rect x="150" y="252" width="190" height="42" rx="2" fill="var(--panel)" stroke="var(--scan)" stroke-width="1.5"/>
+        <text x="245" y="272" font-size="13" text-anchor="middle" fill="var(--scan)" font-weight="700" font-family="var(--mono)">schemas.py</text>
+        <text x="245" y="287" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--sans)">아무것도 안 부른다 (잎)</text>
+
+        <!-- 허용 화살표 -->
+        <path d="M245 64 L245 92" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <path d="M245 142 L245 170" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <path d="M245 220 L245 248" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <!-- data -> schemas 우회 -->
+        <path d="M340 41 Q400 41 400 160 Q400 273 344 273" fill="none" stroke="var(--ink-soft)"
+              stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar2)"/>
+
+        <!-- 금지 화살표 -->
+        <path d="M150 196 Q86 196 86 119 L146 119" fill="none" stroke="var(--scan)" stroke-width="1.5"/>
+        <g stroke="var(--scan)" stroke-width="2.4">
+          <path d="M76 148 L104 176"/><path d="M104 148 L76 176"/>
+        </g>
+        <text x="90" y="205" font-size="11" text-anchor="middle" fill="var(--scan)" font-weight="700" font-family="var(--sans)">금지</text>
+
+        <!-- 허용 목록 -->
+        <text x="470" y="30" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">부를 수 있는 것 — 이 다섯 개뿐</text>
+        <g font-size="12" font-family="var(--mono)">
+          <text x="470" y="58" fill="var(--ai)">ai</text>
+          <text x="530" y="58" fill="var(--ink-soft)">→</text>
+          <text x="560" y="58" fill="var(--ink)">schemas</text>
+
+          <text x="470" y="86" fill="var(--sw)">sw</text>
+          <text x="530" y="86" fill="var(--ink-soft)">→</text>
+          <text x="560" y="86" fill="var(--ink)">schemas, ai</text>
+
+          <text x="470" y="114" fill="var(--data)">data</text>
+          <text x="530" y="114" fill="var(--ink-soft)">→</text>
+          <text x="560" y="114" fill="var(--ink)">schemas, sw.decoding</text>
+
+          <text x="470" y="142" fill="var(--scan)">schemas</text>
+          <text x="530" y="142" fill="var(--ink-soft)">→</text>
+          <text x="560" y="142" fill="var(--ink-soft)">(없음)</text>
+        </g>
+        <text x="470" y="176" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          data 가 sw.decoding 만 예외로 쓰는 이유:
+        </text>
+        <text x="470" y="194" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          실촬영 정답 번호를 디코더로 확보하기 때문입니다.
+        </text>
+        <text x="470" y="212" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          단, pipeline 과 server 는 부를 수 없습니다.
+        </text>
+
+        <rect x="466" y="234" width="400" height="52" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="480" y="254" font-size="11" fill="var(--ink)" font-family="var(--sans)">어기면 CI가 막습니다. 로컬에서도 확인할 수 있습니다:</text>
+        <text x="480" y="274" font-size="11.5" fill="var(--scan)" font-family="var(--mono)">uv run lint-imports</text>
+
+        <defs>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--ink-soft)"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>규칙을 어긴 PR은 이렇게 나옵니다 —
+        <code>wemeet.ai is not allowed to import wemeet.sw: wemeet.ai -&gt; wemeet.sw (l.1)</code>.
+        실제로 넣어보고 막히는 것을 확인했습니다.</figcaption>
+    </figure>
+
+    <h3>외울 것은 세 줄입니다</h3>
+    <ul>
+      <li><strong>AI파트</strong>는 자기 파일에 <code>wemeet.sw</code>나 <code>wemeet.data</code>라는 글자를 쓰지 않습니다. 공용이 필요하면 <code>wemeet.schemas</code>를 씁니다.</li>
+      <li><strong>데이터파트</strong>는 <code>wemeet.sw.decoding</code>까지만 쓸 수 있습니다. <code>pipeline</code>과 <code>server</code>는 안 됩니다.</li>
+      <li><strong>함수 안에서 import 하지 않습니다.</strong> 순환을 숨기는 응급처치일 뿐이고, 6개월 뒤에 왜 거기 있는지 알 수 없게 됩니다.</li>
+    </ul>
+  </section>
+
+  <!-- ───────────────────────── 06 ───────────────────────── -->
+  <section>
+    <div class="snum">06 / 조심할 파일 하나</div>
+    <h2><code>schemas.py</code>는 두 파트가 주고받는 약속입니다</h2>
+    <p>단계 사이로 흐르는 데이터의 형태를 여기서 고정합니다. 한쪽이 말없이 바꾸면 반대쪽이 전부 깨집니다.</p>
+
+    <figure>
+      <svg viewBox="0 0 880 250" role="img" aria-label="탐지에서 나온 DetectedBarcode가 복원을 거쳐 RestoredBarcode가 되고, 디코딩에서 DecodeResult가 되며, 최종적으로 PipelineResult에 모두 담기는 데이터 흐름">
+        <rect x="14" y="40" width="196" height="72" rx="2" fill="var(--panel)" stroke="var(--ai)" stroke-width="1.5"/>
+        <text x="26" y="34" font-size="10.5" fill="var(--ai)" font-family="var(--mono)">탐지 → 복원</text>
+        <text x="26" y="62" font-size="12.5" fill="var(--ink)" font-weight="700" font-family="var(--mono)">DetectedBarcode</text>
+        <text x="26" y="82" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">crop_bgr_uint8</text>
+        <text x="26" y="97" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">angle_deg_ccw · confidence</text>
+
+        <path d="M212 76 L238 76" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar3)"/>
+
+        <rect x="240" y="40" width="196" height="72" rx="2" fill="var(--panel)" stroke="var(--ai)" stroke-width="1.5"/>
+        <text x="252" y="34" font-size="10.5" fill="var(--ai)" font-family="var(--mono)">복원 → 디코딩</text>
+        <text x="252" y="62" font-size="12.5" fill="var(--ink)" font-weight="700" font-family="var(--mono)">RestoredBarcode</text>
+        <text x="252" y="82" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">image_gray_uint8</text>
+        <text x="252" y="97" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">source</text>
+
+        <path d="M438 76 L464 76" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar3)"/>
+
+        <rect x="466" y="40" width="196" height="72" rx="2" fill="var(--panel)" stroke="var(--sw)" stroke-width="1.5"/>
+        <text x="478" y="34" font-size="10.5" fill="var(--sw)" font-family="var(--mono)">디코딩 → 출력</text>
+        <text x="478" y="62" font-size="12.5" fill="var(--ink)" font-weight="700" font-family="var(--mono)">DecodeResult</text>
+        <text x="478" y="82" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">text · symbology · retry_count</text>
+        <text x="478" y="97" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">stage_ms · failure_reason</text>
+
+        <!-- PipelineResult 가 전부를 담는다 -->
+        <rect x="14" y="140" width="648" height="72" rx="2" fill="none" stroke="var(--ok)" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <text x="26" y="164" font-size="12.5" fill="var(--ok)" font-weight="700" font-family="var(--mono)">PipelineResult</text>
+        <text x="26" y="184" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          원본 이미지 + 위 세 개를 전부 담아서 화면까지 보냅니다.
+        </text>
+        <text x="26" y="202" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          중간 산출물이 살아 있어야 작업자에게 "복원된 모습"을 보여줄 수 있습니다.
+        </text>
+        <path d="M112 116 L112 136" stroke="var(--ok)" stroke-width="1.2" marker-end="url(#ar4)"/>
+        <path d="M338 116 L338 136" stroke="var(--ok)" stroke-width="1.2" marker-end="url(#ar4)"/>
+        <path d="M564 116 L564 136" stroke="var(--ok)" stroke-width="1.2" marker-end="url(#ar4)"/>
+
+        <rect x="686" y="40" width="180" height="172" rx="2" fill="var(--panel)" stroke="var(--scan)"/>
+        <text x="698" y="62" font-size="11.5" fill="var(--scan)" font-weight="700" font-family="var(--sans)">이름에 단위가 박혀 있습니다</text>
+        <text x="698" y="84" font-size="10.5" fill="var(--ink-soft)" font-family="var(--sans)">angle 이라고만 쓰면</text>
+        <text x="698" y="100" font-size="10.5" fill="var(--ink-soft)" font-family="var(--sans)">라디안을 넣는 사람이 나옵니다.</text>
+        <text x="698" y="122" font-size="10.5" fill="var(--ink-soft)" font-family="var(--sans)">crop 이라고만 쓰면</text>
+        <text x="698" y="138" font-size="10.5" fill="var(--ink-soft)" font-family="var(--sans)">RGB를 넣는 사람이 나옵니다.</text>
+        <text x="698" y="164" font-size="10.5" fill="var(--ink-soft)" font-family="var(--sans)">OpenCV는 BGR,</text>
+        <text x="698" y="180" font-size="10.5" fill="var(--ink-soft)" font-family="var(--sans)">PyTorch는 RGB —</text>
+        <text x="698" y="196" font-size="10.5" fill="var(--ink-soft)" font-family="var(--sans)">가장 흔한 실수입니다.</text>
+
+        <defs>
+          <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--ink-soft)"/>
+          </marker>
+          <marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--ok)"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>형식이 틀리면 객체를 만드는 순간 거부됩니다. 예를 들어 복원 결과가 흑백 단일 채널이 아니면
+        그 자리에서 <code>AssertionError</code>가 납니다 — 통합할 때가 아니라 <strong>지금</strong> 알게 됩니다.</figcaption>
+    </figure>
+
+    <div class="callout">
+      <p><strong>실패했는데 이유가 없는 상태는 금지입니다.</strong> 판독에 실패했으면
+        <code>failure_reason</code>이 반드시 있어야 <code>DecodeResult</code>가 만들어집니다.
+        이유 없는 실패가 쌓이면 "어떤 훼손에서 왜 실패했나"를 분석할 수 없습니다.</p>
+      <p>그리고 <strong>파이프라인은 예외를 던지지 않습니다.</strong> 어떤 상황에서도 결과 객체를 반환합니다 —
+        현장 컨베이어에서 예외가 올라오면 서비스가 멈추고, 그게 곧 노리드 존 정체입니다.</p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 07 ───────────────────────── -->
+  <section>
+    <div class="snum">07 / 작업 흐름</div>
+    <h2>브랜치를 만들고, PR을 올립니다</h2>
+
+    <figure>
+      <svg viewBox="0 0 880 236" role="img" aria-label="main에서 브랜치를 만들어 작업하고 커밋한 뒤 PR을 올리면 CI 검사 3개가 돌고, 리뷰 승인을 받아 머지하는 흐름">
+        <!-- main 선 -->
+        <line x1="20" y1="46" x2="860" y2="46" stroke="var(--rule)" stroke-width="2"/>
+        <text x="20" y="32" font-size="11" fill="var(--ink-soft)" font-family="var(--mono)">main</text>
+        <circle cx="90" cy="46" r="5" fill="var(--rule)"/>
+        <circle cx="790" cy="46" r="7" fill="var(--ok)"/>
+        <text x="790" y="30" font-size="11" text-anchor="middle" fill="var(--ok)" font-family="var(--sans)">머지</text>
+
+        <!-- 브랜치 -->
+        <path d="M90 46 Q130 46 130 100" fill="none" stroke="var(--ai)" stroke-width="2"/>
+        <line x1="130" y1="100" x2="700" y2="100" stroke="var(--ai)" stroke-width="2"/>
+        <path d="M700 100 Q790 100 790 53" fill="none" stroke="var(--ai)" stroke-width="2"/>
+
+        <circle cx="200" cy="100" r="5" fill="var(--ai)"/>
+        <circle cx="300" cy="100" r="5" fill="var(--ai)"/>
+        <circle cx="400" cy="100" r="5" fill="var(--ai)"/>
+
+        <text x="200" y="124" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--mono)">[AI] 커밋</text>
+        <text x="300" y="124" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--mono)">[AI] 커밋</text>
+        <text x="400" y="124" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)" font-family="var(--mono)">[AI] 커밋</text>
+        <text x="136" y="90" font-size="11" fill="var(--ai)" font-family="var(--mono)">ai/detection-baseline</text>
+
+        <!-- PR 지점 -->
+        <circle cx="560" cy="100" r="7" fill="none" stroke="var(--scan)" stroke-width="2"/>
+        <text x="560" y="82" font-size="11" text-anchor="middle" fill="var(--scan)" font-weight="700" font-family="var(--sans)">PR</text>
+
+        <!-- CI 검사 -->
+        <path d="M560 108 L560 140" stroke="var(--scan)" stroke-width="1.2" stroke-dasharray="3 3"/>
+        <rect x="404" y="146" width="102" height="30" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="455" y="166" font-size="11" text-anchor="middle" fill="var(--ink)" font-family="var(--mono)">ruff</text>
+        <rect x="512" y="146" width="102" height="30" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="563" y="166" font-size="11" text-anchor="middle" fill="var(--ink)" font-family="var(--mono)">lint-imports</text>
+        <rect x="620" y="146" width="102" height="30" rx="2" fill="var(--panel)" stroke="var(--rule)"/>
+        <text x="671" y="166" font-size="11" text-anchor="middle" fill="var(--ink)" font-family="var(--mono)">pytest</text>
+        <text x="404" y="200" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          자동으로 돌고 12초에 끝납니다. 초록이면 머지해도 좋다는 뜻입니다.
+        </text>
+        <text x="404" y="220" font-size="11" fill="var(--ink-soft)" font-family="var(--sans)">
+          리뷰어는 직접 지정합니다 — 같은 파트원 1명.
+        </text>
+      </svg>
+      <figcaption>브랜치 이름은 <code>&lt;파트&gt;/&lt;하는일&gt;</code>, 커밋 메시지는 <code>[파트] 무엇을 했다</code> 형식입니다.
+        브랜치 목록만 보고 누가 무엇을 하는지 알 수 있게 하려는 것입니다.</figcaption>
+    </figure>
+
+<pre>git switch main
+git pull                                 <span class="cm"># 시작 전에 항상 최신으로</span>
+git switch -c ai/detection-baseline      <span class="cm"># &lt;파트&gt;/&lt;하는일&gt;</span>
+<span class="cm"># ... 작업 ...</span>
+uv run pytest                            <span class="cm"># 올리기 전에 로컬에서 돌려봅니다</span>
+git push -u origin ai/detection-baseline</pre>
+
+    <div class="callout">
+      <p><strong>규칙이지만 강제하지는 않습니다.</strong> <code>main</code>에 직접 push가 되고,
+        승인이 없어도 머지 버튼이 눌리고, CI가 빨간 X여도 머지됩니다.
+        장치로 막지 않기로 했으니 <em>사람이</em> 지켜야 합니다.</p>
+      <p>빨간 X는 혼내는 게 아닙니다. 뭐가 잘못됐는지 12초 안에 알려주는 장치입니다.
+        없으면 2주 뒤에 남이 발견하고, 그때는 원인 추적이 어렵습니다.</p>
+    </div>
+
+    <h3>검사가 실패했을 때</h3>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>검사</th><th>무엇을 보나</th><th>이렇게 고칩니다</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ruff</code></td>
+            <td>코드 스타일</td>
+            <td><code>uv run ruff format .</code> 후 <code>uv run ruff check --fix .</code></td>
+          </tr>
+          <tr>
+            <td><code>lint-imports</code></td>
+            <td>파트 간 import 규칙</td>
+            <td>부르면 안 되는 것을 불렀습니다. 필요해 보이면 설계가 잘못된 것이니 상의하세요</td>
+          </tr>
+          <tr>
+            <td><code>pytest</code></td>
+            <td>테스트</td>
+            <td><code>uv run pytest -x</code>로 첫 실패만 보면서 고치는 게 빠릅니다</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 08 ───────────────────────── -->
+  <section>
+    <div class="snum">08 / 지금 상태</div>
+    <h2>골격까지 되어 있고, 각 단계의 알맹이가 남았습니다</h2>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>항목</th><th style="width:5.5rem">상태</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>uv sync</code> 한 줄로 환경 구성</td><td class="yes">있음</td><td>파이썬 3.12 자동</td></tr>
+          <tr><td><code>schemas.py</code> 파트 간 계약</td><td class="yes">있음</td><td>테스트 11개가 지키고 있습니다</td></tr>
+          <tr><td>import 규칙 강제</td><td class="yes">있음</td><td>일부러 어겨보고 막히는 것을 확인했습니다</td></tr>
+          <tr><td>CI 3검사</td><td class="yes">있음</td><td>PR마다 자동, 12초</td></tr>
+          <tr><td>Hugging Face 저장소</td><td class="yes">있음</td><td>데이터셋 2개 + 가중치 1개</td></tr>
+          <tr><td>1·2·3단계 실제 코드</td><td class="no">없음</td><td>지금부터 만들 것</td></tr>
+          <tr><td><code>web/</code> 화면</td><td class="no">없음</td><td>SW파트</td></tr>
+          <tr><td>데이터</td><td class="no">없음</td><td>수집은 9월. 심볼로지 확정이 먼저입니다</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Hugging Face 토큰 — 파일에 적는 게 아닙니다</h3>
+    <p>데이터와 가중치는 저장소에 올리지 않고 Hugging Face에 둡니다. 토큰은 명령으로 등록합니다.</p>
+<pre>uv run hf auth login     <span class="cm"># 토큰 붙여넣기. 화면에 안 보이는 게 정상입니다</span>
+uv run hf auth whoami    <span class="cm"># 계정명이 나오면 성공</span></pre>
+    <p class="muted"><code>.env</code>에 적어도 읽히지 않습니다 — 저장소에 <code>.env</code>를 읽는 코드가 없습니다.
+      옛 명령 <code>huggingface-cli</code>는 폐기됐으니 인터넷에서 본 명령은 <code>hf</code>로 바꿔 읽으세요.</p>
+  </section>
+
+  <!-- ───────────────────────── 09 ───────────────────────── -->
+  <section>
+    <div class="snum">09 / 정리</div>
+    <h2>딱 네 개만 외우세요</h2>
+    <div class="grid2">
+      <div class="card">
+        <h4>명령어 1개</h4>
+        <p><code>uv sync</code></p>
+      </div>
+      <div class="card">
+        <h4>내 폴더 1개</h4>
+        <p><code>wemeet/ai/</code> 또는 <code>wemeet/sw/</code> 또는 <code>wemeet/data/</code></p>
+      </div>
+      <div class="card">
+        <h4>규칙 1개</h4>
+        <p>AI파트는 <code>wemeet.sw</code>를 import하지 않습니다</p>
+      </div>
+      <div class="card">
+        <h4>조심할 파일 1개</h4>
+        <p><code>wemeet/schemas.py</code> — 고치기 전에 상의</p>
+      </div>
+    </div>
+
+    <h3>막혔을 때</h3>
+    <ol>
+      <li>자기 파트 문서를 먼저 봅니다 — <code>docs/parts/</code>에 파일별로 "막히면 이렇게 시작하세요"가 있습니다</li>
+      <li>구조나 규칙이 궁금하면 <code>docs/architecture.md</code></li>
+      <li>그래도 모르면 Issue를 만들고 자기 파트 라벨(<code>part:ai</code> 등)을 붙입니다</li>
+      <li><strong>혼자 3일 붙잡고 있지 마세요.</strong> 물어보는 게 빠릅니다</li>
+    </ol>
+  </section>
+
+  <footer>
+    <p>METRO팀 · WE-Meet Project 2026 · 난인식 바코드 품질 인식 고도화<br>
+      저장소 <code>kim1034/2026-Wemeet-Barcode-Restoration</code> · 이 문서의 원본은 <code>docs/onboarding.html</code></p>
+  </footer>
+</div>
+
+<div class="barcode" role="presentation"></div>

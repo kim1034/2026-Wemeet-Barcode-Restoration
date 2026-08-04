@@ -89,13 +89,15 @@ uv run pytest          # 테스트 돌려보기
 uv run python -c "import wemeet; print('설치 완료')"
 ```
 
-### 3. 데이터 받기
+### 3. 데이터 받기 — **아직 안 해도 됩니다**
+
+이미지와 모델 파일은 저장소에 없습니다. [Hugging Face](docs/external/huggingface.md)에 두고 명령 하나로 받아올 계획입니다.
 
 ```bash
-uv run python -m wemeet.data.download
+uv run python -m wemeet.data.download   # 아직 만들지 않았습니다
 ```
 
-이미지와 모델 파일은 저장소에 없습니다. [Hugging Face](docs/external/huggingface.md)에 있고, 위 명령이 `downloads/` 아래로 받아옵니다.
+**지금은 이 명령이 없습니다.** 받아올 데이터 자체가 아직 없어서(수집은 9월) `download.py` 를 만들지 않았습니다. 2번까지 하면 자기 파트 작업을 시작할 수 있습니다.
 
 ---
 
@@ -197,7 +199,7 @@ data/...    데이터파트
 
 | 시기 | 하는 일 |
 |---|---|
-| **8월** | 저장소 골격 만들기 — 더미로라도 파이프라인이 끝까지 돌아가게 |
+| **8월** | 저장소 골격 만들기 — 계약·테스트·CI를 먼저 세운다 **(완료)** |
 | **9월** | 데이터 만들기 + 1단계 탐지 |
 | **10월** | 2단계 복원 + 3단계 연결 + 재시도 루프 |
 | **11월** | 화면 + 최종 평가 + 보고서 |
@@ -234,6 +236,7 @@ data/...    데이터파트
 | [AI파트가 할 일](docs/parts/ai.md) | AI파트라면 지금 |
 | [SW파트가 할 일](docs/parts/sw.md) | SW파트라면 지금 |
 | [데이터파트가 할 일](docs/parts/data.md) | 데이터파트라면 지금 |
+| [처음 오셨다면 — 그림으로 보는 안내](docs/onboarding.html) | 저장소를 처음 열었을 때. 브라우저로 엽니다 |
 | [작업하는 방법](CONTRIBUTING.md) | 첫 PR을 올릴 때, CI에서 빨간 X가 떴을 때 |
 | [구조와 규칙](docs/architecture.md) | 어느 파일을 부를 수 있는지, 시간 예산이 얼마인지 |
 | [코드 밖에서 해야 하는 일](docs/external/README.md) | 계정·권한·촬영 준비가 필요할 때 |
