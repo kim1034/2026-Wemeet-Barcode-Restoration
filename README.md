@@ -128,6 +128,8 @@ uv run python -m wemeet.data.download   # 아직 만들지 않았습니다
 | **SW** | 김종연, 이도훈 | `wemeet/sw/`, `web/` | **[SW파트가 할 일 →](docs/parts/sw.md)** |
 | **데이터** | 김강민, 조아라 | `wemeet/data/` | **[데이터파트가 할 일 →](docs/parts/data.md)** |
 
+**무엇부터 해야 하는지는 [파트별 할 일 한눈에](docs/parts/README.md)** 에 순서대로 정리돼 있습니다.
+
 1학년(이다현, 이아침)은 9월 2주차 라벨링 작업부터 시작합니다. [데이터파트 문서](docs/parts/data.md)의 "라벨링" 부분을 보세요.
 
 ---
@@ -250,6 +252,7 @@ data/...    데이터파트
 
 | 문서 | 언제 보나 |
 |---|---|
+| [파트별 할 일 한눈에](docs/parts/README.md) | **지금 무엇부터 해야 하나** |
 | [AI파트가 할 일](docs/parts/ai.md) | AI파트라면 지금 |
 | [SW파트가 할 일](docs/parts/sw.md) | SW파트라면 지금 |
 | [데이터파트가 할 일](docs/parts/data.md) | 데이터파트라면 지금 |
