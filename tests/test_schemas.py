@@ -114,3 +114,15 @@ def test_탐지_실패여도_PipelineResult는_만들어진다():
     )
     assert result.ok is False
     assert result.decode.failure_reason == "not_detected"
+
+
+def test_렌더링한_바코드는_DetectedBarcode에_그대로_들어간다(clean_barcode_bgr):
+    """픽스처가 계약이 요구하는 형식(BGR, uint8, 3채널)으로 이미지를 준다."""
+    detected = DetectedBarcode(
+        crop_bgr_uint8=clean_barcode_bgr,
+        angle_deg_ccw=0.0,
+        confidence=1.0,
+    )
+    assert detected.crop_bgr_uint8.ndim == 3
+    assert detected.crop_bgr_uint8.shape[2] == 3
+    assert detected.crop_bgr_uint8.dtype == np.uint8
