@@ -31,6 +31,7 @@ from wemeet.schemas import DecodeResult              # ← 됩니다
 from wemeet.sw.decoding import decode                # ← 됩니다 (정답 확보용)
 from wemeet.ai.detection import detect                # ← 안 됩니다
 from wemeet.sw.pipeline import run                    # ← 안 됩니다
+from wemeet.sw.rectify import apply_field             # ← 안 됩니다
 ```
 
 `sw.decoding`만 예외로 허용됩니다. 촬영한 사진에서 정답 번호를 읽어내려면 디코더가 필요하기 때문입니다. 그 외에는 다른 파트를 부르지 않습니다.

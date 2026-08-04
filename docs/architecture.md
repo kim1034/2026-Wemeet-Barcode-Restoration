@@ -55,7 +55,7 @@ wemeet/
 web/                       React 화면 (SW파트)               (2단계)
 tests/
 ├── conftest.py            바코드 이미지 생성 픽스처
-└── test_schemas.py        계약 검증 19개
+└── test_schemas.py        계약 검증 22개
 downloads/                 받아온 이미지·모델 (git 제외)
 ```
 
@@ -115,7 +115,7 @@ downloads/                 받아온 이미지·모델 (git 제외)
 
 > **AI파트는 자기 파일에 `wemeet.sw` 나 `wemeet.data` 라는 글자를 쓰지 않는다. 공용이 필요하면 `wemeet.schemas` 를 쓴다.**
 >
-> **데이터파트는 `wemeet.sw.decoding` 까지만 쓸 수 있다. `pipeline` 과 `server` 는 쓰지 않는다.**
+> **데이터파트는 `wemeet.sw.decoding` 까지만 쓸 수 있다. `pipeline` · `server` · `rectify` 는 쓰지 않는다.**
 >
 > **함수 안에서 import 하지 않는다.**
 
