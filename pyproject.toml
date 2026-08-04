@@ -65,14 +65,19 @@ source_modules = ["wemeet.sw"]
 forbidden_modules = ["wemeet.data"]
 
 [[tool.importlinter.contracts]]
-# sw/pipeline.py 와 sw/server.py 는 아직 없다. import-linter 는 존재하지 않는
+# pipeline / server / rectify 는 아직 없다. import-linter 는 존재하지 않는
 # 모듈을 forbidden_modules 에 넣어도 오류를 내지 않고 통과시킨다(실측 확인).
-# 뒤집어 말하면 오타를 내도 조용히 무력화되므로, 두 파일이 생기는 2단계에
-# "data 에서 sw.pipeline import 가 실제로 막히는지"를 반드시 확인해야 한다.
+# 뒤집어 말하면 오타를 내도 조용히 무력화되므로, 파일이 생기는 시점에
+# "data 에서 그 모듈 import 가 실제로 막히는지"를 반드시 확인해야 한다.
 name = "data는 sw.decoding까지만 쓴다"
 type = "forbidden"
 source_modules = ["wemeet.data"]
-forbidden_modules = ["wemeet.ai", "wemeet.sw.pipeline", "wemeet.sw.server"]
+forbidden_modules = [
+    "wemeet.ai",
+    "wemeet.sw.pipeline",
+    "wemeet.sw.server",
+    "wemeet.sw.rectify",
+]
 
 [[tool.importlinter.contracts]]
 name = "schemas는 아무것도 import하지 않는다"

@@ -354,7 +354,7 @@ cd 2026-Wemeet-Barcode-Restoration
     <p>파이썬 3.12까지 알아서 맞춰줍니다. <code>activate</code>는 필요 없고,
       파이썬을 돌릴 때 앞에 <code>uv run</code>을 붙입니다.</p>
 
-<pre>uv run pytest      <span class="cm"># 11개가 통과하면 성공입니다</span></pre>
+<pre>uv run pytest      <span class="cm"># 22개가 통과하면 성공입니다</span></pre>
 
     <div class="callout">
       <p><strong>데이터 받기는 아직 없습니다.</strong> README에 <code>wemeet.data.download</code>가 적혀 있지만
@@ -875,7 +875,7 @@ git push -u origin ai/detection-baseline</pre>
         <thead><tr><th style="width:9rem">칸</th><th>어떻게 채우나</th></tr></thead>
         <tbody>
           <tr><td><strong>무엇을 바꿨나</strong></td><td>한두 줄. "중앙 크롭으로 detect() 베이스라인을 만들었다"</td></tr>
-          <tr><td><strong>어떻게 확인했나</strong></td><td><code>uv run pytest 19 passed</code> 처럼 <strong>구체적으로.</strong> 확인 못 했으면 "확인 못 함"이라고 씁니다</td></tr>
+          <tr><td><strong>어떻게 확인했나</strong></td><td><code>uv run pytest 22 passed</code> 처럼 <strong>구체적으로.</strong> 확인 못 했으면 "확인 못 함"이라고 씁니다</td></tr>
           <tr><td><strong>Reviewers</strong></td><td>오른쪽에서 <strong>같은 파트원 1명</strong>을 직접 고릅니다. 자동으로 안 붙습니다</td></tr>
           <tr><td><strong>체크박스</strong></td><td><code>schemas.py</code>를 안 바꿨으면 그냥 체크하고 넘어갑니다</td></tr>
         </tbody>
@@ -1128,11 +1128,11 @@ git branch -d ai/detection-baseline</pre>
         <thead><tr><th>항목</th><th style="width:5rem">상태</th><th>비고</th></tr></thead>
         <tbody>
           <tr><td><code>uv sync</code> 한 줄로 환경 구성</td><td class="yes">있음</td><td>파이썬 3.12 자동</td></tr>
-          <tr><td><code>schemas.py</code> 파트 간 계약</td><td class="yes">있음</td><td>테스트 11개가 지킵니다</td></tr>
+          <tr><td><code>schemas.py</code> 파트 간 계약</td><td class="yes">있음</td><td>테스트 22개가 지킵니다</td></tr>
           <tr><td>import 규칙 강제</td><td class="yes">있음</td><td>일부러 어겨보고 막히는 것을 확인</td></tr>
           <tr><td>CI 검사 3개</td><td class="yes">있음</td><td>PR마다 자동, 12초</td></tr>
           <tr><td>Hugging Face 저장소</td><td class="yes">있음</td><td>데이터셋 2개 + 가중치 1개</td></tr>
-          <tr><td>1·2·3단계 실제 코드</td><td class="no">없음</td><td>지금부터 만들 것</td></tr>
+          <tr><td>1·2·3·4단계 실제 코드</td><td class="no">없음</td><td>지금부터 만들 것</td></tr>
           <tr><td><code>web/</code> 화면</td><td class="no">없음</td><td>SW파트</td></tr>
           <tr><td>데이터</td><td class="no">없음</td><td>수집은 9월. 심볼로지 확정이 먼저</td></tr>
         </tbody>
