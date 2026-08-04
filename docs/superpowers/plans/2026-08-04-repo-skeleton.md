@@ -56,6 +56,7 @@
 | 파이썬 버전 | **3.12** | 9월에 torch·ultralytics를 추가할 때 휠이 가장 확실하게 있는 버전. 3.13은 일부 CV 패키지가 늦다 |
 | 빌드 백엔드 | **hatchling** (packaged project) | `[build-system]` 이 없으면 uv가 프로젝트를 virtual project로 보고 설치하지 않는다. 그러면 `import wemeet` 이 실행 위치(cwd)에 의존하게 된다. 명시적으로 설치되는 편이 8명 팀에서 안전하다 |
 | dev 의존성 선언 | **`[dependency-groups] dev`** (PEP 735) | `uv sync` 가 기본으로 설치한다. `--extra dev` 를 외울 필요가 없다 |
+| `wandb` 위치 | **dev 그룹** (설계 §8은 런타임 의존성으로 분류했다) | 학습 실험 기록 도구이므로 파이프라인 런타임에 필요하지 않다. **단, uv는 dev 그룹을 기본 설치하므로 8명 전원이 여전히 받는다** — 설치 용량을 줄이려는 것이 아니라 "런타임이 아니다"를 선언하는 것이다. 일부러 이렇게 뒀다. 별도 그룹(`--group train`)으로 빼면 AI파트가 명령을 하나 더 외워야 하고, README가 약속한 "명령어 1개"가 깨진다 |
 | ruff 규칙 집합 | `E`, `F`, `I`, `UP` | 스타일·미사용·import 정렬·구버전 문법만 본다. 네이밍(`N`)·docstring(`D`) 규칙은 한국어 테스트 이름과 싸우므로 넣지 않는다 |
 | CI 잡 이름 | **`ci`** | 브랜치 보호의 status check 목록에 뜨는 이름이 잡 이름이다. `docs/external/README.md` §1이 "`ci` 선택"이라고 적어뒀으므로 그 이름을 쓴다 |
 
@@ -123,7 +124,6 @@ dependencies = [
     "python-barcode>=0.15",
     "fastapi>=0.115",
     "uvicorn>=0.30",
-    "wandb>=0.17",
 ]
 
 [dependency-groups]
@@ -131,6 +131,9 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
     "import-linter>=2.0",
+    # 실험 기록. 런타임 의존성이 아니다 — AI파트가 학습할 때만 쓴다.
+    # uv 는 dev 그룹을 기본으로 설치하므로 `uv sync` 한 줄은 그대로 유지된다.
+    "wandb>=0.17",
 ]
 
 [build-system]
