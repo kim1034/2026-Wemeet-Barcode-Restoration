@@ -37,6 +37,10 @@ packages = ["wemeet"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# ruff 는 마크다운 안의 ```python 블록도 포맷한다. 문서의 코드 예시는 읽기 쉽게
+# 일부러 정렬해둔 것이 많아서(1~2학년이 읽는다) 그것까지 뭉개면 안 된다.
+# 이걸 빼면 CI 의 `ruff format --check .` 가 문서 때문에 실패해서 모든 PR 이 막힌다.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
