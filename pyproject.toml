@@ -15,6 +15,7 @@ dependencies = [
     "python-barcode>=0.15",
     "fastapi>=0.115",
     "uvicorn>=0.30",
+    "huggingface-hub>=0.25",
 ]
 
 [dependency-groups]

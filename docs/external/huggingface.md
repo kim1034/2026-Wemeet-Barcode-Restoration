@@ -56,20 +56,51 @@ Git 저장소에는 **스크립트만** 올리고 실제 파일은 전부 HF Hub
 3. Settings → **Access Tokens** → New token
    - 종류: **Write**
    - 이름: 본인 이름
-4. 발급된 토큰을 로컬에 저장
+4. 발급된 토큰으로 로그인 — **파일에 적는 게 아니다**
 
 ```bash
-# 프로젝트 루트에 .env 파일 생성 (git에 올라가지 않음)
-echo 'HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx' >> .env
+uv run hf auth login
 ```
 
-**토큰은 절대 커밋하지 않는다.** `.env`는 `.gitignore`에 포함되어 있다. 실수로 커밋하면 HF에서 즉시 폐기하고 재발급해야 한다.
+`Enter your token (input will not be visible):` 가 나오면 붙여넣고 Enter.
+**화면에 아무것도 안 보이는 것이 정상이다.** 그다음 `Add token as git credential?` 은
+`n` 으로 답한다 — 우리는 HF에 git push를 하지 않고 `hf upload` 를 쓴다.
 
-로그인은 이렇게 한다.
+확인:
 
 ```bash
-uv run huggingface-cli login   # 토큰 붙여넣기. 한 번만 하면 저장된다
+uv run hf auth whoami   # 계정명과 소속 조직이 나오면 성공
 ```
+
+토큰은 `~/.cache/huggingface/token` 에 저장된다 (Windows는 `C:\Users\<이름>\.cache\huggingface\token`).
+**이 파일을 직접 만들거나 편집하지 않는다.** CLI가 관리한다. 한 번 로그인하면
+이후 `hf` 명령과 파이썬 코드가 자동으로 이 토큰을 쓴다.
+
+**토큰은 절대 커밋하지 않는다.** 실수로 커밋하면 HF에서 즉시 폐기(revoke)하고 재발급한다.
+
+### `.env` 에 넣으면 되지 않나
+
+**지금은 안 된다.** 저장소에 `.env` 를 읽는 코드가 없다 (`python-dotenv` 를 쓰지 않는다).
+`.env` 에 `HF_TOKEN` 을 적어도 `huggingface_hub` 은 못 본다 — 실제로 확인한 결과다.
+
+```
+.env 에 HF_TOKEN 을 넣은 상태  →  get_token() == None
+환경변수로 export 한 경우      →  토큰이 보인다
+```
+
+`.env.example` 은 **"어떤 키가 필요한지 적어둔 목록"** 이다. 2단계에서
+`wemeet/data/download.py` 가 생길 때 `python-dotenv` 를 붙일지 결정한다.
+그때까지는 위의 `hf auth login` 이 유일하게 동작하는 방법이다.
+
+### 명령 이름 주의 — `hf` 이지 `huggingface-cli` 가 아니다
+
+`huggingface-cli` 는 폐기됐다. 실행하면 이렇게 나온다.
+
+```
+Warning: `huggingface-cli` is deprecated and no longer works. Use `hf` instead.
+```
+
+인터넷 문서나 블로그에는 아직 `huggingface-cli` 로 적힌 것이 많다. **`hf` 로 바꿔 읽으면 된다.**
 
 ---
 
@@ -191,11 +222,11 @@ uv run python -m wemeet.data.download
 
 ```bash
 # 데이터셋
-uv run huggingface-cli upload metro-wemeet/barcode-datasets \
+uv run hf upload metro-wemeet/barcode-datasets \
     ./downloads/synthetic/v1 synthetic/v1 --repo-type=dataset
 
 # 가중치
-uv run huggingface-cli upload metro-wemeet/barcode-weights \
+uv run hf upload metro-wemeet/barcode-weights \
     ./runs/detection-v2 detection/v2-yolo-obb --repo-type=model
 ```
 

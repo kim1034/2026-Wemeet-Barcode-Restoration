@@ -45,19 +45,37 @@ wandb.init(config={"weights_uri": "metro-wemeet/barcode-weights@detection/v2-yol
 
 1. wandb.ai 가입, 팀 초대 수락
 2. Settings → **API keys** 에서 키 복사
-3. 로컬에 저장
-
-```bash
-echo 'WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxx' >> .env
-```
-
-또는 한 번 로그인해두면 이후 자동으로 쓰인다.
+3. 로그인 — **파일에 적는 게 아니다**
 
 ```bash
 uv run wandb login
 ```
 
-**API 키는 절대 커밋하지 않는다.** `.env`는 `.gitignore`에 포함되어 있다.
+키를 붙여넣으면 `~/.netrc` 에 저장되고 (Windows는 `~/_netrc`), 이후 `wandb.init()` 이
+자동으로 쓴다. 한 번만 하면 된다. 이 파일도 직접 편집하지 않는다.
+
+확인:
+
+```bash
+uv run wandb login --verify
+```
+
+**API 키는 절대 커밋하지 않는다.** 실수로 커밋하면 wandb.ai Settings에서 키를 폐기하고 재발급한다.
+
+### `.env` 에 넣으면 되지 않나
+
+**지금은 안 된다.** 저장소에 `.env` 를 읽는 코드가 없다 (`python-dotenv` 를 쓰지 않는다).
+`.env` 에 `WANDB_API_KEY` 를 적어도 아무도 읽지 않는다. HF 토큰과 같은 상황이며
+자세한 설명은 [huggingface.md](huggingface.md) 의 같은 절에 있다.
+
+`.env.example` 은 "어떤 키가 필요한지 적어둔 목록"이다. 위의 `wandb login` 을 쓴다.
+
+학습을 서버나 CI에서 돌릴 때는 환경변수로 주입한다 — 그 경우에만 `WANDB_API_KEY` 를
+직접 쓴다.
+
+```bash
+WANDB_API_KEY=xxxx uv run python -m wemeet.ai.train_detection
+```
 
 ---
 
