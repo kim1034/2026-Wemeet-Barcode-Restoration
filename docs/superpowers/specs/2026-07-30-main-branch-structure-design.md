@@ -21,7 +21,7 @@
 | `schemas.py` 계약 (전체 코드) | 모델 학습 코드 |
 | 실패·에러 처리 정책, 로깅 정책 | 더미 E2E 파이프라인 (2단계) |
 | API 계약 (FastAPI ↔ React) | React 화면 구현 (2단계) |
-| CODEOWNERS, 브랜치·커밋·PR 규칙 | |
+| 브랜치·커밋·PR 규칙 | |
 | CI 설정, 개발 환경 (uv, Vite) | |
 | README의 파일별 구현 명세 형식 | |
 | 데이터 수집 절차, 모델·디코더 선정 절차 | |
@@ -91,7 +91,6 @@
 │   ├── decisions/             결정 기록
 │   └── superpowers/specs/     설계 문서
 ├── .github/
-│   ├── CODEOWNERS
 │   ├── workflows/ci.yml
 │   ├── pull_request_template.md
 │   └── ISSUE_TEMPLATE/task.md
@@ -219,7 +218,7 @@ forbidden_modules = ["wemeet.ai", "wemeet.sw", "wemeet.data"]
 """AI파트와 SW파트가 주고받는 데이터 형식.
 
 이 파일은 wemeet 안의 어떤 모듈도 import 하지 않는다.
-변경하려면 AI·SW 양쪽 승인이 필요하다 (CODEOWNERS).
+변경하려면 AI·SW 양쪽과 먼저 상의한다 (CONTRIBUTING.md).
 """
 from dataclasses import dataclass, field
 import numpy as np
@@ -399,10 +398,20 @@ class DecodeResult:
 
 ---
 
-## 6. 오너십 — CODEOWNERS
+## 6. 오너십 — CODEOWNERS → **폐기 (2026-08-04)**
+
+> **이 절은 폐기됐다. 아래 내용은 구현하지 않는다.**
+>
+> **왜 폐기했나**: 팀 규모에 비해 장치가 복잡하고, PR을 올리는 인원이 고학년이라 오너십을 파일로 강제할 필요가 없다고 판단했다. 재도입 계획 없음.
+>
+> **대신 무엇을 하나**: 리뷰어는 PR 작성자가 직접 지정한다. `main` 브랜치 보호는 "PR 필수 + 승인 1개 + CI 통과"만 켜고 `Require review from Code Owners`는 켜지 않는다. 파트별 담당 범위는 README의 파트 표와 `CONTRIBUTING.md`에 글로 적는다.
+>
+> **잃은 것 (알고 폐기했다)**: `wemeet/schemas.py` 변경에 AI·SW 양쪽 승인을 **강제**하는 장치가 없어졌다. 아래 본문이 "구조적으로 차단된다"고 한 부분이 사라진다. 대체는 PR 템플릿 체크박스와 `CONTRIBUTING.md`의 규칙뿐이므로, 한쪽이 말없이 계약을 바꾸는 사고는 사람이 막아야 한다. 9월 통합에서 계약 불일치가 나오면 이 결정을 먼저 의심할 것. `pyproject.toml`·`.github/` 무단 변경 차단도 같이 사라졌다.
+>
+> 아래 원문은 지우지 않고 기록으로 남긴다 — 11월 보고서에서 "왜 이 방식을 안 썼나"에 답할 근거다.
 
 ```
-# .github/CODEOWNERS
+# .github/CODEOWNERS   ← 폐기. 이 파일은 만들지 않는다
 
 # 기본값 — 아래 규칙에 걸리지 않는 모든 파일
 *                          @시선
@@ -438,9 +447,9 @@ Organization 팀(`@org/team`)은 개인 계정 레포에서 쓸 수 없으므로
 1. 팀원 8명을 레포 Collaborator로 초대
 2. 각자의 GitHub 아이디 수집
 
-### 1학년 배치
+### 1학년 배치 — **이 부분은 유효하다** (위 폐기 대상 아님)
 
-기획서 6.1에 개인별 파트 매핑이 없다. 1학년 2명(이다현·이아침)은 데이터 구축 단계의 OBB 재라벨링 작업(§14 3단계)에 배치하고, 이후 각자 전공(AI/SW) 파트에 편입한다. CODEOWNERS는 편입 시점에 갱신한다.
+기획서 6.1에 개인별 파트 매핑이 없다. 1학년 2명(이다현·이아침)은 데이터 구축 단계의 OBB 재라벨링 작업(§14 3단계)에 배치하고, 이후 각자 전공(AI/SW) 파트에 편입한다. 편입 시점에 README의 파트 표를 갱신한다.
 
 ---
 
@@ -595,7 +604,7 @@ Conventional Commits는 채택하지 않는다. 영어 타입 키워드를 외�
 ### main 브랜치 보호
 
 - PR 없이 머지 금지
-- **담당 파트원 1명 이상의 승인** — GitHub의 "Require review from Code Owners"를 켠다. 무관한 파트원의 승인으로는 머지되지 않는다
+- **승인 1개 이상** — 리뷰어는 PR 작성자가 직접 지정한다. 담당 파트원인지는 검사하지 않는다 (§6 폐기)
 - CI 통과 필수
 
 ### Issue 라벨
@@ -1133,7 +1142,7 @@ wandb.log({"mAP50": 0.91, "mAP50-95": 0.62, "inference_ms": 38.4})
 
 | 항목 | 반영 위치 |
 |---|---|
-| 개인별 역할 매핑 없음 | §6 (1학년 배치), CODEOWNERS |
+| 개인별 역할 매핑 없음 | §6 (1학년 배치), README 파트 표 |
 | 리스크 대응 계획 없음 | §18 (합성↔실측 도메인 갭) |
 | 라이선스 검토 없음 | §15 비교 기준, §20 |
 | 개인정보 정책 없음 | §7 |
@@ -1161,7 +1170,6 @@ wandb.log({"mAP50": 0.91, "mAP50-95": 0.62, "inference_ms": 38.4})
 ## 19. 1단계 산출물
 
 ```
-.github/CODEOWNERS
 .github/workflows/ci.yml
 .github/pull_request_template.md
 .github/ISSUE_TEMPLATE/task.md
@@ -1212,8 +1220,7 @@ CONTRIBUTING.md                   ← 브랜치·커밋·PR 규칙
 4. `wemeet/data/` 에 `import wemeet.sw.decoding` 은 **통과한다** (허용된 예외가 막히지 않음을 확인)
 5. `pytest` 가 `downloads/` 없이 통과한다 — 픽스처가 이미지를 코드로 만드는지 확인
 6. `main`에 직접 push가 거부된다
-7. `wemeet/ai/` 를 수정한 PR에 AI파트가 자동으로 리뷰어로 지정된다
-8. `README.md` 를 수정한 PR에도 오너가 지정된다 (CODEOWNERS 기본값 `*` 확인)
+7. 승인 없는 PR은 머지 버튼이 비활성화된다 (리뷰어 자동 지정은 검증 대상이 아니다 — §6 폐기)
 
 4번이 특히 중요하다. 금지 규칙만 검증하면 실수로 너무 넓게 막아놓은 것을 놓친다. §14 5단계의 GT 확보 코드가 막히면 9월에 발견한다.
 
@@ -1254,7 +1261,7 @@ CONTRIBUTING.md                   ← 브랜치·커밋·PR 규칙
 | API 계약 | `POST /api/decode`, 판독 실패도 HTTP 200, 이미지는 base64 (§23) |
 | 프론트엔드 | Vite + TypeScript + npm, Node 22 LTS, UI 라이브러리 없음 (§24) |
 | 디코더 | pyzbar / zxing-cpp / OpenCV 3종 비교 후 고정 (§14 2단계) |
-| 오너십 | `.github/CODEOWNERS`, 개인 아이디 나열 |
+| 오너십 | 강제 장치 없음. README 파트 표 + `CONTRIBUTING.md` 규칙 (§6 폐기, 2026-08-04) |
 | 데이터·가중치 | HF Hub. Git엔 스크립트만. 실촬영은 private |
 | 개발 환경 | uv (`uv sync`) |
 | CI | import-linter + ruff + pytest + tsc --noEmit + npm run build |
