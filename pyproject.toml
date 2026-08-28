@@ -41,7 +41,12 @@ target-version = "py312"
 # ruff 는 마크다운 안의 ```python 블록도 포맷한다. 문서의 코드 예시는 읽기 쉽게
 # 일부러 정렬해둔 것이 많아서(1~2학년이 읽는다) 그것까지 뭉개면 안 된다.
 # 이걸 빼면 CI 의 `ruff format --check .` 가 문서 때문에 실패해서 모든 PR 이 막힌다.
-extend-exclude = ["*.md"]
+#
+# docs/experiments/ 는 스파이크(버릴 코드)다. 측정 한 번 하고 버리는 것이라
+# 한 줄에 여러 문장을 쓰는 등 일부러 압축해 두었다. 이걸 리포 스타일에 맞추려면
+# 결론과 무관한 재작성이 필요하고, 안 맞추면 CI 가 막힌다. 그래서 제외한다.
+# 승격되는 코드는 wemeet/ 로 옮겨지므로 그때 검사를 받는다.
+extend-exclude = ["*.md", "docs/experiments/**"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]

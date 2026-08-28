@@ -1,0 +1,140 @@
+{
+ "aug": [
+  {
+   "case": "none",
+   "cp_gap": 0.0,
+   "rect": false
+  },
+  {
+   "case": "b. 회전 +5°",
+   "rect": false,
+   "control_no_transform": false
+  },
+  {
+   "case": "c. 회전 -8°",
+   "rect": false,
+   "control_no_transform": false
+  },
+  {
+   "case": "d. 여백 좌6%우4%",
+   "rect": false,
+   "control_no_transform": false
+  },
+  {
+   "case": "rot+crop",
+   "rect": false,
+   "control_no_transform": false
+  }
+ ],
+ "sine_limit": [
+  {
+   "A_over_lam": 0.05,
+   "m_min": 0.954,
+   "mod_min": 5.25,
+   "first": true,
+   "rect": true
+  },
+  {
+   "A_over_lam": 0.1,
+   "m_min": 0.847,
+   "mod_min": 4.66,
+   "first": true,
+   "rect": true
+  },
+  {
+   "A_over_lam": 0.15,
+   "m_min": 0.728,
+   "mod_min": 4.0,
+   "first": true,
+   "rect": true
+  },
+  {
+   "A_over_lam": 0.2,
+   "m_min": 0.623,
+   "mod_min": 3.42,
+   "first": true,
+   "rect": true
+  },
+  {
+   "A_over_lam": 0.3,
+   "m_min": 0.469,
+   "mod_min": 2.58,
+   "first": false,
+   "rect": true
+  },
+  {
+   "A_over_lam": 0.41,
+   "m_min": 0.362,
+   "mod_min": 1.99,
+   "first": false,
+   "rect": false
+  },
+  {
+   "A_over_lam": 0.55,
+   "m_min": 0.278,
+   "mod_min": 1.53,
+   "first": false,
+   "rect": false
+  },
+  {
+   "A_over_lam": 0.7,
+   "m_min": 0.222,
+   "mod_min": 1.22,
+   "first": false,
+   "rect": false
+  }
+ ],
+ "cospsi": [
+  {
+   "psi": 0,
+   "pred": 0.12566,
+   "meas": 0.12566
+  },
+  {
+   "psi": 15,
+   "pred": 0.12138,
+   "meas": 0.12138
+  },
+  {
+   "psi": 30,
+   "pred": 0.10883,
+   "meas": 0.10883
+  },
+  {
+   "psi": 45,
+   "pred": 0.08886,
+   "meas": 0.08886
+  },
+  {
+   "psi": 60,
+   "pred": 0.06283,
+   "meas": 0.06283
+  }
+ ],
+ "octave": [
+  {
+   "persistence": 0.35,
+   "목표": 0,
+   "불가": 0,
+   "1차성공": 100
+  },
+  {
+   "persistence": 0.5,
+   "목표": 0,
+   "불가": 0,
+   "1차성공": 100
+  },
+  {
+   "persistence": 0.7,
+   "목표": 0,
+   "불가": 0,
+   "1차성공": 100
+  },
+  {
+   "persistence": 1.0,
+   "목표": 0,
+   "불가": 0,
+   "1차성공": 100
+  }
+ ]
+}

@@ -1,0 +1,84 @@
+{
+ "rows": [
+  {
+   "case": "회전 +2°",
+   "diff_G": 3.38,
+   "diff_stale": 59.46,
+   "decode_G": true,
+   "decode_stale": true
+  },
+  {
+   "case": "회전 +5°",
+   "diff_G": 5.34,
+   "diff_stale": 98.64,
+   "decode_G": true,
+   "decode_stale": true
+  },
+  {
+   "case": "회전 -8°",
+   "diff_G": 7.64,
+   "diff_stale": 103.4,
+   "decode_G": true,
+   "decode_stale": true
+  },
+  {
+   "case": "회전 +12°",
+   "diff_G": 12.31,
+   "diff_stale": 107.3,
+   "decode_G": true,
+   "decode_stale": true
+  },
+  {
+   "case": "회전 +20°",
+   "diff_G": 21.85,
+   "diff_stale": 108.55,
+   "decode_G": true,
+   "decode_stale": true
+  },
+  {
+   "case": "회전 -25°",
+   "diff_G": 26.69,
+   "diff_stale": 109.37,
+   "decode_G": true,
+   "decode_stale": false
+  }
+ ],
+ "margin": [
+  {
+   "case": "패딩 +8%/+5%",
+   "u_range": [
+    0.0,
+    1.0
+   ],
+   "first": false,
+   "rect": true
+  },
+  {
+   "case": "패딩 +15%/+15%",
+   "u_range": [
+    0.0,
+    1.0
+   ],
+   "first": false,
+   "rect": true
+  },
+  {
+   "case": "잘라먹기 -2%/-2%",
+   "u_range": [
+    0.021,
+    0.979
+   ],
+   "first": false,
+   "rect": true
+  },
+  {
+   "case": "잘라먹기 -6%/-4%",
+   "u_range": [
+    0.061,
+    0.959
+   ],
+   "first": false,
+   "rect": false
+  }
+ ]
+}

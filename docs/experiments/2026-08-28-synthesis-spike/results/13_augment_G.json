@@ -1,0 +1,69 @@
+{
+ "base": {
+  "cp_gap": 0.0,
+  "first": false,
+  "rect": true
+ },
+ "aug": [
+  {
+   "case": "회전 +5°",
+   "u_range": [
+    0.0,
+    1.0
+   ],
+   "first": true,
+   "rect_G": true,
+   "rect_stale": true
+  },
+  {
+   "case": "회전 -8°",
+   "u_range": [
+    0.0,
+    1.0
+   ],
+   "first": true,
+   "rect_G": true,
+   "rect_stale": true
+  },
+  {
+   "case": "회전 +12°",
+   "u_range": [
+    0.0,
+    1.0
+   ],
+   "first": true,
+   "rect_G": true,
+   "rect_stale": true
+  },
+  {
+   "case": "여백 좌6%우4%",
+   "u_range": [
+    0.061,
+    0.959
+   ],
+   "first": false,
+   "rect_G": false,
+   "rect_stale": false
+  },
+  {
+   "case": "여백 좌12%우8%",
+   "u_range": [
+    0.121,
+    0.92
+   ],
+   "first": false,
+   "rect_G": false,
+   "rect_stale": false
+  },
+  {
+   "case": "회전6° + 여백5%",
+   "u_range": [
+    0.072,
+    0.928
+   ],
+   "first": false,
+   "rect_G": false,
+   "rect_stale": false
+  }
+ ]
+}
