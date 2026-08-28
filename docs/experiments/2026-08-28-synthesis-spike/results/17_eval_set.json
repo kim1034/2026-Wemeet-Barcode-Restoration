@@ -1,0 +1,47 @@
+{
+ "eval_set": {
+  "target": 200,
+  "kept": 200,
+  "tried": 1270,
+  "rate": 0.1575,
+  "oversample_x": 6.3,
+  "seconds": 203.6,
+  "per_sample_ms": 160.3,
+  "zones": {
+   "목표": 200,
+   "불가": 294,
+   "1차성공": 776
+  }
+ },
+ "signal": [
+  {
+   "zone": "목표",
+   "n": 200,
+   "mod_min": 1.57,
+   "sat_pct": 1.49,
+   "sigma": 0.414,
+   "ks": 0.476
+  },
+  {
+   "zone": "불가",
+   "n": 294,
+   "mod_min": 1.44,
+   "sat_pct": 4.35,
+   "sigma": 0.436,
+   "ks": 0.493
+  },
+  {
+   "zone": "1차성공",
+   "n": 776,
+   "mod_min": 1.7,
+   "sat_pct": 1.83,
+   "sigma": 0.379,
+   "ks": 0.426
+  }
+ ],
+ "single_feature": {
+  "best_acc": 0.843,
+  "threshold": 2.4,
+  "base_rate": 0.157
+ }
+}

@@ -1,0 +1,111 @@
+{
+ "repro": {
+  "hash1": "7e99e8f6ee01ddca",
+  "hash2": "7e99e8f6ee01ddca",
+  "identical": true
+ },
+ "speed": [
+  {
+   "d_m0": 2.0,
+   "ms": 14.0,
+   "per_sec": 71.7
+  },
+  {
+   "d_m0": 5.5,
+   "ms": 54.7,
+   "per_sec": 18.3
+  }
+ ],
+ "tps": [
+  {
+   "shape": "384x220",
+   "nx": 4,
+   "n": 12,
+   "full_ms": 117.0,
+   "quarter_ms": 12.0
+  },
+  {
+   "shape": "384x220",
+   "nx": 6,
+   "n": 18,
+   "full_ms": 155.6,
+   "quarter_ms": 20.7
+  },
+  {
+   "shape": "384x220",
+   "nx": 8,
+   "n": 24,
+   "full_ms": 216.0,
+   "quarter_ms": 19.9
+  },
+  {
+   "shape": "784x220",
+   "nx": 4,
+   "n": 12,
+   "full_ms": 218.5,
+   "quarter_ms": 11.1
+  },
+  {
+   "shape": "784x220",
+   "nx": 6,
+   "n": 18,
+   "full_ms": 307.4,
+   "quarter_ms": 28.5
+  },
+  {
+   "shape": "784x220",
+   "nx": 8,
+   "n": 24,
+   "full_ms": 450.3,
+   "quarter_ms": 27.9
+  },
+  {
+   "shape": "380x280 설계기준",
+   "nx": 4,
+   "n": 12,
+   "full_ms": 185.6,
+   "quarter_ms": 22.8
+  },
+  {
+   "shape": "380x280 설계기준",
+   "nx": 6,
+   "n": 18,
+   "full_ms": 196.0,
+   "quarter_ms": 24.5
+  },
+  {
+   "shape": "380x280 설계기준",
+   "nx": 8,
+   "n": 24,
+   "full_ms": 238.8,
+   "quarter_ms": 23.4
+  }
+ ],
+ "resize": [
+  {
+   "input_w": 256,
+   "decode": null,
+   "diff_vs_ref": 0.0
+  },
+  {
+   "input_w": 384,
+   "decode": null,
+   "diff_vs_ref": 7.36
+  },
+  {
+   "input_w": 512,
+   "decode": null,
+   "diff_vs_ref": 9.7
+  },
+  {
+   "input_w": 784,
+   "decode": null,
+   "diff_vs_ref": 12.4
+  }
+ ],
+ "letterbox": {
+  "roundtrip_max_err": 0.0,
+  "decode_after_letterbox": null,
+  "naive_decode": null
+ }
+}

@@ -22,5 +22,12 @@ run 11_sine_limit_cospsi.py   # 물결 상한 A/λ · cos(ψ) 보정
 run 12_rerun_rng_fixed.py     # 09·10 의 난수 버그 수정 재측정  <- 이 숫자를 쓸 것
 run 13_augment_G.py           # 밀집 대응장 G 방식 증강
 run 14_coord_consistency.py   # 좌표 정합성 (펴진 이미지 비교)
+run 15_budget_and_optics.py   # 접힘 tanα · 옥타브 · clip 의 법선각 오차 · 조립 순서
+run 16_perf_and_contract.py   # 재현성 · 생성 속도 · tps_flow 시간 · 리사이즈 불변성
+run 17_eval_set.py            # 평가 세트 실현성 · confidence 신호
+run 18_redo.py                # 15·16 의 셋업 결함 재실험  <- 이 숫자를 쓸 것
+
+# 주의: 타이밍(16·18)은 반드시 단독 실행으로 잴 것.
+#       병렬로 돌리면 같은 조건이 3.4ms -> 22.8ms 로 7배 부풀려진다.
 
 echo; echo "시각 보고서를 만들려면:  uv run ... python make_page.py  (results*.json 필요)"
