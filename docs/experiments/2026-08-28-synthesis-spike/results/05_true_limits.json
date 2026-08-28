@@ -1,0 +1,190 @@
+{
+ "note": "캡 없음. 셀 = 1차/보정후 (가장 압축된 모듈 폭 px)",
+ "grid": [
+  {
+   "d_m0": 2.3,
+   "clean_w": 355,
+   "cells": [
+    {
+     "theta": 0,
+     "mod_min": 2.3,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 20,
+     "mod_min": 2.16,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 35,
+     "mod_min": 1.88,
+     "first": false,
+     "rect": false
+    },
+    {
+     "theta": 50,
+     "mod_min": 1.48,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 60,
+     "mod_min": 1.15,
+     "first": false,
+     "rect": true
+    },
+    {
+     "theta": 70,
+     "mod_min": 0.79,
+     "first": false,
+     "rect": true
+    },
+    {
+     "theta": 78,
+     "mod_min": 0.48,
+     "first": false,
+     "rect": false
+    },
+    {
+     "theta": 84,
+     "mod_min": 0.24,
+     "first": false,
+     "rect": false
+    }
+   ]
+  },
+  {
+   "d_m0": 3.0,
+   "clean_w": 449,
+   "cells": [
+    {
+     "theta": 0,
+     "mod_min": 3.0,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 20,
+     "mod_min": 2.82,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 35,
+     "mod_min": 2.46,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 50,
+     "mod_min": 1.93,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 60,
+     "mod_min": 1.5,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 70,
+     "mod_min": 1.03,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 78,
+     "mod_min": 0.62,
+     "first": false,
+     "rect": true
+    },
+    {
+     "theta": 84,
+     "mod_min": 0.31,
+     "first": false,
+     "rect": true
+    }
+   ]
+  },
+  {
+   "d_m0": 5.5,
+   "clean_w": 784,
+   "cells": [
+    {
+     "theta": 0,
+     "mod_min": 5.5,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 20,
+     "mod_min": 5.17,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 35,
+     "mod_min": 4.51,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 50,
+     "mod_min": 3.54,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 60,
+     "mod_min": 2.75,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 70,
+     "mod_min": 1.88,
+     "first": true,
+     "rect": true
+    },
+    {
+     "theta": 78,
+     "mod_min": 1.14,
+     "first": false,
+     "rect": true
+    },
+    {
+     "theta": 84,
+     "mod_min": 0.57,
+     "first": false,
+     "rect": true
+    }
+   ]
+  }
+ ],
+ "threshold": [
+  {
+   "d_m0": 3.0,
+   "fail_at": {
+    "theta": 86.0,
+    "mod_min": 0.21
+   }
+  },
+  {
+   "d_m0": 5.5,
+   "fail_at": {
+    "theta": 82.0,
+    "mod_min": 0.77
+   }
+  },
+  {
+   "d_m0": 8.0,
+   "fail_at": {
+    "theta": 84.0,
+    "mod_min": 0.84
+   }
+  }
+ ]
+}

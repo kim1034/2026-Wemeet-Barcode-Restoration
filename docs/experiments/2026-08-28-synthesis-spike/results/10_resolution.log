@@ -1,0 +1,35 @@
+  d_m0=1.6: 원본폭 261px
+  d_m0=1.8: 원본폭 288px
+  d_m0=2.0: 원본폭 315px
+  d_m0=2.2: 원본폭 342px
+  d_m0=2.5: 원본폭 382px
+  d_m0=2.8: 원본폭 422px
+  d_m0=3.2: 원본폭 476px
+  d_m0=3.6: 원본폭 529px
+  d_m0=4.0: 원본폭 583px
+  d_m0=5.0: 원본폭 717px
+  d_m0=6.5: 원본폭 918px
+  d_m0=8.0: 원본폭 1119px
+
+=== 해상도 구간별 (N=120, nx=6, d_target 1.4~2.6px, 약한열화) ===
+  저해상도 1.6~2.2     목표  19%  불가  46%  1차성공  35%
+  중저 2.0~2.8       목표   6%  불가  13%  1차성공  81%
+  중 2.8~4.0        목표   5%  불가  19%  1차성공  76%
+  고 5.0~8.0        목표   8%  불가  56%  1차성공  36%
+  전체 1.6~8.0       목표   8%  불가  36%  1차성공  56%
+
+=== 저해상도에서 d_target 범위 조정 ===
+  d_target 1.2~2.0px σ≤0.8  목표  11%  불가  15%  1차성공  74%
+  d_target 1.4~2.2px σ≤1.0  목표   7%  불가  13%  1차성공  80%
+  d_target 1.6~2.4px σ≤1.2  목표  14%  불가  12%  1차성공  73%
+Traceback (most recent call last):
+  File "/root/.claude/jobs/79f8cb02/tmp/synth/spike10.py", line 68, in <module>
+    o,_ = run(120, 6, [1.8,2.0,2.2,2.5], lo, hi, sg)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.claude/jobs/79f8cb02/tmp/synth/spike10.py", line 21, in run
+    d_t = float(rng.uniform(d_lo, min(d_hi, dm*0.97)))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "numpy/random/_generator.pyx", line 1102, in numpy.random._generator.Generator.uniform
+  File "numpy/random/_common.pyx", line 634, in numpy.random._common.cont
+  File "numpy/random/_common.pyx", line 432, in numpy.random._common.check_constraint
+ValueError: high - low < 0
