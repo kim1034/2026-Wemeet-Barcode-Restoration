@@ -1,0 +1,68 @@
+{
+ "spec": [
+  {
+   "p": 40,
+   "mode": "add",
+   "dark_mean": 0.275,
+   "lost": 0.237,
+   "first": false,
+   "rect": false
+  },
+  {
+   "p": 40,
+   "mode": "mul",
+   "dark_mean": 0.005,
+   "lost": 0.0,
+   "first": false,
+   "rect": false
+  },
+  {
+   "p": 200,
+   "mode": "add",
+   "dark_mean": 0.069,
+   "lost": 0.0,
+   "first": true,
+   "rect": true
+  },
+  {
+   "p": 200,
+   "mode": "mul",
+   "dark_mean": 0.005,
+   "lost": 0.0,
+   "first": true,
+   "rect": true
+  }
+ ],
+ "knobs": [
+  {
+   "label": "A 현재 (c=2.0, 열화없음)",
+   "목표": 2,
+   "불가": 17,
+   "1차성공": 82
+  },
+  {
+   "label": "B c_min=1.0",
+   "목표": 4,
+   "불가": 35,
+   "1차성공": 61
+  },
+  {
+   "label": "C c_min=2.0 + 블러·노이즈",
+   "목표": 2,
+   "불가": 58,
+   "1차성공": 39
+  },
+  {
+   "label": "D c_min=1.0 + 블러·노이즈",
+   "목표": 2,
+   "불가": 80,
+   "1차성공": 18
+  },
+  {
+   "label": "E d_m0 2.5~4.0 + c=1.0 + 열화",
+   "목표": 0,
+   "불가": 83,
+   "1차성공": 17
+  }
+ ]
+}
