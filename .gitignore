@@ -47,3 +47,7 @@ runs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Claude Code 로컬 작업 폴더.
+# .claude/worktrees/ 안에는 다른 브랜치를 따로 꺼내 둔 작업 사본이 들어간다.
+.claude/
