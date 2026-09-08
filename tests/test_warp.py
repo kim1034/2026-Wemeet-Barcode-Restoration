@@ -159,3 +159,42 @@ def test_src_x_is_monotonic_per_row():
     _, src = control_points(g, 6, 3, s_hat.shape)
     for row in src.reshape(3, 6, 2):
         assert np.all(np.diff(row[:, 0]) > 0)
+
+
+def test_G_round_trips_with_independent_forward_lookup():
+    """설계 §5. build_G 는 s_hat 을 xs 에 대해 뒤집어 보간한다
+    (np.interp(us, s_hat[row], xs)). 이 테스트는 반대 방향 -- s_hat 을 xs 의
+    함수로 순방향 보간한다 (np.interp(x, xs, s_hat[row])) -- 그래서 build_G 와
+    보간 방향을 공유하지 않는다. G 로 u 에서 x 를 얻고, s_hat 정방향으로 x 를
+    다시 u 로 되돌렸을 때 원래 u 가 나와야 한다.
+
+    능선 부근(u~0.5)을 포함해 넓게 스캔한다 -- 여섯 개의 깔끔한 등분점만으로는
+    이산화가 가장 거친 구간을 놓친다.
+    """
+    zx, _ = grad_crease(301, 220, slope=1.2, w_c=1.0)
+    _, s_hat, _ = flat_coord(zx)
+    h, w = s_hat.shape
+    xs = np.arange(w, dtype=np.float64)
+    g = build_G(s_hat)
+    row = 0
+    us = np.concatenate([np.linspace(0.0, 1.0, 21), np.linspace(0.47, 0.53, 61)])
+    errs = [abs(np.interp(sample_G(g, u, 0.0)[0], xs, s_hat[row]) - u) for u in us]
+    assert max(errs) < 3e-4
+
+
+def test_sample_G_matches_direct_interp_across_the_whole_u_domain():
+    """설계 §5. 여섯 개의 운 좋은 점이 아니라 밀집 스캔으로 이산화 오차의 상한을
+    잠근다. w_c=1.0 은 레시피 범위(w_c ~ U(1,9))에서 능선이 가장 날카로운
+    경우라 최악의 이산화 오차를 드러낸다. n_u 를 줄이거나 sample_G 의 이중선형
+    보간이 깨지면 이 상한(픽셀)을 넘는다.
+    """
+    zx, _ = grad_crease(301, 220, slope=1.2, w_c=1.0)
+    _, s_hat, _ = flat_coord(zx)
+    h, w = s_hat.shape
+    xs = np.arange(w, dtype=np.float64)
+    g = build_G(s_hat)
+    row = 0
+    us = np.linspace(0.0, 1.0, 4001)
+    direct = np.interp(us, s_hat[row], xs)
+    g_vals = np.array([sample_G(g, u, 0.0)[0] for u in us])
+    assert np.abs(g_vals - direct).max() < 0.1
