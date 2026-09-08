@@ -146,6 +146,35 @@ def test_photometric_changes_pixels_when_on():
     assert not np.array_equal(out, img)
 
 
+def test_rotation_with_G_beats_stale_G_on_rectified_pixels():
+    """설계 §10-4. 증강 검증에 디코딩을 쓰면 안 된다 — 20도까지 틀려도 읽힌다.
+
+    기준: G 를 같이 변환한 쪽의 평균 차이가 미변환 쪽의 절반 이하.
+    """
+    from scripts.label_recipes import rectify
+    from wemeet.data.render import render_clean
+    from wemeet.data.warp import apply_warp
+
+    clean = render_clean("WEMEET0001", module_px=5.5, height_px=220)
+    zx, _ = grad_crease(clean.shape[1], 220, slope=1.4, w_c=4.0)
+    _, s_hat, _ = flat_coord(zx)
+    obs = apply_warp(clean, s_hat)
+    g = build_G(s_hat)
+    out_shape = (220, clean.shape[1])
+
+    dst0, src0 = control_points(g, 6, 3, obs.shape)
+    base = rectify(obs, dst0, src0, out_shape).astype(np.float64)
+
+    rotated, g_rot = geometric_rotate(obs, g, 2.0)
+    dst_ok, src_ok = control_points(g_rot, 6, 3, rotated.shape)
+    with_g = rectify(rotated, dst_ok, src_ok, out_shape).astype(np.float64)
+    stale = rectify(rotated, dst0, src0, out_shape).astype(np.float64)
+
+    err_ok = np.abs(with_g - base).mean()
+    err_stale = np.abs(stale - base).mean()
+    assert err_ok < err_stale / 2.0
+
+
 def test_photometric_blurs_before_adding_noise():
     """순서가 뒤바뀌면(노이즈 -> 블러) 블러가 노이즈를 뭉개 표준편차가 크게
     줄어든다 (실측: 올바른 순서 std~9.98, 뒤바뀐 순서 std~1.59). 그래서 표준
