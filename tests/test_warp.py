@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 from wemeet.data.render import render_clean
-from wemeet.data.surface import grad_crease, grad_cylinder
+from wemeet.data.surface import grad_crease, grad_cylinder, grad_sine
 from wemeet.data.warp import apply_warp, fit_obs_width, flat_coord
 
 
@@ -62,6 +62,26 @@ def test_s_hat_is_normalised_per_row():
     _, s_hat, _ = flat_coord(zx)
     assert np.allclose(s_hat[:, 0], 0.0)
     assert np.allclose(s_hat[:, -1], 1.0)
+
+
+def test_s_total_is_the_row_mean_not_any_single_row():
+    """s_total 은 행 평균이어야 한다. grad_cylinder 는 모든 행이 동일해 이 계약을
+    검증하지 못한다 (설계 §10) -- 행마다 총합이 실제로 다른 grad_sine 픽스처를 쓴다.
+    """
+    zx, _ = grad_sine(201, 60, slope=1.0, lam=60.0, psi_deg=30.0)
+    _, _, s_total = flat_coord(zx)
+
+    m = 1.0 / np.sqrt(1.0 + zx ** 2)
+    row_totals = np.cumsum(1.0 / m, axis=1)[:, -1] - (1.0 / m)[:, 0]
+
+    # 이 픽스처가 실제로 행마다 다른 총합을 갖는지 먼저 확인 (아니면 아래 대조가 공허하다)
+    assert row_totals.max() - row_totals.min() > 1.0
+
+    assert abs(s_total - row_totals.mean()) < 1e-9
+    assert abs(s_total - row_totals[0]) > 1e-9
+    assert abs(s_total - row_totals[-1]) > 1e-9
+    assert abs(s_total - row_totals.max()) > 1e-9
+    assert abs(s_total - row_totals.min()) > 1e-9
 
 
 def test_fit_obs_width_recovers_flat_length():
