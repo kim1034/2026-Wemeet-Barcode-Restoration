@@ -125,7 +125,7 @@ def main() -> None:
     ap.add_argument("--n", type=int, required=True, help="렌더 상한")
     ap.add_argument("--per-band", default="5000/3500/1500",
                     help="target/hard/first_ok")
-    ap.add_argument("--tau", type=float, default=0.04)
+    ap.add_argument("--tau", type=float, default=0.08)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", required=True)
     ap.add_argument("--bake", default=None,
