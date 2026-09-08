@@ -1,5 +1,5 @@
 import numpy as np
-from wemeet.data.render import render_clean
+from wemeet.data.render import render_clean, _BASE_MODULE_PX
 
 
 def _narrowest_black_run(img: np.ndarray) -> int:
@@ -24,9 +24,43 @@ def test_render_clean_shape_and_dtype():
     assert img.shape[0] == 220
 
 
-def test_module_width_matches_request():
-    img = render_clean("WEMEET0001", module_px=4.0)
-    assert abs(_narrowest_black_run(img) - 4.0) <= 0.5
+def test_base_module_width_exact():
+    """기본 모듈 폭에서는 최좁은 검은 줄이 정확히 기본값."""
+    img = render_clean("WEMEET0001", module_px=_BASE_MODULE_PX)
+    narrowest = _narrowest_black_run(img)
+    assert narrowest == _BASE_MODULE_PX, f"Expected {_BASE_MODULE_PX}, got {narrowest}"
+
+
+def test_effective_module_width_fractional():
+    """분수 모듈 폭에서 유효 모듈 폭은 ±0.05 px 이내."""
+    # 기본 렌더에서 모듈 개수 M 계산
+    base_img = render_clean("WEMEET0001", module_px=_BASE_MODULE_PX)
+    M = round(base_img.shape[1] / _BASE_MODULE_PX)
+
+    test_values = [1.6, 1.9, 2.5, 3.7, 4.9, 5.5]
+    for module_px in test_values:
+        img = render_clean("WEMEET0001", module_px=module_px)
+        effective = img.shape[1] / M
+        error = abs(effective - module_px)
+        assert error <= 0.05, (
+            f"module_px={module_px}: effective={effective:.4f}, error={error:.4f}"
+        )
+
+
+def test_module_px_1_0_does_not_crash():
+    """module_px=1.0 에서도 렌더링 성공."""
+    img = render_clean("WEMEET0001", module_px=1.0)
+    assert img.ndim == 2
+    assert img.dtype == np.uint8
+    assert img.shape[0] == 220
+
+
+def test_module_px_1_2_does_not_crash():
+    """module_px=1.2 에서도 렌더링 성공."""
+    img = render_clean("WEMEET0001", module_px=1.2)
+    assert img.ndim == 2
+    assert img.dtype == np.uint8
+    assert img.shape[0] == 220
 
 
 def test_module_width_scales():
