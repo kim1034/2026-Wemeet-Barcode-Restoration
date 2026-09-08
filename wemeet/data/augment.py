@@ -74,6 +74,9 @@ def photometric(
         )
     if jpeg is not None:
         ok, buf = cv2.imencode(".jpg", out, [int(cv2.IMWRITE_JPEG_QUALITY), int(jpeg)])
-        if ok:
-            out = cv2.imdecode(buf, cv2.IMREAD_GRAYSCALE)
+        if not ok:
+            # 조용히 무시하면 jpeg=85 라 적어놓고 실제로는 무손실 이미지를 내보낸다 --
+            # 레시피가 자기가 만드는 이미지를 더 이상 설명하지 못하게 된다.
+            raise RuntimeError(f"JPEG 인코딩 실패: quality={jpeg}, shape={out.shape}")
+        out = cv2.imdecode(buf, cv2.IMREAD_GRAYSCALE)
     return out

@@ -73,6 +73,41 @@ def test_asymmetric_margin_shifts_G_by_the_correct_side_not_swapped():
     assert abs((g2[..., 1].min() - g[..., 1].min()) - expected_top_shift) < 1e-6
 
 
+def test_mixed_pad_and_cut_shifts_G_and_narrows_u_range_correctly():
+    """플랜 자체 리뷰가 지목한 최대 리스크: 한 변은 패딩(+), 다른 변은
+    컷(-)인 "섞인 부호" 조합은 순수 패딩(test_padding_keeps_full_u_range)
+    이나 대칭 컷(test_cutting_shrinks_u_range)으로는 건드려지지 않는다 --
+    좌우/상하 각각의 pad·crop 변수가 뒤바뀌는 인덱스 슬립은 패딩만 있거나
+    대칭으로 자르기만 할 때는 숨어 있다가, 한쪽은 패딩하고 다른 쪽은 잘라먹을
+    때만 드러난다.
+
+    기대값은 실행 결과를 베끼지 않고 대수적으로 유도한다: 패딩과 크롭은
+    서로 배타적이라(dl>=0 이면 패딩만 있고, dl<0 이면 크롭만 있다) 좌표
+    이동량은 부호와 무관하게 항상 정확히 dl(왼쪽), dt(위쪽) 그 자체다 --
+    오른쪽/아래쪽 인자는 캔버스 크기만 바꾸고 좌표는 옮기지 않는다.
+    u_lo/u_hi 는 원본(미변환) g 에 그 dl 과 새 폭만 적용해 독립적으로
+    다시 계산해 맞춘다.
+    """
+    img, g = _fixture()
+    h, w = img.shape
+    left, right, top, bottom = -0.02, 0.10, 0.05, -0.01
+    dl, dr = round(left * w), round(right * w)
+    dt, db = round(top * h), round(bottom * h)
+
+    img2, g2, u_lo, u_hi = geometric_margin(img, g, left, right, top, bottom)
+
+    assert img2.shape == (h + dt + db, w + dl + dr)
+    assert np.allclose(g2[..., 0] - g[..., 0], dl)
+    assert np.allclose(g2[..., 1] - g[..., 1], dt)
+
+    new_w = w + dl + dr
+    moved_x = g[..., 0] + dl
+    inside = ((moved_x >= 0) & (moved_x <= new_w - 1)).all(axis=0)
+    us = np.linspace(0.0, 1.0, g.shape[1])
+    assert abs(u_lo - us[inside][0]) < 1e-9
+    assert abs(u_hi - us[inside][-1]) < 1e-9
+
+
 def test_control_points_stay_inside_contract_range_after_augmentation():
     img, g = _fixture()
     img, g = geometric_rotate(img, g, 5.0)
