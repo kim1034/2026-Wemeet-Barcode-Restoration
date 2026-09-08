@@ -30,17 +30,35 @@ def _axis(w: int, h: int, psi_deg: float):
 
 
 def grad_sine(w, h, slope, lam, psi_deg=0.0, phase=0.0):
-    """물결 주름. slope = 이 성분의 최대 |z_x|."""
+    """물결 주름. slope = 이 성분의 최대 |z_x|.
+
+    주의: slope 는 max|z_x| 이므로, psi 가 ±90° 에 가까우면 z_y = z_x*tan(psi)
+    가 발산한다. 파라미터화가 특이점을 갖는다.
+    """
     t, cp, sp = _axis(w, h, psi_deg)
+    if abs(cp) < 0.01:
+        raise ValueError(
+            f"psi={psi_deg}° 에서 cos(psi)={cp:.6e} 로 너무 작아, z_y = z_x*tan(psi) 가 발산한다. "
+            f"|psi| < 89.4° 범위에서만 정의된다."
+        )
     d = slope * np.cos(2 * np.pi * t / lam + phase)
-    return d, d * (sp / cp if cp else 0.0)
+    return d, d * (sp / cp)
 
 
 def grad_crease(w, h, slope, w_c, psi_deg=0.0, offset=0.0):
-    """접힌 능선. 기울기가 -slope -> +slope 로 tanh 전이."""
+    """접힌 능선. 기울기가 -slope -> +slope 로 tanh 전이.
+
+    주의: slope 는 max|z_x| 이므로, psi 가 ±90° 에 가까우면 z_y = z_x*tan(psi)
+    가 발산한다. 파라미터화가 특이점을 갖는다.
+    """
     t, cp, sp = _axis(w, h, psi_deg)
+    if abs(cp) < 0.01:
+        raise ValueError(
+            f"psi={psi_deg}° 에서 cos(psi)={cp:.6e} 로 너무 작아, z_y = z_x*tan(psi) 가 발산한다. "
+            f"|psi| < 89.4° 범위에서만 정의된다."
+        )
     d = slope * np.tanh((t - offset) / max(w_c, 1e-6))
-    return d, d * (sp / cp if cp else 0.0)
+    return d, d * (sp / cp)
 
 
 def octave_weights(octaves: int, persistence: float) -> np.ndarray:

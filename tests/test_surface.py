@@ -69,3 +69,59 @@ def test_limit_slope_does_not_amplify():
     zy = np.zeros_like(zx)
     _, _, scale = limit_slope(zx, zy, s_max=5.0)
     assert scale == 1.0
+
+
+def test_crumple_persistence_default_differs_from_uniform():
+    """persistence=0.7 기본값이 uniform(1.0)과 다른 저주파 우위를 준다."""
+    rng_a = np.random.default_rng(42)
+    rng_b = np.random.default_rng(42)
+
+    # 기본값 (persistence=0.7) vs 명시적 uniform (persistence=1.0)
+    zx_decay, _ = grad_crumple(200, 8, slope=1.0, lam0=200.0, rng=rng_a)
+    zx_uniform, _ = grad_crumple(200, 8, slope=1.0, lam0=200.0, rng=rng_b, persistence=1.0)
+
+    # 같은 seed 이므로 방향과 위상이 같음. 가중치만 다름.
+    # decay(0.7) 는 고주파가 덜 포함되므로, 고주파만 필터링했을 때 에너지가 더 낮다.
+    # 고주파 검출: 2차 미분(2-tap Laplacian)의 에너지
+    hf_decay = float(np.sum(np.abs(np.diff(zx_decay, n=2, axis=1))))
+    hf_uniform = float(np.sum(np.abs(np.diff(zx_uniform, n=2, axis=1))))
+    assert hf_decay < hf_uniform, \
+        f"persistence=0.7 should have lower high-freq energy ({hf_decay}) than uniform ({hf_uniform})"
+
+    # 추가 검증: 필드들이 실제로 다르다 (같은 seed 이지만 가중치 때문에 다름)
+    assert not np.allclose(zx_decay, zx_uniform), \
+        "Fields with different persistence should differ"
+
+
+def test_sine_max_zx_equals_slope_at_varied_psi():
+    """grad_sine 계약: max|z_x| = slope. psi 에 무관하게."""
+    for psi_deg in [0.0, 25.0, 45.0, -25.0, -45.0]:
+        zx, _ = grad_sine(400, 8, slope=0.7, lam=150.0, psi_deg=psi_deg)
+        max_zx = abs(zx).max()
+        assert abs(max_zx - 0.7) < 0.01, \
+            f"psi={psi_deg}°: max|z_x|={max_zx} should equal slope=0.7"
+
+
+def test_crease_max_zx_equals_slope_at_varied_psi():
+    """grad_crease 계약: max|z_x| = slope. psi 에 무관하게."""
+    for psi_deg in [0.0, 25.0, 45.0, -25.0, -45.0]:
+        zx, _ = grad_crease(400, 8, slope=0.9, w_c=2.5, psi_deg=psi_deg)
+        max_zx = abs(zx).max()
+        assert abs(max_zx - 0.9) < 0.01, \
+            f"psi={psi_deg}°: max|z_x|={max_zx} should equal slope=0.9"
+
+
+def test_sine_raises_on_near_singular_psi():
+    """psi 가 ±90° 에 가까우면 ValueError."""
+    with pytest.raises(ValueError, match="cos.*발산"):
+        grad_sine(200, 8, slope=1.0, lam=100.0, psi_deg=89.5)
+    with pytest.raises(ValueError, match="cos.*발산"):
+        grad_sine(200, 8, slope=1.0, lam=100.0, psi_deg=-89.5)
+
+
+def test_crease_raises_on_near_singular_psi():
+    """psi 가 ±90° 에 가까우면 ValueError."""
+    with pytest.raises(ValueError, match="cos.*발산"):
+        grad_crease(200, 8, slope=1.0, w_c=3.0, psi_deg=89.5)
+    with pytest.raises(ValueError, match="cos.*발산"):
+        grad_crease(200, 8, slope=1.0, w_c=3.0, psi_deg=-89.5)
