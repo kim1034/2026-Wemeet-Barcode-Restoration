@@ -22,15 +22,43 @@ def test_no_specular_leaves_black_black():
 
 
 def test_highlight_sits_on_the_crease():
-    """설계 §10-8. 하이라이트가 곡률 최대점에서 5px 안. 무작위 마스크는 86.8px."""
+    """설계 §10-8. 하이라이트가 곡률 최대점에서 3px 안. 여러 광 방향에서 테스트.
+
+    광 방향이 반벡터 계산에 영향을 주는지 확인 (hardcoded hv 변이를 탐지).
+    """
     h, w = 8, 401
     zx, zy = grad_crease(w, h, slope=1.5, w_c=4.0, offset=0.0)
     black = np.zeros((h, w), dtype=np.uint8)
-    img, _ = shade(black, zx, zy, light=(0.0, 0.0, 1.0), ks=0.9, p=60.0)
-
-    highlight_col = int(np.argmax(img[h // 2]))
     curvature_col = int(np.argmax(np.abs(np.gradient(zx[h // 2]))))
-    assert abs(highlight_col - curvature_col) <= 5
+
+    # 여러 광 방향을 테스트 (정면 + 비정면)
+    test_lights = [
+        (0.0, 0.0, 1.0),   # 정면: 기준선
+        (2.0, 0.0, 1.0),   # x 방향 비정면
+        (0.0, 1.0, 1.0),   # y 방향 비정면
+    ]
+
+    highlight_cols = []
+    for light in test_lights:
+        img, _ = shade(black, zx, zy, light=light, ks=0.9, p=60.0)
+        highlight_col = int(np.argmax(img[h // 2]))
+        highlight_cols.append(highlight_col)
+
+        # 각 광 방향에서 하이라이트가 곡률 근처에 있어야 함
+        distance = abs(highlight_col - curvature_col)
+        assert distance <= 3, (
+            f"light {light}: highlight at {highlight_col}, "
+            f"curvature at {curvature_col}, distance {distance} > 3"
+        )
+
+    # 광 방향이 변할 때 하이라이트 위치도 변해야 함 (hardcoded hv 변이 탐지)
+    # 정면(index 0)과 비정면(index 1)의 위치가 다르거나, 어느 한쪽이 정면과 다를 것
+    assert len(set(highlight_cols)) > 1 or any(
+        abs(col - highlight_cols[0]) >= 1 for col in highlight_cols[1:]
+    ), (
+        f"highlight positions {highlight_cols} do not vary with light direction "
+        "(half-vector may be hardcoded)"
+    )
 
 
 def test_saturation_ratio_is_zero_without_specular():
