@@ -52,3 +52,48 @@ def apply_warp(clean: np.ndarray, s_hat: np.ndarray) -> np.ndarray:
     map_y = np.tile(gy[:, None], (1, w_obs))
     return cv2.remap(clean, map_x, map_y, cv2.INTER_CUBIC,
                      borderMode=cv2.BORDER_REPLICATE)
+
+
+def build_G(s_hat: np.ndarray, n_v: int = 33, n_u: int = 513) -> np.ndarray:
+    """밀집 대응장. G[i, j] = 펴진 (u, v) 의 내용이 있는 관측 픽셀 (x, y).
+
+    크롭 크기와 무관하게 해상도가 고정이라 float64 두 장 270KB 다.
+    """
+    h, w = s_hat.shape
+    xs = np.arange(w, dtype=np.float64)
+    us = np.linspace(0.0, 1.0, n_u)
+    g = np.empty((n_v, n_u, 2), dtype=np.float64)
+    for i, v in enumerate(np.linspace(0.0, 1.0, n_v)):
+        row = min(h - 1, int(round(v * (h - 1))))
+        g[i, :, 0] = np.interp(us, s_hat[row], xs)
+        g[i, :, 1] = v * (h - 1)
+    return g
+
+
+def sample_G(g: np.ndarray, u: float, v: float) -> np.ndarray:
+    """대응장을 이중선형으로 샘플한다."""
+    n_v, n_u = g.shape[:2]
+    fu, fv = u * (n_u - 1), v * (n_v - 1)
+    i0, j0 = int(np.floor(fv)), int(np.floor(fu))
+    i1, j1 = min(i0 + 1, n_v - 1), min(j0 + 1, n_u - 1)
+    a, b = fv - i0, fu - j0
+    return ((1 - a) * (1 - b) * g[i0, j0] + (1 - a) * b * g[i0, j1]
+            + a * (1 - b) * g[i1, j0] + a * b * g[i1, j1])
+
+
+def control_points(g: np.ndarray, n_x: int, n_y: int, shape,
+                   u_lo: float = 0.0, u_hi: float = 1.0):
+    """정답 제어점. dst = 펴진 격자, src = 지금 있는 위치. 행 우선.
+
+    u_lo/u_hi 는 크롭으로 남은 펴진 범위다. dst 는 그 범위를 다시 0~1 로
+    정규화한다 — 크롭 뒤 제어점은 변환으로 얻을 수 없기 때문이다 (설계 §5).
+    """
+    h, w = shape
+    dst, src = [], []
+    span = max(u_hi - u_lo, 1e-9)
+    for v in np.linspace(0.0, 1.0, n_y):
+        for u in np.linspace(u_lo, u_hi, n_x):
+            p = sample_G(g, u, v)
+            dst.append([(u - u_lo) / span, v])
+            src.append([p[0] / (w - 1), p[1] / (h - 1)])
+    return np.array(dst), np.array(src)

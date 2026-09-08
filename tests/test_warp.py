@@ -4,7 +4,14 @@ import numpy as np
 
 from wemeet.data.render import render_clean
 from wemeet.data.surface import grad_crease, grad_cylinder, grad_sine
-from wemeet.data.warp import apply_warp, fit_obs_width, flat_coord
+from wemeet.data.warp import (
+    apply_warp,
+    build_G,
+    control_points,
+    fit_obs_width,
+    flat_coord,
+    sample_G,
+)
 
 
 def _cylinder_geometry(w, theta_deg):
@@ -101,3 +108,54 @@ def test_apply_warp_shape_and_dtype():
     obs = apply_warp(clean, s_hat)
     assert obs.shape == s_hat.shape
     assert obs.dtype == np.uint8
+
+
+def _direct_control_points(s_hat, n_x, n_y):
+    """G 를 안 거치고 행별 역보간으로 직접 뽑는 참조 구현 (테스트 전용)."""
+    h, w = s_hat.shape
+    xs = np.arange(w, dtype=np.float64)
+    dst, src = [], []
+    for v in np.linspace(0, 1, n_y):
+        row = min(h - 1, int(round(v * (h - 1))))
+        for u in np.linspace(0, 1, n_x):
+            dst.append([u, v])
+            src.append([np.interp(u, s_hat[row], xs) / (w - 1), v])
+    return np.array(dst), np.array(src)
+
+
+def test_build_G_shape_and_endpoints():
+    zx, _ = grad_crease(301, 220, slope=1.0, w_c=4.0)
+    _, s_hat, _ = flat_coord(zx)
+    g = build_G(s_hat)
+    assert g.shape == (33, 513, 2)
+    assert np.allclose(g[:, 0, 0], 0.0, atol=1e-6)
+    assert np.allclose(g[:, -1, 0], 300.0, atol=1e-6)
+
+
+def test_sample_G_at_nodes_returns_the_node():
+    zx, _ = grad_crease(301, 220, slope=1.0, w_c=4.0)
+    _, s_hat, _ = flat_coord(zx)
+    g = build_G(s_hat)
+    assert np.allclose(sample_G(g, 0.0, 0.0), g[0, 0])
+    assert np.allclose(sample_G(g, 1.0, 1.0), g[-1, -1])
+
+
+def test_control_points_from_G_match_direct_interpolation():
+    """설계 §5. 두 경로가 일치해야 한다 (실측 차이 0.000000)."""
+    zx, _ = grad_crease(301, 220, slope=1.2, w_c=4.0)
+    _, s_hat, _ = flat_coord(zx)
+    g = build_G(s_hat)
+    dst_g, src_g = control_points(g, 6, 3, s_hat.shape)
+    dst_d, src_d = _direct_control_points(s_hat, 6, 3)
+    assert np.abs(dst_g - dst_d).max() < 1e-9
+    assert np.abs(src_g - src_d).max() < 2e-3
+
+
+def test_src_x_is_monotonic_per_row():
+    """설계 §10-3. 깨졌다면 역보간을 빼먹은 것이다."""
+    zx, _ = grad_crease(301, 220, slope=1.5, w_c=3.0, psi_deg=20.0)
+    _, s_hat, _ = flat_coord(zx)
+    g = build_G(s_hat)
+    _, src = control_points(g, 6, 3, s_hat.shape)
+    for row in src.reshape(3, 6, 2):
+        assert np.all(np.diff(row[:, 0]) > 0)
