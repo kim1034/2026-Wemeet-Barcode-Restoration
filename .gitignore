@@ -42,6 +42,9 @@ __pycache__/
 wandb/
 runs/
 
+# 파일럿 측정 산출물 — 측정 도구이지 정본 데이터가 아니다.
+data/pilot/
+
 # 에디터·OS
 .vscode/
 .idea/
