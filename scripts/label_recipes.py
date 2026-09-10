@@ -8,6 +8,7 @@ wemeet/data/ 는 이 파일을 import 하지 않는다 — scripts/ 는 의존 �
 import argparse
 import json
 import os
+import subprocess
 from collections import Counter
 
 import cv2
@@ -17,6 +18,24 @@ import zxingcpp
 from wemeet.data.synthesis import BUCKETS, H_OBS, Sample, build, draw_recipe, recipe_to_dict
 
 BANDS = ("target", "hard", "first_ok", "burned")
+
+
+def code_commit() -> dict:
+    """레시피 헤더에 박을 코드 상태. 코드가 바뀌면 같은 레시피도 다른 이미지가 된다 (설계 §1).
+
+    dirty 면 커밋 해시만으로는 이미지를 재현할 수 없다. 막지 않고 표시만 한다 —
+    측정 중에 코드를 만지는 것은 흔하고, 나중에 "이 숫자를 믿을 수 있나"를
+    판단할 사람에게 필요한 것은 금지가 아니라 사실이다.
+    """
+    def git(*args):
+        return subprocess.run(("git", *args), capture_output=True, text=True,
+                              check=True).stdout.strip()
+    try:
+        return {"commit": git("rev-parse", "HEAD"),
+                "dirty": bool(git("status", "--porcelain"))}
+    except (OSError, subprocess.CalledProcessError):
+        # 리포 밖에서 돌리거나 git 이 없을 때. 라벨링 자체를 막을 이유는 없다.
+        return {"commit": None, "dirty": None}
 
 
 def tps_flow(src_px, dst_px, shape, reg: float = 0.0):
@@ -106,6 +125,7 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
 
     stats = {
         "bucket": bucket,
+        "code": code_commit(),
         "rendered": rendered,
         "hit_cap": rendered >= render_cap,
         "seen": dict(seen),

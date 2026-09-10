@@ -1,8 +1,18 @@
+import pathlib
+import subprocess
 from collections import Counter
 
 import numpy as np
 
-from scripts.label_recipes import BANDS, decode, fill_bucket, label_sample, rectify, tps_flow
+from scripts.label_recipes import (
+    BANDS,
+    code_commit,
+    decode,
+    fill_bucket,
+    label_sample,
+    rectify,
+    tps_flow,
+)
 from wemeet.data.synthesis import H_OBS, Sample, build, draw_recipe
 
 
@@ -134,3 +144,35 @@ def test_fill_bucket_records_every_recipe_including_burned_and_surplus():
     assert dict(labelled_seen) == stats["seen"]
     assert labelled_seen["burned"] > 0
     assert labelled_seen["first_ok"] > stats["kept"].get("first_ok", 0)
+
+
+def test_recipe_header_records_the_code_commit_that_rendered_it():
+    """설계 §1: "레시피 헤더에 코드 커밋 해시를 기록한다 -- 코드가 바뀌면 같은
+    레시피도 다른 이미지가 된다." 레시피는 이미지가 아니라 재생성 지시서라서,
+    같은 JSONL 이 코드 버전에 따라 다른 데이터셋이 된다. 그 사실이 헤더에
+    없으면 나중에 성능 차이가 데이터 탓인지 코드 탓인지 가릴 수가 없다.
+
+    키 존재만 보면 상수 문자열을 박아 놔도 통과하므로, 실제 HEAD 와 맞는지를
+    독립적으로(subprocess 로 다시 물어봐서) 대조한다.
+    """
+    head = subprocess.run(("git", "rev-parse", "HEAD"), capture_output=True,
+                          text=True, check=True).stdout.strip()
+    _, stats = fill_bucket("L", {"first_ok": 1}, render_cap=1, seed=3, tau=0.08)
+    assert stats["code"]["commit"] == head
+    assert isinstance(stats["code"]["dirty"], bool)
+
+
+def test_code_commit_reports_dirty_instead_of_hiding_it():
+    """dirty 인 트리에서는 커밋 해시만으로 이미지를 재현할 수 없다. 그래도
+    라벨링을 막지 않고 사실만 남기는 것이 설계 의도다 -- 그러니 dirty 가
+    항상 False 로 굳어 있으면(= 사실상 기록이 없으면) 안 된다.
+
+    이 테스트 파일 자체가 워킹 트리에 있는 동안에는 판정할 수 없으므로,
+    임시 파일을 만들어 dirty 가 실제로 True 로 뒤집히는지를 본다.
+    """
+    scratch = pathlib.Path("__dirty_probe__.tmp")
+    scratch.write_text("probe", encoding="utf-8")
+    try:
+        assert code_commit()["dirty"] is True
+    finally:
+        scratch.unlink()
