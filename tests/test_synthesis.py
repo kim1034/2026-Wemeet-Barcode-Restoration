@@ -1,5 +1,6 @@
 import dataclasses
 import hashlib
+from dataclasses import replace
 
 import numpy as np
 
@@ -8,12 +9,15 @@ from wemeet.data.synthesis import (
     BUCKETS,
     K_A,
     K_D,
+    N_X,
+    N_Y,
     PRESETS,
     build,
     draw_recipe,
     recipe_from_dict,
     recipe_to_dict,
 )
+from wemeet.data.warp import control_points
 
 
 def test_bucket_ranges_cover_the_spec_span():
@@ -161,3 +165,40 @@ def test_shade_uses_z_y_not_just_z_x():
     img_zero, _ = shade(base, zx, zy_zero, light, K_A, K_D)
     img_nonzero, _ = shade(base, zx, zy_nonzero, light, K_A, K_D)
     assert not np.array_equal(img_zero, img_nonzero)
+
+
+def test_build_hands_back_the_dense_field_that_produced_the_control_points():
+    """제어점 개수 실험(2026-09-09)이 요구한다. 제어점은 G 에서 뽑히므로
+    "제어점 개수와 무관한 복원 상한" 을 재려면 증강까지 끝난 G 가 필요하다.
+    build() 안에서만 존재하면 실험 코드가 build() 를 통째로 복제해야 하고,
+    그러면 본체가 바뀔 때 조용히 어긋난다.
+
+    필드가 있다는 것만 보면 아무 배열이나 넣어도 통과하므로, 돌려받은 G 에서
+    control_points() 를 다시 뽑아 Sample 이 이미 담고 있는 제어점과 일치하는지로
+    "그 제어점을 만든 바로 그 G" 임을 확인한다.
+    """
+    s = build(draw_recipe(np.random.default_rng(7), "M", 0))
+    dst, src = control_points(s.g, N_X, N_Y, s.obs.shape, s.u_lo, s.u_hi)
+    assert np.abs(dst - s.dst_norm).max() == 0.0
+    assert np.abs(src - s.src_norm).max() == 0.0
+
+
+def test_dense_field_is_the_augmented_one_not_the_pre_augmentation_one():
+    """회전·여백 증강이 G 를 옮긴다. 증강 전 G 를 돌려주면 좌표가 통째로
+    어긋나는데, 위 테스트는 그것도 통과시킬 수 있다 -- control_points 를
+    같은(틀린) G 로 다시 뽑으면 역시 일치하기 때문이다.
+
+    그래서 여기서는 s.u_lo/u_hi 가 실제로 증강 결과를 담고 있는지, 그리고
+    G 가 증강된 이미지 안을 가리키는지를 본다. rot_deg 와 margin 을 크게
+    준 레시피에서 증강 전 G 는 이 범위를 벗어난다.
+    """
+    base = draw_recipe(np.random.default_rng(9), "M", 0)
+    r = replace(base, rot_deg=4.0, margin=(0.12, 0.12, 0.10, 0.10))
+    s = build(r)
+    h, w = s.obs.shape
+    inside = s.g[:, :, 0]
+    assert (s.u_hi - s.u_lo) > 0.0
+    # 여백을 12% 씩 덧대면 G 의 x 는 크롭 폭의 가운데 쪽으로 몰린다.
+    assert inside.min() > 0.0
+    assert inside.max() < w - 1
+    assert s.g[:, :, 1].max() <= h - 1

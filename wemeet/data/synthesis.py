@@ -69,6 +69,13 @@ class Sample:
     sat_ratio: float
     scale: float
     w_flat: int
+    # 제어점을 뽑아낸 바로 그 대응장(증강까지 끝난 것)과 남은 펴진 범위.
+    # 제어점 개수와 무관한 "복원 가능성의 상한" 을 재려면 이게 필요하다
+    # (docs/experiments/2026-09-09-control-points). 기본값은 이 필드를
+    # 안 쓰는 기존 호출부(테스트의 위치인자 생성)를 깨지 않으려고 둔다.
+    g: np.ndarray | None = None
+    u_lo: float = 0.0
+    u_hi: float = 1.0
 
 
 def draw_recipe(rng: np.random.Generator, bucket: str, index: int) -> Recipe:
@@ -154,7 +161,7 @@ def build(recipe: Recipe) -> Sample:
     dst, src = control_points(g, recipe.n_x, recipe.n_y, obs.shape, u_lo, u_hi)
 
     obs = photometric(obs, rng, recipe.sigma, recipe.noise, recipe.jpeg)
-    return Sample(obs, dst, src, float(m.min()), sat, scale, w_flat)
+    return Sample(obs, dst, src, float(m.min()), sat, scale, w_flat, g, u_lo, u_hi)
 
 
 def recipe_to_dict(r: Recipe) -> dict:
