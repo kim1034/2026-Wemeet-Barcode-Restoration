@@ -93,6 +93,33 @@ def label_sample(sample: Sample, out_shape, tau: float) -> str:
     return "burned" if sample.sat_ratio > tau else "hard"
 
 
+def bake(kept, out_dir) -> int:
+    """목표 구간만 이미지로 굽는다. 평가 세트 전용.
+
+    코드가 바뀌어도 같은 사진으로 비교해야 성능 변화가 코드 탓인지 데이터 탓인지
+    갈린다 (설계 §1). preset 과 열화 파라미터를 같이 남겨 사후에 쪼개 볼 수 있게 한다.
+    """
+    out_dir = str(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
+    n = 0
+    with open(f"{out_dir}/manifest.jsonl", "w", encoding="utf-8") as fh:
+        for recipe, band, sat, m_min in kept:
+            if band != "target":
+                continue
+            sample = build(recipe)
+            name = f"{n:05d}"
+            cv2.imwrite(f"{out_dir}/{name}.png", sample.obs)
+            np.savez(f"{out_dir}/{name}.npz",
+                     dst_norm=sample.dst_norm, src_norm=sample.src_norm)
+            row = recipe_to_dict(recipe)
+            row.update(file=f"{name}.png", npz=f"{name}.npz", band=band,
+                       sat_ratio=sat, m_min=m_min,
+                       w_flat=sample.w_flat, h_flat=sample.h_flat)
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+            n += 1
+    return n
+
+
 def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
                 tau: float):
     """버킷 하나를 비중대로 채운다. 모자라면 메우지 않고 부족분으로 남긴다.
@@ -171,16 +198,7 @@ def main() -> None:
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     if args.bake:
-        # 평가 세트는 이미지로 굽는다 — 코드가 바뀌어도 같은 사진으로 비교해야
-        # 성능 변화가 코드 탓인지 데이터 탓인지 갈린다 (설계 §1).
-        os.makedirs(args.bake, exist_ok=True)
-        for i, (recipe, band, _, _) in enumerate(kept):
-            if band != "target":
-                continue
-            sample = build(recipe)
-            cv2.imwrite(f"{args.bake}/{i:05d}.png", sample.obs)
-            np.savez(f"{args.bake}/{i:05d}.npz",
-                     dst_norm=sample.dst_norm, src_norm=sample.src_norm)
+        bake(kept, args.bake)
 
     print(json.dumps(stats, ensure_ascii=False, indent=2))
 

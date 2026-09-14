@@ -1,3 +1,4 @@
+import json
 import pathlib
 import subprocess
 from collections import Counter
@@ -7,6 +8,7 @@ import pytest
 
 from scripts.label_recipes import (
     BANDS,
+    bake,
     code_commit,
     decode,
     fill_bucket,
@@ -14,7 +16,7 @@ from scripts.label_recipes import (
     rectify,
     tps_flow,
 )
-from wemeet.data.synthesis import Sample, build, draw_recipe
+from wemeet.data.synthesis import ALL_BUCKETS, Sample, build, draw_recipe
 
 
 def test_tps_flow_is_identity_for_identical_control_points():
@@ -190,3 +192,24 @@ def test_code_commit_reports_dirty_instead_of_hiding_it():
         assert code_commit()["dirty"] is True
     finally:
         scratch.unlink()
+
+
+def test_eval_buckets_are_selectable():
+    assert {"low", "mid", "high"} <= set(ALL_BUCKETS)
+
+
+def test_bake_writes_manifest_with_ground_truth(tmp_path):
+    """정답 번호 없이는 디코딩률을 못 잰다 — manifest 의 존재 이유다 (설계 §3)."""
+    kept, _ = fill_bucket("low", {"target": 1}, 400, seed=7, tau=0.08)
+    assert kept, "400 렌더 안에 목표 구간이 하나도 없다 — 출현율을 의심하라"
+    bake(kept, tmp_path)
+
+    lines = (tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    row = json.loads(lines[0])
+    for key in ("file", "npz", "text", "band", "sat_ratio", "m_min",
+                "aspect", "w_c_f", "preset", "d_m0", "seed"):
+        assert key in row, key
+    assert row["band"] == "target"
+    assert (tmp_path / row["file"]).exists()
+    assert (tmp_path / row["npz"]).exists()
