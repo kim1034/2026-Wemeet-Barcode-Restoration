@@ -740,6 +740,9 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
         "bucket": bucket,
         "shard": shard,
         "shards": shards,
+        # 코드가 바뀌면 같은 레시피도 다른 이미지가 된다 (설계 §1). dirty 플래그가
+        # 핵심이다 -- dirty 면 해시만으로는 이 이미지를 재현할 수 없다.
+        "code": code_commit(),
         "rendered": rendered,
         "hit_cap": rendered >= my_cap,
         "seen": dict(seen),
@@ -748,6 +751,8 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
                       if kept_count[b] < my_band[b]},
         # 목표 구간의 원자료만 남긴다. 드라이버가 샤드를 합쳐 한 번에 백분위수를
         # 내야 맞다 -- 샤드별 백분위수를 평균내면 틀린다 (설계 §5).
+        "tau_suggestion": (float(np.percentile(sat_of_target, 95))
+                           if sat_of_target else None),
         "target_sats": sat_of_target,
         "target_presets": dict(Counter(r.preset for r, b, _, _ in labelled
                                        if b == "target")),
@@ -883,12 +888,11 @@ import argparse
 import json
 import os
 import shutil
-import subprocess
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 
-from scripts.label_recipes import bake, fill_bucket
+from scripts.label_recipes import bake, code_commit, fill_bucket
 from wemeet.data.synthesis import ALL_BUCKETS, recipe_to_dict
 
 # 설계 §4 의 프로토타입 시간(L 1.09h / M 3.35h / H 3.89h)에 비례해 나눴다.
@@ -976,9 +980,10 @@ def generate(bucket, per_band, cap, seed, tau, shards, out, bake_dir=None):
     stats = merge_stats([s for _, s, _ in results])
     stats["tau_suggestion"] = tau_from_sats(stats.pop("target_sats"))
     stats["preset_mix_realized"] = preset_mix(stats["target_presets"])
-    stats["code_commit"] = subprocess.run(
-        ["git", "rev-parse", "HEAD"], capture_output=True, text=True,
-    ).stdout.strip()
+    # code_commit() 을 쓴다. git rev-parse 로 직접 셸을 부르면 dirty 플래그가
+    # 사라지는데, dirty 면 해시만으로 이미지를 재현할 수 없다는 것이 이 필드의
+    # 존재 이유다 (설계 §1, d99a68b).
+    stats["code"] = code_commit()
 
     # 샤드 파일을 그대로 이어붙인다. JSON 을 다시 파싱하지 않는다.
     with open(out, "w", encoding="utf-8") as dst:
@@ -1403,7 +1408,8 @@ tags:
 ## 재현
 
 레시피는 `(seed, bucket, shard, index)` 로 결정론적으로 재생성된다.
-코드 커밋 해시는 각 JSONL 첫 줄의 `_stats.code_commit` 에 있다.
+코드 커밋 해시는 각 JSONL 첫 줄의 `_stats.code` 에 있다 — `{"commit": ..., "dirty": ...}` 형태다.
+`dirty` 가 참이면 그 해시만으로는 이미지를 재현할 수 없다는 뜻이다.
 
 ```bash
 git clone https://github.com/kim1034/2026-Wemeet-Barcode-Restoration
