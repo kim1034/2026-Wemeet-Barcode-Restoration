@@ -13,7 +13,7 @@ from scripts.label_recipes import (
     rectify,
     tps_flow,
 )
-from wemeet.data.synthesis import H_OBS, Sample, build, draw_recipe
+from wemeet.data.synthesis import Sample, build, draw_recipe
 
 
 def test_tps_flow_is_identity_for_identical_control_points():
@@ -51,7 +51,7 @@ def test_wrong_tps_kernel_fails_to_decode_a_known_target_sample():
         recipe = draw_recipe(rng, "L", i)
     sample = build(recipe)
     assert decode(sample.obs) is None
-    fixed = rectify(sample.obs, sample.dst_norm, sample.src_norm, (H_OBS, sample.w_flat))
+    fixed = rectify(sample.obs, sample.dst_norm, sample.src_norm, (sample.h_flat, sample.w_flat))
     assert decode(fixed) is not None
 
 
@@ -65,8 +65,8 @@ def test_burned_requires_saturation_above_tau(monkeypatch):
     monkeypatch.setattr(mod, "decode", lambda img: None)
     obs = np.zeros((20, 40), dtype=np.uint8)
     dst = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
-    hot = Sample(obs, dst, dst, 0.5, sat_ratio=0.20, scale=1.0, w_flat=40)
-    cool = Sample(obs, dst, dst, 0.5, sat_ratio=0.01, scale=1.0, w_flat=40)
+    hot = Sample(obs, dst, dst, 0.5, sat_ratio=0.20, scale=1.0, w_flat=40, h_flat=20)
+    cool = Sample(obs, dst, dst, 0.5, sat_ratio=0.01, scale=1.0, w_flat=40, h_flat=20)
     assert label_sample(hot, (20, 40), tau=0.04) == "burned"
     assert label_sample(cool, (20, 40), tau=0.04) == "hard"
 
@@ -83,7 +83,7 @@ def test_first_ok_short_circuits_the_second_decode(monkeypatch):
     monkeypatch.setattr(mod, "decode", counting_decode)
     obs = np.zeros((20, 40), dtype=np.uint8)
     dst = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
-    s = Sample(obs, dst, dst, 0.5, 0.0, 1.0, 40)
+    s = Sample(obs, dst, dst, 0.5, 0.0, 1.0, 40, 20)
     assert label_sample(s, (20, 40), tau=0.04) == "first_ok"
     assert len(calls) == 1
 
@@ -126,7 +126,7 @@ def test_fill_bucket_shortfall_is_never_papered_over_by_relabeling():
 
     for recipe, band, sat, m_min in kept:
         sample = build(recipe)
-        assert label_sample(sample, (H_OBS, sample.w_flat), 0.04) == band
+        assert label_sample(sample, (sample.h_flat, sample.w_flat), 0.04) == band
 
     assert len(kept) < sum(quota.values())
     assert stats["shortfall"], "진짜 부족분이 있어야 이 테스트가 의미를 갖는다"

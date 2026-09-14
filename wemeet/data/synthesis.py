@@ -11,7 +11,7 @@ import numpy as np
 
 from wemeet.data.augment import geometric_margin, geometric_rotate, photometric
 from wemeet.data.optics import shade
-from wemeet.data.render import render_clean
+from wemeet.data.render import module_count, render_clean
 from wemeet.data.surface import (
     grad_crease,
     grad_crumple,
@@ -23,10 +23,11 @@ from wemeet.data.surface import (
 from wemeet.data.warp import apply_warp, build_G, control_points, fit_obs_width, flat_coord
 
 BUCKETS = {"L": (1.6, 2.5), "M": (2.5, 3.7), "H": (3.7, 6.0)}
+EVAL_BUCKETS = {"low": (1.6, 2.2), "mid": (2.5, 3.5), "high": (4.0, 6.0)}
+ALL_BUCKETS = BUCKETS | EVAL_BUCKETS
 PRESETS = ("crease", "sine", "octave", "cylinder")
 PRESET_P = (0.30, 0.30, 0.30, 0.10)
 
-H_OBS = 220
 K_A, K_D = 0.35, 0.50
 C_MIN = 1.0
 PERSISTENCE = 0.7
@@ -38,6 +39,19 @@ PERSISTENCE = 0.7
 #       예산을 못 늘리면 12x3 (18.4ms) 이 대안이다.
 N_X, N_Y = 16, 3
 
+# 라벨 종횡비. 현장 실측 50x30 / 60x40 mm 에서 바 영역이 높이의 73~75% 라는
+# 가정으로 2.27 / 2.00 이 나오고, 이 범위가 둘을 덮는다 (설계 §1.1).
+# 예전의 H_OBS=220 은 라벨 높이를 71.5/d_m0 mm 로 만들어 L 44.7mm, H 11.9mm 로
+# 3.75배 흔들었다. 상수로 두면 안 되는 값이었다.
+ASPECT_LO, ASPECT_HI = 2.0, 2.3
+
+# 주름 전이 폭. 라벨 폭의 비율이다 -- 픽셀로 두면 고해상도 버킷만 물리적으로
+# 3.75배 날카로운 주름을 받는다 (설계 §1.2). L 버킷의 옛 px 분포를 보존한다.
+WCF_LO, WCF_HI = 0.003, 0.029
+
+# 텍스트가 길어지면 w_flat 이 d_m0 과 무관하게 움직여 "버킷 = 해상도" 가 깨진다.
+TEXT_MOD = 10000
+
 
 @dataclass(frozen=True)
 class Recipe:
@@ -46,10 +60,11 @@ class Recipe:
     text: str
     d_m0: float
     d_t: float
+    aspect: float
     preset: str
     cyl_share: float
     psi: float
-    w_c: float
+    w_c_f: float
     lam_f: float
     phase: float
     offset: float
@@ -75,6 +90,7 @@ class Sample:
     sat_ratio: float
     scale: float
     w_flat: int
+    h_flat: int
     # 제어점을 뽑아낸 바로 그 대응장(증강까지 끝난 것)과 남은 펴진 범위.
     # 제어점 개수와 무관한 "복원 가능성의 상한" 을 재려면 이게 필요하다
     # (docs/experiments/2026-09-09-control-points). 기본값은 이 필드를
@@ -86,19 +102,20 @@ class Sample:
 
 def draw_recipe(rng: np.random.Generator, bucket: str, index: int) -> Recipe:
     """설계 §6 v1 분포. d_m0 만 버킷 범위에서 뽑는다."""
-    lo, hi = BUCKETS[bucket]
+    lo, hi = ALL_BUCKETS[bucket]
     d_m0 = float(rng.uniform(lo, hi))
     d_t = float(rng.uniform(1.3, min(2.6, 0.97 * d_m0)))
     return Recipe(
         seed=int(rng.integers(0, 2 ** 31 - 1)),
         bucket=bucket,
-        text=f"WEMEET{index:04d}",
+        text=f"WEMEET{index % TEXT_MOD:04d}",
         d_m0=d_m0,
         d_t=d_t,
+        aspect=float(rng.uniform(ASPECT_LO, ASPECT_HI)),
         preset=str(rng.choice(PRESETS, p=PRESET_P)),
         cyl_share=float(rng.uniform(0.15, 0.45)),
         psi=float(rng.uniform(-45.0, 45.0)),
-        w_c=float(rng.uniform(1.0, 9.0)),
+        w_c_f=float(rng.uniform(WCF_LO, WCF_HI)),
         lam_f=float(rng.uniform(0.5, 1.3)),
         phase=float(rng.uniform(0.0, 2 * np.pi)),
         offset=float(rng.uniform(-0.3, 0.3)),
@@ -124,7 +141,7 @@ def _make_grad(recipe: Recipe, s_t: float):
         if rest <= 0.0:
             return zx, zy
         if recipe.preset == "crease":
-            a, b = grad_crease(w, h, rest, recipe.w_c,
+            a, b = grad_crease(w, h, rest, recipe.w_c_f * w,
                                psi_deg=recipe.psi, offset=recipe.offset * w)
         elif recipe.preset == "sine":
             a, b = grad_sine(w, h, rest, recipe.lam_f * w,
@@ -141,13 +158,14 @@ def _make_grad(recipe: Recipe, s_t: float):
 def build(recipe: Recipe) -> Sample:
     """레시피 하나를 이미지와 정답 제어점으로 조립한다."""
     rng = np.random.default_rng(recipe.seed)
-    clean = render_clean(recipe.text, recipe.d_m0, H_OBS)
-    _, w_flat = clean.shape
+    w_flat = int(round(module_count(recipe.text) * recipe.d_m0))
+    h_flat = int(round(w_flat / recipe.aspect))
+    clean = render_clean(recipe.text, recipe.d_m0, h_flat)
 
     s_t = math.sqrt(max((recipe.d_m0 / recipe.d_t) ** 2 - 1.0, 1e-9))
     s_max = slope_budget(recipe.d_m0, C_MIN)
 
-    _, zx, zy = fit_obs_width(_make_grad(recipe, s_t), w_flat, H_OBS)
+    _, zx, zy = fit_obs_width(_make_grad(recipe, s_t), w_flat, h_flat)
 
     # S_t 는 상한이 아니라 목표다 — 정확히 맞춘다.
     peak = float(np.abs(zx).max())
@@ -167,7 +185,8 @@ def build(recipe: Recipe) -> Sample:
     dst, src = control_points(g, recipe.n_x, recipe.n_y, obs.shape, u_lo, u_hi)
 
     obs = photometric(obs, rng, recipe.sigma, recipe.noise, recipe.jpeg)
-    return Sample(obs, dst, src, float(m.min()), sat, scale, w_flat, g, u_lo, u_hi)
+    return Sample(obs, dst, src, float(m.min()), sat, scale, w_flat, h_flat,
+                  g, u_lo, u_hi)
 
 
 def recipe_to_dict(r: Recipe) -> dict:

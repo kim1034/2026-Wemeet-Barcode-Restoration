@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 import zxingcpp
 
-from wemeet.data.synthesis import BUCKETS, H_OBS, Sample, build, draw_recipe, recipe_to_dict
+from wemeet.data.synthesis import ALL_BUCKETS, Sample, build, draw_recipe, recipe_to_dict
 
 BANDS = ("target", "hard", "first_ok", "burned")
 
@@ -112,7 +112,7 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
         recipe = draw_recipe(rng, bucket, rendered)
         sample = build(recipe)
         rendered += 1
-        band = label_sample(sample, (H_OBS, sample.w_flat), tau)
+        band = label_sample(sample, (sample.h_flat, sample.w_flat), tau)
         seen[band] += 1
         labelled.append((recipe, band, sample.sat_ratio, sample.m_min))
         if band == "target":
@@ -141,7 +141,7 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bucket", required=True, choices=sorted(BUCKETS))
+    ap.add_argument("--bucket", required=True, choices=sorted(ALL_BUCKETS))
     ap.add_argument("--n", type=int, required=True, help="렌더 상한")
     ap.add_argument("--per-band", default="5000/3500/1500",
                     help="target/hard/first_ok")
