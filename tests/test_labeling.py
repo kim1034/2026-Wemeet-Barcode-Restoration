@@ -14,6 +14,7 @@ from scripts.label_recipes import (
     fill_bucket,
     label_sample,
     rectify,
+    split_counts,
     tps_flow,
 )
 from wemeet.data.synthesis import ALL_BUCKETS, Sample, build, draw_recipe
@@ -213,3 +214,38 @@ def test_bake_writes_manifest_with_ground_truth(tmp_path):
     assert row["band"] == "target"
     assert (tmp_path / row["file"]).exists()
     assert (tmp_path / row["npz"]).exists()
+
+
+def test_split_counts_distributes_remainder_to_front():
+    assert split_counts(10, 3) == [4, 3, 3]
+    assert split_counts(9, 3) == [3, 3, 3]
+    assert sum(split_counts(5000, 7)) == 5000
+    assert max(split_counts(5000, 7)) - min(split_counts(5000, 7)) <= 1
+
+
+def _seeds(bucket, shard, shards, seed=5, cap=24):
+    _, stats = fill_bucket(bucket, {"target": 10**9}, cap, seed, 0.08,
+                           shard=shard, shards=shards)
+    return [r.seed for r, _, _, _ in stats["labelled"]]
+
+
+def test_shard_is_reproducible():
+    assert _seeds("L", 0, 3) == _seeds("L", 0, 3)
+
+
+def test_shards_are_independent():
+    assert _seeds("L", 0, 3) != _seeds("L", 1, 3)
+
+
+def test_shards_together_render_the_whole_cap():
+    total = sum(len(_seeds("L", i, 3, cap=24)) for i in range(3))
+    assert total == 24
+
+
+def test_shard_rng_matches_documented_scheme():
+    """default_rng([seed, shard]) 가 독립이면서 재현되는지 (설계 §5)."""
+    a = np.random.default_rng([42, 0]).random(3)
+    b = np.random.default_rng([42, 1]).random(3)
+    c = np.random.default_rng([42, 0]).random(3)
+    assert not np.allclose(a, b)
+    assert np.allclose(a, c)

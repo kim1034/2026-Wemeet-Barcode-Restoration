@@ -120,23 +120,37 @@ def bake(kept, out_dir) -> int:
     return n
 
 
+def split_counts(total: int, shards: int) -> list[int]:
+    """샤드별 몫. 나머지는 앞쪽 샤드에 하나씩 더 준다."""
+    base, rem = divmod(total, shards)
+    return [base + (1 if i < rem else 0) for i in range(shards)]
+
+
 def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
-                tau: float):
+                tau: float, shard: int = 0, shards: int = 1):
     """버킷 하나를 비중대로 채운다. 모자라면 메우지 않고 부족분으로 남긴다.
 
+    render_cap 과 per_band 는 '전체' 값이고 여기서 샤드 몫으로 쪼갠다. 샤드마다
+    독립 난수 스트림(default_rng([seed, shard]))을 쓰고, 레시피 인덱스는 앞선
+    샤드들의 몫만큼 밀어 겹치지 않게 한다.
+
     레시피는 기록의 원본이다 — burned 나 쿼터를 넘긴 first_ok 도 버리지 않고
-    stats["labelled"] 에 전부 남긴다. "버림" 은 학습 로더의 일이지 여기서 할
-    일이 아니다. kept (쿼터만큼만) 는 --bake 용 큐레이션 목록으로 그대로 둔다.
+    stats["labelled"] 에 전부 남긴다. "버림" 은 학습 로더의 일이다.
     """
-    rng = np.random.default_rng(seed)
+    caps = split_counts(render_cap, shards)
+    my_cap = caps[shard]
+    index_offset = sum(caps[:shard])
+    my_band = {b: split_counts(n, shards)[shard] for b, n in per_band.items()}
+
+    rng = np.random.default_rng([seed, shard])
     kept, kept_count, seen = [], Counter(), Counter()
     labelled = []
     rendered = 0
     sat_of_target = []
 
-    while rendered < render_cap and any(
-            kept_count[b] < per_band.get(b, 0) for b in per_band):
-        recipe = draw_recipe(rng, bucket, rendered)
+    while rendered < my_cap and any(
+            kept_count[b] < my_band.get(b, 0) for b in my_band):
+        recipe = draw_recipe(rng, bucket, index_offset + rendered)
         sample = build(recipe)
         rendered += 1
         band = label_sample(sample, (sample.h_flat, sample.w_flat), tau)
@@ -146,21 +160,28 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
             sat_of_target.append(sample.sat_ratio)
         if band == "burned":
             continue
-        if kept_count[band] < per_band.get(band, 0):
+        if kept_count[band] < my_band.get(band, 0):
             kept_count[band] += 1
             kept.append((recipe, band, sample.sat_ratio, sample.m_min))
 
     stats = {
         "bucket": bucket,
+        "shard": shard,
+        "shards": shards,
         "code": code_commit(),
         "rendered": rendered,
-        "hit_cap": rendered >= render_cap,
+        "hit_cap": rendered >= my_cap,
         "seen": dict(seen),
         "kept": dict(kept_count),
-        "shortfall": {b: per_band[b] - kept_count[b] for b in per_band
-                      if kept_count[b] < per_band[b]},
+        "shortfall": {b: my_band[b] - kept_count[b] for b in my_band
+                      if kept_count[b] < my_band[b]},
         "tau_suggestion": (float(np.percentile(sat_of_target, 95))
                            if sat_of_target else None),
+        # 목표 구간의 원자료만 남긴다. 드라이버가 샤드를 합쳐 한 번에 백분위수를
+        # 내야 맞다 -- 샤드별 백분위수를 평균내면 틀린다 (설계 §5).
+        "target_sats": sat_of_target,
+        "target_presets": dict(Counter(r.preset for r, b, _, _ in labelled
+                                       if b == "target")),
         "labelled": labelled,
     }
     return kept, stats
@@ -177,12 +198,15 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--bake", default=None,
                     help="평가 세트용. 이 디렉터리에 이미지를 굽는다")
+    ap.add_argument("--shard", default="0/1",
+                    help="i/N. 샤드 i 만 돈다. --n 과 --per-band 는 전체 값이다")
     args = ap.parse_args()
 
     t, h, f = (int(v) for v in args.per_band.split("/"))
+    shard, shards = (int(v) for v in args.shard.split("/"))
     kept, stats = fill_bucket(args.bucket, {"target": t, "hard": h,
                                             "first_ok": f},
-                              args.n, args.seed, args.tau)
+                              args.n, args.seed, args.tau, shard, shards)
     # 레시피는 기록의 원본이다: burned 와 쿼터를 넘긴 first_ok 도 포함해
     # 렌더된 전부를 쓴다. "버림" 은 학습 로더의 일이다 (설계 총칙).
     labelled = stats.pop("labelled")
