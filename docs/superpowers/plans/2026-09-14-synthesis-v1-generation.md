@@ -104,8 +104,19 @@ wemeet/data/ 는 wemeet.sw.rectify 를 import 하지 않는다
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
-`tests/test_render.py` 의 기존 테스트 6개에서 `render_clean(...)` 호출에 `height_px=200` 을
-명시적으로 넘기도록 고치고(기본값이 사라지므로), 아래 넷을 파일 끝에 추가한다.
+`height_px` 의 기본값이 사라지므로 `tests/test_render.py` 의 기존 호출을 먼저 고친다.
+**220 을 이 파일에서 완전히 없앤다** — 테스트에 남겨두면 다시 정당한 값처럼 보인다.
+
+| 기존 테스트 | 고칠 것 |
+|---|---|
+| `test_render_clean_shape_and_dtype` | `height_px=220` → `height_px=200`, `assert img.shape[0] == 220` → `== 200` |
+| `test_base_module_width_exact` | `height_px=200` 추가 |
+| `test_effective_module_width_fractional` | 두 `render_clean` 호출에 `height_px=200` 추가 |
+| `test_module_px_1_0_does_not_crash` | `height_px=200` 추가, `assert img.shape[0] == 220` → `== 200` |
+| `test_module_px_1_2_does_not_crash` | `height_px=200` 추가, `assert img.shape[0] == 220` → `== 200` |
+| `test_module_width_scales` | 두 호출에 `height_px=200` 추가 |
+
+그다음 아래 넷을 파일 끝에 추가한다.
 
 ```python
 from wemeet.data.render import module_count, render_clean
@@ -118,10 +129,20 @@ def test_render_clean_has_no_white_padding():
     assert img[-1].min() < 128, "끝 행이 전부 흰색이다 — 여백이 남아 있다"
 
 
-def test_render_clean_rows_are_identical():
-    """여백이 없으면 모든 행이 같다. 세로 리사이즈가 무해해진다."""
-    img = render_clean("WEMEET0001", module_px=4.0, height_px=460)
-    assert (img == img[0]).all()
+def test_vertical_resize_does_not_change_columns():
+    """세로 크기를 바꿔도 가로 내용이 그대로다 — 여백이 빠졌다는 증거.
+
+    여백이 있으면 리사이즈가 흰 행과 막대 행을 섞는 비율을 바꿔 열 프로파일이
+    통째로 흔들린다 (실측 최대 172 계조). 제거 후에는 0.64 계조다.
+
+    "모든 행이 정확히 같은가" 로 재면 안 된다 — cv2.resize 의 반올림 때문에
+    크기에 따라 1 계조짜리 행이 두 종류 나오고, 그건 이 수정과 무관하다.
+    """
+    for module_px in (1.6, 2.0, 4.0, 6.0):
+        short = render_clean("WEMEET0001", module_px, height_px=150)
+        tall = render_clean("WEMEET0001", module_px, height_px=460)
+        drift = float(np.abs(short.mean(axis=0) - tall.mean(axis=0)).max())
+        assert drift < 2.0, f"module_px={module_px}: {drift:.2f} 계조"
 
 
 def test_module_count_matches_rendered_width():
@@ -201,9 +222,16 @@ def render_clean(text: str, module_px: float, height_px: int) -> np.ndarray:
     rows = np.where(arr.min(axis=1) < 128)[0]
     arr = arr[rows.min():rows.max() + 1]
 
-    target_width = int(round(module_count(text) * module_px))
+    # 모듈 개수는 '렌더된 폭' 에서 낸다. module_count() 를 다시 부르면 위의
+    # test_module_count_matches_rendered_width 가 동어반복이 된다 -- 그 테스트의
+    # 값어치는 인코더 경로와 라이터 경로가 독립으로 같은 답을 낸다는 데 있다.
+    M = arr.shape[1] / _BASE_MODULE_PX
+    target_width = int(round(M * module_px))
     return cv2.resize(arr, (target_width, height_px), interpolation=cv2.INTER_AREA)
 ```
+
+> `build()` 인코더는 1회 0.014 ms 로 ImageWriter 렌더(2.30 ms)의 **0.6%** 다 — 비용 때문에
+> 이렇게 하는 것이 아니라 **테스트를 살리려고** 이렇게 한다.
 
 - [ ] **Step 4: 통과를 확인한다**
 
@@ -290,19 +318,21 @@ def test_crease_transition_is_relative_to_width():
     """
     r = Recipe(
         seed=1, bucket="L", text="WEMEET0000", d_m0=2.0, d_t=1.5, aspect=2.15,
-        preset="crease", cyl_share=0.0, psi=0.0, w_c_f=0.02, lam_f=1.0,
+        preset="crease", cyl_share=0.0, psi=0.0, w_c_f=0.029, lam_f=1.0,
         phase=0.0, offset=0.0, light=(0.0, 0.0, 1.0), ks=0.0, p=100.0,
         sigma=0.0, noise=0.0, jpeg=90, rot_deg=0.0, margin=(0.0, 0.0, 0.0, 0.0),
     )
     make = _make_grad(r, s_t=1.0)
     fractions = []
-    for w in (300, 900):
+    for w in (600, 1800):
         zx, _ = make(w, 150)
         row = zx[75]
         peak = float(np.abs(row).max())
         inside = np.where(np.abs(row) < 0.8 * peak)[0]
         fractions.append((inside.max() - inside.min() + 1) / w)
     assert fractions[0] == pytest.approx(fractions[1], rel=0.05), fractions
+    # 분석해: 2*atanh(0.8)*w_c_f = 0.0637
+    assert fractions[0] == pytest.approx(2 * np.arctanh(0.8) * r.w_c_f, rel=0.05)
 
 
 def test_text_wraps_at_10000():
@@ -602,7 +632,9 @@ git commit -m "[합성] 평가 버킷과 굽기 메타데이터 — 정답 번�
 - Produces:
   - `split_counts(total: int, shards: int) -> list[int]`
   - `fill_bucket(bucket, per_band, render_cap, seed, tau, shard=0, shards=1)`
-    — `render_cap` 과 `per_band` 는 **전체 값**이고 내부에서 쪼갠다
+    — `render_cap` 과 `per_band` 는 **전체 값**이고 내부에서 쪼갠다.
+    `stats` 에 `target_sats: list[float]` 와 `target_presets: dict[str, int]` 를 담는다
+    (드라이버가 샤드를 합쳐 백분위수를 한 번에 내야 하므로 원자료를 준다)
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -709,8 +741,11 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
         "kept": dict(kept_count),
         "shortfall": {b: my_band[b] - kept_count[b] for b in my_band
                       if kept_count[b] < my_band[b]},
-        "tau_suggestion": (float(np.percentile(sat_of_target, 95))
-                           if sat_of_target else None),
+        # 목표 구간의 원자료만 남긴다. 드라이버가 샤드를 합쳐 한 번에 백분위수를
+        # 내야 맞다 -- 샤드별 백분위수를 평균내면 틀린다 (설계 §5).
+        "target_sats": sat_of_target,
+        "target_presets": dict(Counter(r.preset for r, b, _, _ in labelled
+                                       if b == "target")),
         "labelled": labelled,
     }
     return kept, stats
@@ -753,8 +788,10 @@ git commit -m "[합성] --shard i/N — 샤드마다 독립 난수와 겹치지 
 - Consumes: Task 4 의 `fill_bucket`, `split_counts`; Task 3 의 `bake`
 - Produces:
   - `SHARDS = {"L": 2, "M": 6, "H": 7}`
-  - `merge_stats(parts: list[dict]) -> dict`
-  - `tau_from(labelled) -> float | None`
+  - `merge_stats(parts: list[dict]) -> dict` — `target_sats` 를 모으고 `hit_cap` 을 샤드별로 남긴다
+  - `tau_from_sats(sats: list[float]) -> float | None`
+  - `preset_mix(counts: dict) -> dict`
+  - `_stats_path(out: str) -> str` — 항상 `data/stats/<이름>.stats.json`
   - CLI: `uv run python -m scripts.generate_v1 --bucket L --n 214000 --per-band 5000/3500/1500 --out data/recipes/train.L.jsonl`
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
@@ -764,13 +801,13 @@ git commit -m "[합성] --shard i/N — 샤드마다 독립 난수와 겹치지 
 ```python
 import pytest
 
-from scripts.generate_v1 import SHARDS, merge_stats, tau_from
+from scripts.generate_v1 import SHARDS, merge_stats, preset_mix, tau_from_sats
 
 
 def _part(shard, rendered, seen, kept, shortfall, hit):
     return {"bucket": "L", "shard": shard, "shards": 3, "rendered": rendered,
             "hit_cap": hit, "seen": seen, "kept": kept, "shortfall": shortfall,
-            "tau_suggestion": 0.5}
+            "target_sats": [], "target_presets": {}}
 
 
 def test_merge_sums_counters():
@@ -793,17 +830,29 @@ def test_merge_keeps_hit_cap_per_shard():
     assert merged["hit_cap"] == [False, True]
 
 
-def test_merge_drops_per_shard_tau():
-    """샤드별 백분위수를 평균내면 틀린다. 병합 tau 는 원자료에서 다시 계산한다."""
-    merged = merge_stats([_part(0, 1, {}, {}, {}, False)])
+def test_merge_pools_target_sats_instead_of_averaging_percentiles():
+    """샤드별 백분위수를 평균내면 틀린다. 원자료를 모아 한 번에 낸다 (설계 §5)."""
+    a = _part(0, 1, {}, {}, {}, False) | {"target_sats": [0.10, 0.20]}
+    b = _part(1, 1, {}, {}, {}, False) | {"target_sats": [0.90]}
+    merged = merge_stats([a, b])
+    assert sorted(merged["target_sats"]) == [0.10, 0.20, 0.90]
     assert "tau_suggestion" not in merged
 
 
-def test_tau_uses_only_target_band():
-    labelled = [(None, "target", 0.10, 1.0), (None, "target", 0.90, 1.0),
-                (None, "burned", 0.99, 1.0), (None, "first_ok", 0.01, 1.0)]
-    assert tau_from(labelled) == pytest.approx(0.86, abs=0.01)
-    assert tau_from([(None, "first_ok", 0.01, 1.0)]) is None
+def test_merge_sums_target_presets():
+    a = _part(0, 1, {}, {}, {}, False) | {"target_presets": {"crease": 2}}
+    b = _part(1, 1, {}, {}, {}, False) | {"target_presets": {"crease": 1, "sine": 1}}
+    assert merge_stats([a, b])["target_presets"] == {"crease": 3, "sine": 1}
+
+
+def test_tau_is_95th_percentile():
+    assert tau_from_sats([0.10, 0.90]) == pytest.approx(0.86, abs=0.01)
+    assert tau_from_sats([]) is None
+
+
+def test_preset_mix_normalizes():
+    assert preset_mix({"crease": 3, "sine": 1}) == {"crease": 0.75, "sine": 0.25}
+    assert preset_mix({}) == {}
 
 
 def test_shard_allocation_is_fifteen():
@@ -828,11 +877,14 @@ Expected: FAIL — `ModuleNotFoundError: No module named 'scripts.generate_v1'`
 import argparse
 import json
 import os
+import shutil
+import subprocess
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 
 from scripts.label_recipes import bake, fill_bucket
+from wemeet.data.synthesis import ALL_BUCKETS, recipe_to_dict
 
 # 설계 §4 의 프로토타입 시간(L 1.09h / M 3.35h / H 3.89h)에 비례해 나눴다.
 # 샤드당 0.54~0.56h 로 고르다. 16번째 코어는 OS 몫이다.
@@ -841,10 +893,12 @@ EVAL_SHARDS = 5
 
 
 def merge_stats(parts: list[dict]) -> dict:
-    """샤드별 stats 를 합친다. tau 는 여기서 내지 않는다 -- 원자료에서 다시 계산한다."""
+    """샤드별 stats 를 합친다. tau 는 여기서 내지 않는다 -- 원자료를 모아 준다."""
     seen: dict[str, int] = {}
     kept: dict[str, int] = {}
     short: dict[str, int] = {}
+    presets: dict[str, int] = {}
+    sats: list[float] = []
     for p in parts:
         for k, v in p["seen"].items():
             seen[k] = seen.get(k, 0) + v
@@ -852,67 +906,88 @@ def merge_stats(parts: list[dict]) -> dict:
             kept[k] = kept.get(k, 0) + v
         for k, v in p["shortfall"].items():
             short[k] = short.get(k, 0) + v
+        for k, v in p["target_presets"].items():
+            presets[k] = presets.get(k, 0) + v
+        sats.extend(p["target_sats"])
     return {
         "bucket": parts[0]["bucket"],
         "shards": len(parts),
         "rendered": sum(p["rendered"] for p in parts),
+        # 샤드별로 남긴다 -- 부족분이 분포 탓인지 쪼갠 탓인지 갈려야 한다 (설계 §5).
         "hit_cap": [p["hit_cap"] for p in parts],
         "seen": seen,
         "kept": kept,
         "shortfall": short,
+        "target_presets": presets,
+        "target_sats": sats,
     }
 
 
-def tau_from(labelled) -> float | None:
+def tau_from_sats(sats: list[float]) -> float | None:
     """목표 구간 포화율의 95 백분위수. 목표는 복구가 증명된 샘플이다 (설계 §7)."""
-    sats = [sat for _, band, sat, _ in labelled if band == "target"]
     return float(np.percentile(sats, 95)) if sats else None
 
 
-def preset_mix(labelled) -> dict:
-    """목표 구간에서 실현된 preset 비율. 30/30/30/10 에서 벗어난다 -- 보고만 한다."""
-    counts: dict[str, int] = {}
-    total = 0
-    for recipe, band, _, _ in labelled:
-        if band != "target":
-            continue
-        counts[recipe.preset] = counts.get(recipe.preset, 0) + 1
-        total += 1
+def preset_mix(counts: dict) -> dict:
+    """실현된 preset 비율. 30/30/30/10 에서 벗어난다 -- 보고만 한다 (설계 §7)."""
+    total = sum(counts.values())
     return {k: v / total for k, v in counts.items()} if total else {}
 
 
 def _worker(args):
-    bucket, per_band, cap, seed, tau, shard, shards = args
-    return fill_bucket(bucket, per_band, cap, seed, tau, shard, shards)
+    """샤드 하나를 돌리고 레시피를 '자기 파일에' 쓴다.
 
-
-def generate(bucket, per_band, cap, seed, tau, shards, out, bake_dir=None):
-    jobs = [(bucket, per_band, cap, seed, tau, i, shards) for i in range(shards)]
-    with ProcessPoolExecutor(max_workers=shards) as ex:
-        results = list(ex.map(_worker, jobs))
-
-    kept = [row for k, _ in results for row in k]
-    labelled = [row for _, s in results for row in s["labelled"]]
-    stats = merge_stats([{k: v for k, v in s.items() if k != "labelled"}
-                         for _, s in results])
-    stats["tau_suggestion"] = tau_from(labelled)
-    stats["preset_mix_realized"] = preset_mix(labelled)
-    stats["code_commit"] = os.popen("git rev-parse HEAD").read().strip()
-
-    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
-    from wemeet.data.synthesis import recipe_to_dict
-    with open(out, "w", encoding="utf-8") as fh:
-        fh.write(json.dumps({"_stats": stats}, ensure_ascii=False) + "\n")
-        for recipe, band, sat, m_min in labelled:
+    레시피를 부모로 돌려보내지 않는 이유는 메모리다 -- 상한까지 가면 58.5만 행이고
+    행당 약 1KB 라 부모가 600MB 를 들고 있게 된다. 덤으로, 중간에 죽어도 끝난
+    샤드의 결과가 파일로 남는다.
+    """
+    bucket, per_band, cap, seed, tau, shard, shards, out = args
+    kept, stats = fill_bucket(bucket, per_band, cap, seed, tau, shard, shards)
+    path = f"{out}.shard{shard}"
+    with open(path, "w", encoding="utf-8") as fh:
+        for recipe, band, sat, m_min in stats.pop("labelled"):
             row = recipe_to_dict(recipe)
             row.update(band=band, sat_ratio=sat, m_min=m_min)
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return kept, stats, path
+
+
+def _stats_path(out: str) -> str:
+    """통계는 항상 data/stats/ 에 둔다 -- git 에 들어가는 유일한 생성물이다."""
+    name = os.path.basename(out)
+    if name.endswith(".jsonl"):
+        name = name[:-len(".jsonl")]
+    return os.path.join("data", "stats", name + ".stats.json")
+
+
+def generate(bucket, per_band, cap, seed, tau, shards, out, bake_dir=None):
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    jobs = [(bucket, per_band, cap, seed, tau, i, shards, out)
+            for i in range(shards)]
+    with ProcessPoolExecutor(max_workers=shards) as ex:
+        results = list(ex.map(_worker, jobs))
+
+    kept = [row for k, _, _ in results for row in k]
+    stats = merge_stats([s for _, s, _ in results])
+    stats["tau_suggestion"] = tau_from_sats(stats.pop("target_sats"))
+    stats["preset_mix_realized"] = preset_mix(stats["target_presets"])
+    stats["code_commit"] = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+    ).stdout.strip()
+
+    # 샤드 파일을 그대로 이어붙인다. JSON 을 다시 파싱하지 않는다.
+    with open(out, "w", encoding="utf-8") as dst:
+        dst.write(json.dumps({"_stats": stats}, ensure_ascii=False) + "\n")
+        for _, _, path in results:
+            with open(path, encoding="utf-8") as src:
+                shutil.copyfileobj(src, dst)
+            os.remove(path)
 
     if bake_dir:
         stats["baked"] = bake(kept, bake_dir)
 
-    stats_path = out.replace("/recipes/", "/stats/").replace(".jsonl", ".stats.json")
-    os.makedirs(os.path.dirname(stats_path) or ".", exist_ok=True)
+    stats_path = _stats_path(out)
+    os.makedirs(os.path.dirname(stats_path), exist_ok=True)
     with open(stats_path, "w", encoding="utf-8") as fh:
         json.dump(stats, fh, ensure_ascii=False, indent=2)
     print(json.dumps(stats, ensure_ascii=False, indent=2))
@@ -920,7 +995,6 @@ def generate(bucket, per_band, cap, seed, tau, shards, out, bake_dir=None):
 
 
 def main() -> None:
-    from wemeet.data.synthesis import ALL_BUCKETS
     ap = argparse.ArgumentParser()
     ap.add_argument("--bucket", required=True, choices=sorted(ALL_BUCKETS))
     ap.add_argument("--n", type=int, required=True, help="전체 렌더 상한")
@@ -958,7 +1032,8 @@ Expected: 6 passed
 스모크로 한 번 돌려 본다 (작게).
 
 Run: `uv run python -m scripts.generate_v1 --bucket low --n 200 --per-band 2/0/0 --shards 2 --out data/pilot2/smoke.jsonl`
-Expected: `_stats` 가 찍히고 `data/stats/smoke.stats.json` 이 생긴다
+Expected: `_stats` 가 찍히고 `data/stats/smoke.stats.json` 이 생긴다.
+`data/pilot2/smoke.jsonl.shard0`·`.shard1` 은 이어붙인 뒤 지워졌어야 한다
 
 - [ ] **Step 5: 커밋**
 
@@ -1345,8 +1420,15 @@ MIT. 모든 이미지는 합성이며 실촬영·개인정보를 포함하지 �
 
 - [ ] **Step 3: 저장소를 만들고 올린다**
 
+`hf repo create` 의 확인 프롬프트 플래그는 버전마다 다르다. API 를 쓰면 비대화형이고
+이미 있어도 안전하다.
+
 ```bash
-uv run hf repo create 123metro/barcode-datasets --repo-type dataset -y
+uv run python -c "
+from huggingface_hub import HfApi
+HfApi().create_repo('123metro/barcode-datasets', repo_type='dataset', exist_ok=True)
+print('repo ready')
+"
 
 gzip -kf data/recipes/train.L.jsonl data/recipes/train.M.jsonl data/recipes/train.H.jsonl
 
