@@ -115,8 +115,11 @@ def test_fill_bucket_shortfall_is_never_papered_over_by_relabeling():
     자기 밴드로 라벨링됐는지 다시 계산해 맞춰보고, 진짜 부족분은 숫자를
     맞추지 않고 shortfall 에 정직하게 남는지를 함께 확인한다.
 
-    seed=1 은 실측으로 target·hard 를 하나도 채우지 못하는 진짜 부족분을
-    만든다 (first_ok 만 27개 나온다) -- kept 총합(1)이 쿼터 합(3)에 못 미친다.
+    seed=1 은 실측으로 30장 안에 쿼터를 다 못 채우는 진짜 부족분을 만든다.
+    **어느 밴드가 모자라는지는 하드코딩하지 않는다** -- 그것은 제어점 개수에
+    딸린 값이고(N_X 를 6 에서 16 으로 올리자 seed=1 에서 target 이 실제로
+    나오기 시작했다), 이 테스트가 지키려는 것은 "부족분을 정직하게 남기는가"
+    이지 특정 시드의 밴드 구성이 아니다.
     """
     quota = {"target": 1, "hard": 1, "first_ok": 1}
     kept, stats = fill_bucket("L", quota, render_cap=30, seed=1, tau=0.04)
@@ -126,7 +129,11 @@ def test_fill_bucket_shortfall_is_never_papered_over_by_relabeling():
         assert label_sample(sample, (H_OBS, sample.w_flat), 0.04) == band
 
     assert len(kept) < sum(quota.values())
-    assert stats["shortfall"] == {"target": 1, "hard": 1}
+    assert stats["shortfall"], "진짜 부족분이 있어야 이 테스트가 의미를 갖는다"
+    # 부족분이 숫자를 맞추려고 재분류되지 않았는가: 밴드마다 채운 것 + 부족분 = 쿼터
+    for band, missing in stats["shortfall"].items():
+        assert stats["kept"].get(band, 0) + missing == quota[band]
+    assert len(kept) + sum(stats["shortfall"].values()) == sum(quota.values())
 
 
 def test_fill_bucket_records_every_recipe_including_burned_and_surplus():

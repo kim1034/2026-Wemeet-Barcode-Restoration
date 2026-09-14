@@ -75,8 +75,8 @@ def test_build_honours_the_contract_ranges():
     rng = np.random.default_rng(5)
     for i in range(8):
         s = build(draw_recipe(rng, "L", i))
-        assert s.dst_norm.shape == (18, 2)
-        assert s.src_norm.shape == (18, 2)
+        assert s.dst_norm.shape == (N_X * N_Y, 2)
+        assert s.src_norm.shape == (N_X * N_Y, 2)
         assert s.dst_norm.min() >= 0.0 and s.dst_norm.max() <= 1.0
         assert s.src_norm.min() >= -0.5 and s.src_norm.max() <= 1.5
 
