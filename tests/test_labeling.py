@@ -3,6 +3,7 @@ import subprocess
 from collections import Counter
 
 import numpy as np
+import pytest
 
 from scripts.label_recipes import (
     BANDS,
@@ -41,18 +42,21 @@ def test_wrong_tps_kernel_fails_to_decode_a_known_target_sample():
     실측: mutant 커널로도 4-corner 항등 오차 ~4e-15, 내부점 9개를 써도 동일),
     커널 오류는 제어점 "사이" 에서만 드러난다.
 
-    그래서 독립된 TPS 기준 없이, 1차 디코딩은 실패하지만 보정 후에는
-    성공하는 실제 target 표본이 보정 후에도 계속 디코딩되는지로 커널을
-    간접 검증한다. seed=5 로 뽑은 네 번째 레시피가 그런 표본임을 실측으로
-    확인했다 (decode(obs) 는 None, decode(rectify(...)) 는 성공).
+    특정 시드가 목표 표본을 준다고 박아두지 않는다 -- 분포가 조금만 움직여도
+    (aspect 축 추가, N_X 변경, tau 재측정) 그 가정이 무효가 된다. 대신 목표
+    구간 표본을 탐색한다. 커널이 틀리면 어떤 표본도 보정 후 디코딩되지 않으므로
+    탐색이 예산을 다 쓰고 실패한다 -- 판별력은 오히려 올라간다.
     """
     rng = np.random.default_rng(5)
-    for i in range(4):
-        recipe = draw_recipe(rng, "L", i)
-    sample = build(recipe)
-    assert decode(sample.obs) is None
-    fixed = rectify(sample.obs, sample.dst_norm, sample.src_norm, (sample.h_flat, sample.w_flat))
-    assert decode(fixed) is not None
+    for i in range(200):
+        sample = build(draw_recipe(rng, "L", i))
+        if decode(sample.obs) is not None:
+            continue                      # 1차 성공 -- 목표 구간이 아니다
+        fixed = rectify(sample.obs, sample.dst_norm, sample.src_norm,
+                        (sample.h_flat, sample.w_flat))
+        if decode(fixed) is not None:
+            return                        # 목표 표본을 찾았고 커널이 그것을 폈다
+    pytest.fail("200 렌더 안에 목표 구간 표본이 없다 -- TPS 커널을 의심하라")
 
 
 def test_bands_are_exactly_the_four_in_the_spec():
@@ -121,7 +125,10 @@ def test_fill_bucket_shortfall_is_never_papered_over_by_relabeling():
     나오기 시작했다), 이 테스트가 지키려는 것은 "부족분을 정직하게 남기는가"
     이지 특정 시드의 밴드 구성이 아니다.
     """
-    quota = {"target": 1, "hard": 1, "first_ok": 1}
+    # 30 렌더로 120장을 채울 수 없다 -- 부족분이 시드가 아니라 산술로 보장된다.
+    # 예전에는 seed=1/cap=30 이 "실측으로" 부족분을 만든다는 데 기댔는데,
+    # 그 가정은 분포가 움직일 때마다 무효가 된다.
+    quota = {"target": 40, "hard": 40, "first_ok": 40}
     kept, stats = fill_bucket("L", quota, render_cap=30, seed=1, tau=0.04)
 
     for recipe, band, sat, m_min in kept:
