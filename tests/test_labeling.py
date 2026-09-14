@@ -1,8 +1,18 @@
+import pathlib
+import subprocess
 from collections import Counter
 
 import numpy as np
 
-from scripts.label_recipes import BANDS, decode, fill_bucket, label_sample, rectify, tps_flow
+from scripts.label_recipes import (
+    BANDS,
+    code_commit,
+    decode,
+    fill_bucket,
+    label_sample,
+    rectify,
+    tps_flow,
+)
 from wemeet.data.synthesis import H_OBS, Sample, build, draw_recipe
 
 
@@ -105,8 +115,11 @@ def test_fill_bucket_shortfall_is_never_papered_over_by_relabeling():
     자기 밴드로 라벨링됐는지 다시 계산해 맞춰보고, 진짜 부족분은 숫자를
     맞추지 않고 shortfall 에 정직하게 남는지를 함께 확인한다.
 
-    seed=1 은 실측으로 target·hard 를 하나도 채우지 못하는 진짜 부족분을
-    만든다 (first_ok 만 27개 나온다) -- kept 총합(1)이 쿼터 합(3)에 못 미친다.
+    seed=1 은 실측으로 30장 안에 쿼터를 다 못 채우는 진짜 부족분을 만든다.
+    **어느 밴드가 모자라는지는 하드코딩하지 않는다** -- 그것은 제어점 개수에
+    딸린 값이고(N_X 를 6 에서 16 으로 올리자 seed=1 에서 target 이 실제로
+    나오기 시작했다), 이 테스트가 지키려는 것은 "부족분을 정직하게 남기는가"
+    이지 특정 시드의 밴드 구성이 아니다.
     """
     quota = {"target": 1, "hard": 1, "first_ok": 1}
     kept, stats = fill_bucket("L", quota, render_cap=30, seed=1, tau=0.04)
@@ -116,7 +129,11 @@ def test_fill_bucket_shortfall_is_never_papered_over_by_relabeling():
         assert label_sample(sample, (H_OBS, sample.w_flat), 0.04) == band
 
     assert len(kept) < sum(quota.values())
-    assert stats["shortfall"] == {"target": 1, "hard": 1}
+    assert stats["shortfall"], "진짜 부족분이 있어야 이 테스트가 의미를 갖는다"
+    # 부족분이 숫자를 맞추려고 재분류되지 않았는가: 밴드마다 채운 것 + 부족분 = 쿼터
+    for band, missing in stats["shortfall"].items():
+        assert stats["kept"].get(band, 0) + missing == quota[band]
+    assert len(kept) + sum(stats["shortfall"].values()) == sum(quota.values())
 
 
 def test_fill_bucket_records_every_recipe_including_burned_and_surplus():
@@ -134,3 +151,35 @@ def test_fill_bucket_records_every_recipe_including_burned_and_surplus():
     assert dict(labelled_seen) == stats["seen"]
     assert labelled_seen["burned"] > 0
     assert labelled_seen["first_ok"] > stats["kept"].get("first_ok", 0)
+
+
+def test_recipe_header_records_the_code_commit_that_rendered_it():
+    """설계 §1: "레시피 헤더에 코드 커밋 해시를 기록한다 -- 코드가 바뀌면 같은
+    레시피도 다른 이미지가 된다." 레시피는 이미지가 아니라 재생성 지시서라서,
+    같은 JSONL 이 코드 버전에 따라 다른 데이터셋이 된다. 그 사실이 헤더에
+    없으면 나중에 성능 차이가 데이터 탓인지 코드 탓인지 가릴 수가 없다.
+
+    키 존재만 보면 상수 문자열을 박아 놔도 통과하므로, 실제 HEAD 와 맞는지를
+    독립적으로(subprocess 로 다시 물어봐서) 대조한다.
+    """
+    head = subprocess.run(("git", "rev-parse", "HEAD"), capture_output=True,
+                          text=True, check=True).stdout.strip()
+    _, stats = fill_bucket("L", {"first_ok": 1}, render_cap=1, seed=3, tau=0.08)
+    assert stats["code"]["commit"] == head
+    assert isinstance(stats["code"]["dirty"], bool)
+
+
+def test_code_commit_reports_dirty_instead_of_hiding_it():
+    """dirty 인 트리에서는 커밋 해시만으로 이미지를 재현할 수 없다. 그래도
+    라벨링을 막지 않고 사실만 남기는 것이 설계 의도다 -- 그러니 dirty 가
+    항상 False 로 굳어 있으면(= 사실상 기록이 없으면) 안 된다.
+
+    이 테스트 파일 자체가 워킹 트리에 있는 동안에는 판정할 수 없으므로,
+    임시 파일을 만들어 dirty 가 실제로 True 로 뒤집히는지를 본다.
+    """
+    scratch = pathlib.Path("__dirty_probe__.tmp")
+    scratch.write_text("probe", encoding="utf-8")
+    try:
+        assert code_commit()["dirty"] is True
+    finally:
+        scratch.unlink()

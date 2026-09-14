@@ -1,0 +1,84 @@
+{
+  "seed": 2026,
+  "n_per_cell": 300,
+  "buckets": {
+    "L": {
+      "513": {
+        "first_ok": 245,
+        "g_remap_ok": 24,
+        "n": 300,
+        "mean_crop_w": 336.57
+      },
+      "1025": {
+        "first_ok": 245,
+        "g_remap_ok": 21,
+        "n": 300,
+        "mean_crop_w": 336.57
+      },
+      "2049": {
+        "first_ok": 245,
+        "g_remap_ok": 22,
+        "n": 300,
+        "mean_crop_w": 336.57
+      },
+      "4097": {
+        "first_ok": 245,
+        "g_remap_ok": 22,
+        "n": 300,
+        "mean_crop_w": 336.57
+      }
+    },
+    "M": {
+      "513": {
+        "first_ok": 255,
+        "g_remap_ok": 16,
+        "n": 300,
+        "mean_crop_w": 463.3466666666667
+      },
+      "1025": {
+        "first_ok": 255,
+        "g_remap_ok": 18,
+        "n": 300,
+        "mean_crop_w": 463.3466666666667
+      },
+      "2049": {
+        "first_ok": 255,
+        "g_remap_ok": 18,
+        "n": 300,
+        "mean_crop_w": 463.3466666666667
+      },
+      "4097": {
+        "first_ok": 255,
+        "g_remap_ok": 18,
+        "n": 300,
+        "mean_crop_w": 463.3466666666667
+      }
+    },
+    "H": {
+      "513": {
+        "first_ok": 172,
+        "g_remap_ok": 46,
+        "n": 300,
+        "mean_crop_w": 593.0366666666666
+      },
+      "1025": {
+        "first_ok": 172,
+        "g_remap_ok": 44,
+        "n": 300,
+        "mean_crop_w": 593.0366666666666
+      },
+      "2049": {
+        "first_ok": 172,
+        "g_remap_ok": 44,
+        "n": 300,
+        "mean_crop_w": 593.0366666666666
+      },
+      "4097": {
+        "first_ok": 172,
+        "g_remap_ok": 44,
+        "n": 300,
+        "mean_crop_w": 593.0366666666666
+      }
+    }
+  }
+}

@@ -30,7 +30,13 @@ H_OBS = 220
 K_A, K_D = 0.35, 0.50
 C_MIN = 1.0
 PERSISTENCE = 0.7
-N_X, N_Y = 6, 3
+# 실험으로 확정 (2026-09-14). docs/experiments/2026-09-09-control-points
+# 24개 격자를 전수 측정해 최대 후회가 최소인 값이다. n_y 를 늘리는 것은 좌표
+# 오차가 없을 때만 이득이라 3 에서 멈춘다 -- 16x7 은 sigma=0 에서 전체 1위지만
+# sigma=4 에서 14.3% 로 무너진다.
+# 주의: 이 값은 3단계 20ms 예산을 약 17% 넘는다 (기준 기계 환산 23.3ms).
+#       예산을 못 늘리면 12x3 (18.4ms) 이 대안이다.
+N_X, N_Y = 16, 3
 
 
 @dataclass(frozen=True)
@@ -69,6 +75,13 @@ class Sample:
     sat_ratio: float
     scale: float
     w_flat: int
+    # 제어점을 뽑아낸 바로 그 대응장(증강까지 끝난 것)과 남은 펴진 범위.
+    # 제어점 개수와 무관한 "복원 가능성의 상한" 을 재려면 이게 필요하다
+    # (docs/experiments/2026-09-09-control-points). 기본값은 이 필드를
+    # 안 쓰는 기존 호출부(테스트의 위치인자 생성)를 깨지 않으려고 둔다.
+    g: np.ndarray | None = None
+    u_lo: float = 0.0
+    u_hi: float = 1.0
 
 
 def draw_recipe(rng: np.random.Generator, bucket: str, index: int) -> Recipe:
@@ -154,7 +167,7 @@ def build(recipe: Recipe) -> Sample:
     dst, src = control_points(g, recipe.n_x, recipe.n_y, obs.shape, u_lo, u_hi)
 
     obs = photometric(obs, rng, recipe.sigma, recipe.noise, recipe.jpeg)
-    return Sample(obs, dst, src, float(m.min()), sat, scale, w_flat)
+    return Sample(obs, dst, src, float(m.min()), sat, scale, w_flat, g, u_lo, u_hi)
 
 
 def recipe_to_dict(r: Recipe) -> dict:
