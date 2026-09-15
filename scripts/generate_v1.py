@@ -19,7 +19,7 @@ from wemeet.data.synthesis import ALL_BUCKETS, recipe_to_dict
 # 설계 §4 재파일럿(n=3,000, 2026-09-14) 필요시간(L 1.24h / M 1.27h / H 1.08h, 기대 기준)에
 # 비례해 나눴다. 세 버킷 모두 대비책 기준(샤드당 1시간)을 넘는다 -- §4 참고, 이 태스크는
 # 배분만 갱신하고 d_t·쿼터는 건드리지 않는다. 16번째 코어는 OS 몫이다.
-SHARDS = {"L": 1, "M": 4, "H": 10}
+SHARDS = {"L": 1, "M": 5, "H": 9}
 EVAL_SHARDS = 5
 
 
@@ -128,7 +128,7 @@ def main() -> None:
     ap.add_argument("--bucket", required=True, choices=sorted(ALL_BUCKETS))
     ap.add_argument("--n", type=int, required=True, help="전체 렌더 상한")
     ap.add_argument("--per-band", default="5000/3500/1500", help="target/hard/first_ok")
-    ap.add_argument("--tau", type=float, default=0.0896)
+    ap.add_argument("--tau", type=float, default=0.0741)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--shards", type=int, default=None)
     ap.add_argument("--out", required=True)
