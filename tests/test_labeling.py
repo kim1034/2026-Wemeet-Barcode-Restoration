@@ -17,6 +17,7 @@ from scripts.label_recipes import (
     split_counts,
     tps_flow,
 )
+from wemeet.data.render import module_count, render_clean
 from wemeet.data.synthesis import ALL_BUCKETS, Sample, build, draw_recipe
 
 
@@ -74,8 +75,8 @@ def test_burned_requires_saturation_above_tau(monkeypatch):
     dst = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
     hot = Sample(obs, dst, dst, 0.5, sat_ratio=0.20, scale=1.0, w_flat=40, h_flat=20)
     cool = Sample(obs, dst, dst, 0.5, sat_ratio=0.01, scale=1.0, w_flat=40, h_flat=20)
-    assert label_sample(hot, (20, 40), tau=0.04) == "burned"
-    assert label_sample(cool, (20, 40), tau=0.04) == "hard"
+    assert label_sample(hot, (20, 40), tau=0.04, text="WEMEET0000") == "burned"
+    assert label_sample(cool, (20, 40), tau=0.04, text="WEMEET0000") == "hard"
 
 
 def test_first_ok_short_circuits_the_second_decode(monkeypatch):
@@ -91,8 +92,29 @@ def test_first_ok_short_circuits_the_second_decode(monkeypatch):
     obs = np.zeros((20, 40), dtype=np.uint8)
     dst = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
     s = Sample(obs, dst, dst, 0.5, 0.0, 1.0, 40, 20)
-    assert label_sample(s, (20, 40), tau=0.04) == "first_ok"
+    assert label_sample(s, (20, 40), tau=0.04, text="WEMEET0000") == "first_ok"
     assert len(calls) == 1
+
+
+def test_label_sample_rejects_a_valid_but_wrong_decode():
+    """체크섬을 통과한 틀린 번호는 target 이 아니다.
+
+    Code128 은 약 1/103 로 훼손 판독이 체크섬을 통과한다. 「읽혔는가」로
+    판정하면 그런 표본이 target 으로 들어가 데이터셋을 오염시킨다.
+    """
+    rendered_text = "WEMEET0000"
+    d_m0 = 3.0
+    w_flat = int(round(module_count(rendered_text) * d_m0))
+    h_flat = int(round(w_flat / 3.0))
+    clean = render_clean(rendered_text, d_m0, h_flat)
+    assert decode(clean) == rendered_text  # 표본 자체가 유효한 판독이어야 의미가 있다
+
+    identity = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+    sample = Sample(clean, identity, identity, 0.5, sat_ratio=0.0, scale=1.0,
+                    w_flat=w_flat, h_flat=h_flat)
+
+    band = label_sample(sample, (h_flat, w_flat), tau=0.04, text="WEMEET9999")
+    assert band in ("hard", "burned")
 
 
 def test_fill_bucket_stops_at_the_render_cap():
@@ -136,7 +158,7 @@ def test_fill_bucket_shortfall_is_never_papered_over_by_relabeling():
 
     for recipe, band, sat, m_min in kept:
         sample = build(recipe)
-        assert label_sample(sample, (sample.h_flat, sample.w_flat), 0.04) == band
+        assert label_sample(sample, (sample.h_flat, sample.w_flat), 0.04, recipe.text) == band
 
     assert len(kept) < sum(quota.values())
     assert stats["shortfall"], "진짜 부족분이 있어야 이 테스트가 의미를 갖는다"

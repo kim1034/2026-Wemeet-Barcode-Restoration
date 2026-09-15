@@ -83,12 +83,19 @@ def decode(img):
         return None
 
 
-def label_sample(sample: Sample, out_shape, tau: float) -> str:
-    """구간 판정. 1차 성공이면 보정·재디코딩을 건너뛴다 (단락)."""
-    if decode(sample.obs) is not None:
+def label_sample(sample: Sample, out_shape, tau: float, text: str) -> str:
+    """구간 판정. 1차 성공이면 보정·재디코딩을 건너뛴다 (단락).
+
+    「읽혔는가」가 아니라 「맞게 읽혔는가」를 본다. Code128 은 mod-103 체크
+    디지트라 훼손된 판독이 약 1/103 로 체크섬을 통과해 **유효하지만 틀린**
+    문자열을 돌려준다(실측: 평가 1,500장 중 8장). 틀린 번호를 1차 성공으로
+    보면 파이프라인이 기하 보정을 건너뛰고 그 번호를 그대로 내보낸다 --
+    `0003` 이 생성 모델 접근을 폐기한 바로 그 이유다.
+    """
+    if decode(sample.obs) == text:
         return "first_ok"
     fixed = rectify(sample.obs, sample.dst_norm, sample.src_norm, out_shape)
-    if decode(fixed) is not None:
+    if decode(fixed) == text:
         return "target"
     return "burned" if sample.sat_ratio > tau else "hard"
 
@@ -153,7 +160,7 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
         recipe = draw_recipe(rng, bucket, index_offset + rendered)
         sample = build(recipe)
         rendered += 1
-        band = label_sample(sample, (sample.h_flat, sample.w_flat), tau)
+        band = label_sample(sample, (sample.h_flat, sample.w_flat), tau, recipe.text)
         seen[band] += 1
         labelled.append((recipe, band, sample.sat_ratio, sample.m_min))
         if band == "target":
