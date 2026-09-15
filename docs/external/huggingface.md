@@ -22,13 +22,13 @@ Git 저장소에는 **스크립트만** 올리고 실제 파일은 전부 HF Hub
 
 ## 1. 저장소 구성
 
-조직 하나 아래에 저장소 3개를 만든다. 조직 이름은 `metro-wemeet`을 권장한다 (생성 시 변경 가능).
+조직 하나 아래에 저장소 3개를 만든다. 조직은 `123metro` (`METRO_We-Meet_Project`) 로 **이미 만들어져 있다**.
 
 | 저장소 | 종류 | 공개 | 내용 |
 |---|---|---|---|
-| `metro-wemeet/barcode-datasets` | Dataset | **public** | 오픈소스 데이터 정리본, 합성 데이터 |
-| `metro-wemeet/barcode-field` | Dataset | **private** | 실촬영 송장 (개인정보 포함) |
-| `metro-wemeet/barcode-weights` | Model | public | 학습된 가중치 |
+| `123metro/barcode-datasets` | Dataset | **public** | 오픈소스 데이터 정리본, 합성 데이터 |
+| `123metro/barcode-field` | Dataset | **private** | 실촬영 송장 (개인정보 포함) |
+| `123metro/barcode-weights` | Model | public | 학습된 가중치 |
 
 ### 왜 실촬영 데이터를 분리하는가
 
@@ -43,7 +43,7 @@ Git 저장소에는 **스크립트만** 올리고 실제 파일은 전부 HF Hub
 ### 팀장이 하는 일 (한 번)
 
 1. huggingface.co 가입
-2. 우상단 프로필 → **New Organization** → 이름 `metro-wemeet`, 무료 플랜
+2. 우상단 프로필 → **New Organization** → 이름 `123metro`, 무료 플랜
 3. 조직 → Settings → Members → 팀원 8명 초대 (HF 계정명 필요)
 4. 조직 → **New Dataset** 로 `barcode-datasets` 생성 (public)
 5. 조직 → **New Dataset** 로 `barcode-field` 생성 (**private**)
@@ -222,11 +222,11 @@ uv run python -m wemeet.data.download
 
 ```bash
 # 데이터셋
-uv run hf upload metro-wemeet/barcode-datasets \
+uv run hf upload 123metro/barcode-datasets \
     ./downloads/synthetic/v1 synthetic/v1 --repo-type=dataset
 
 # 가중치
-uv run hf upload metro-wemeet/barcode-weights \
+uv run hf upload 123metro/barcode-weights \
     ./runs/detection-v2 detection/v2-yolo-obb --repo-type=model
 ```
 
@@ -270,7 +270,7 @@ tar -cf synthetic/v1/train-0000.tar train/000*.png
 ## 7. 체크리스트
 
 **설정 (한 번)**
-- [ ] 조직 `metro-wemeet` 생성
+- [ ] 조직 `123metro` 생성
 - [ ] 팀원 8명 초대 및 수락
 - [ ] `barcode-datasets` (public) 생성
 - [ ] `barcode-field` (**private**) 생성, 접근 권한 최소화
