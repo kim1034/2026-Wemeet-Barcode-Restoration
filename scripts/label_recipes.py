@@ -20,7 +20,10 @@ from wemeet.data.synthesis import ALL_BUCKETS, Sample, build, draw_recipe, recip
 BANDS = ("target", "hard", "first_ok", "burned")
 
 # dirty 판정에서 볼 경로. 렌더 결과를 바꿀 수 있는 것만 넣는다.
-CODE_PATHS = ("wemeet", "scripts", "tests", "pyproject.toml", "uv.lock")
+# ":/" 는 git 의 top-level 매직 pathspec 이다 -- 접두어 없는 경로는 현재
+# 작업 디렉터리 기준으로 풀리므로, code_commit() 이 하위 디렉터리에서 호출되면
+# 아무것도 못 찾고 dirty 를 조용히 False 로 흘린다. 벗겨내면 이 버그가 되살아난다.
+CODE_PATHS = (":/wemeet", ":/scripts", ":/tests", ":/pyproject.toml", ":/uv.lock")
 
 
 def code_commit() -> dict:

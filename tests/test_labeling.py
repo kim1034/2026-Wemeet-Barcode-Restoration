@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 import subprocess
 from collections import Counter
@@ -235,6 +236,27 @@ def test_code_commit_ignores_generated_output_in_data():
         assert code_commit()["dirty"] is before
     finally:
         scratch.unlink()
+
+
+def test_code_commit_dirty_check_is_cwd_independent():
+    """git pathspec 은 접두어가 없으면 현재 작업 디렉터리 기준으로 풀린다.
+    CODE_PATHS 가 ":/" 매직 접두어 없이 상대 경로였을 때는, code_commit() 을
+    scripts/ 같은 하위 디렉터리에서 호출하면 그 경로들이 아무것도 못 찾고
+    dirty 가 조용히 False 로 나왔다 -- 진짜로 코드가 바뀐 실행인데도 "커밋
+    해시만으로 재현 가능" 이라고 거짓 기록을 남기는 셈이다. 여기서는 실제로
+    추적 중인 코드 파일을 고쳐놓고 하위 디렉터리에서 호출해 dirty 가 True 로
+    잡히는지 본다.
+    """
+    target = pathlib.Path("scripts/generate_v1.py")
+    original = target.read_text(encoding="utf-8")
+    cwd = os.getcwd()
+    try:
+        target.write_text(original + "\n# dirty probe\n", encoding="utf-8")
+        os.chdir("scripts")
+        assert code_commit()["dirty"] is True
+    finally:
+        os.chdir(cwd)
+        target.write_text(original, encoding="utf-8")
 
 
 def test_eval_buckets_are_selectable():
