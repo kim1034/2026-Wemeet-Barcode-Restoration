@@ -581,9 +581,9 @@ def run(image_bgr):
       <li><b>④</b><span><strong>1차 디코딩을 AI가 하지 않습니다.</strong> AI가 디코더를 부르면
         <code>wemeet.sw</code> import가 되어 규칙 위반입니다. 그리고 "먼저 읽어보고 안 되면 보정한다"는
         조율 판단이라 지휘자의 일입니다.</span></li>
-      <li><b>⑤</b><span>AI가 돌려주는 것은 <strong>제어점 좌표 24개</strong>입니다.
+      <li><b>⑤</b><span>AI가 돌려주는 것은 <strong>48개 제어점의 좌표 96개</strong>입니다.
         이미지가 아니므로 없는 바코드를 만들어낼 수 없습니다.</span></li>
-      <li><b>⑦</b><span>재시도가 <strong>다시 펴는 것</strong>입니다. 보정이 20ms라 3번 해도 60ms입니다.
+      <li><b>⑦</b><span>재시도가 <strong>다시 펴는 것</strong>입니다. 보정 예산은 24ms라 3번 해도 72ms입니다.
         기하 추정(150ms)은 다시 돌리지 않습니다.</span></li>
       <li><b>⑧</b><span>중간 이미지를 버리면 화면에 <strong>"여기까지 펴봤다"를 못 보여줍니다.</strong>
         그게 이 프로젝트가 상용 솔루션과 다른 점입니다.</span></li>
@@ -999,9 +999,9 @@ git branch -d ai/detection-baseline</pre>
 
     <h3>파트마다 가장 중요한 한 가지</h3>
     <ol class="steps">
-      <li><b>AI</b><span><strong>이미지를 만들지 않습니다.</strong> 제어점 24개만 내놓습니다.
-        실험에서 제어점 8개면 35~70° 압축이 복원되고 좌표 오차 8px까지 읽히는 것을 확인했으니,
-        픽셀 단위 정밀도를 목표로 잡지 마세요.</span></li>
+      <li><b>AI</b><span><strong>이미지를 만들지 않습니다.</strong> 48개 제어점의 좌표 96개만 내놓습니다.
+        좌표 정확도는 합성 validation의 pixel error와 보정 후 판독률로 측정하며,
+        약 2px은 관찰 기준일 뿐 보장된 성능 목표가 아닙니다.</span></li>
       <li><b>SW</b><span><strong>우리가 지휘자입니다.</strong> "0개면? 2개 이상이면? 먼저 읽어볼까?"
         판단이 전부 <code>pipeline.py</code>에 모입니다. 그리고 <strong>AI를 기다릴 필요가 없습니다</strong> —
         3·4단계는 학습이 없습니다.</span></li>
