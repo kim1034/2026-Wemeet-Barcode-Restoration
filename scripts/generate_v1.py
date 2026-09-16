@@ -84,7 +84,12 @@ def _worker(args):
 
 
 def _stats_path(out: str) -> str:
-    """통계는 항상 data/stats/ 에 둔다 -- git 에 들어가는 유일한 생성물이다."""
+    """통계는 항상 data/stats/ 에 둔다 -- git 에 들어가는 유일한 생성물이다.
+
+    주의: --out 을 무시하므로 basename 이 겹치면 발행된 통계를 조용히 덮어쓴다.
+    예를 들어 --out /tmp/train.L.jsonl 로 버림 실행을 하면 data/stats/train.L.stats.json
+    이 그 실행의 값으로 바뀐다. 스모크·재현성 검사는 basename 을 다르게 준다.
+    """
     name = os.path.basename(out)
     if name.endswith(".jsonl"):
         name = name[:-len(".jsonl")]
@@ -99,7 +104,13 @@ def generate(bucket, per_band, cap, seed, tau, shards, out, bake_dir=None):
         results = list(ex.map(_worker, jobs))
 
     kept = [row for k, _, _ in results for row in k]
-    stats = merge_stats([s for _, s, _ in results])
+    merged = merge_stats([s for _, s, _ in results])
+    # 이 실행의 「입력」을 결과 앞에 적는다. 행 하나는 자족적이라 한 장을 재현하는 데는
+    # 문제가 없지만, 세트를 재현하려면 이 넷이 다 있어야 한다 -- tau 는 밴드 라벨을
+    # 정의하는 값이고(tau_suggestion 은 결과이지 입력이 아니다), render_cap 은
+    # index_offset 을 통해 모든 샤드의 텍스트를 바꾼다.
+    stats = {"bucket": merged.pop("bucket"), "seed": seed, "render_cap": cap,
+             "per_band": dict(per_band), "tau": tau, **merged}
     stats["tau_suggestion"] = tau_from_sats(stats.pop("target_sats"))
     stats["preset_mix_realized"] = preset_mix(stats["target_presets"])
     stats["code"] = code_commit()

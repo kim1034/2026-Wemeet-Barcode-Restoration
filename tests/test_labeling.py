@@ -208,11 +208,31 @@ def test_code_commit_reports_dirty_instead_of_hiding_it():
 
     이 테스트 파일 자체가 워킹 트리에 있는 동안에는 판정할 수 없으므로,
     임시 파일을 만들어 dirty 가 실제로 True 로 뒤집히는지를 본다.
+
+    탐침은 CODE_PATHS 안(scripts/)에 만든다 -- dirty 가 보는 것이 트리 전체가 아니라
+    "생성 코드가 커밋과 다른가" 라서, 그 밖에 파일을 두면 (의도대로) 안 뒤집힌다.
     """
-    scratch = pathlib.Path("__dirty_probe__.tmp")
+    scratch = pathlib.Path("scripts/__dirty_probe__.tmp")
     scratch.write_text("probe", encoding="utf-8")
     try:
         assert code_commit()["dirty"] is True
+    finally:
+        scratch.unlink()
+
+
+def test_code_commit_ignores_generated_output_in_data():
+    """data/stats/ 는 git 에 들어가는 유일한 생성물이라, 앞선 버킷이 남긴 stats 가
+    다음 실행에서 untracked 로 잡혀 dirty 를 거의 항상 true 로 만들었다(v1 발행분
+    9개 중 8개). 항상 true 면 진짜로 더러운 실행과 구분되지 않는다.
+
+    워킹 트리가 이미 더러울 수 있으므로 절대값이 아니라 '탐침이 판정을 바꾸지
+    않는다' 를 본다.
+    """
+    before = code_commit()["dirty"]
+    scratch = pathlib.Path("data/__dirty_probe__.tmp")
+    scratch.write_text("probe", encoding="utf-8")
+    try:
+        assert code_commit()["dirty"] is before
     finally:
         scratch.unlink()
 

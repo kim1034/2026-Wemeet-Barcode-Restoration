@@ -19,6 +19,9 @@ from wemeet.data.synthesis import ALL_BUCKETS, Sample, build, draw_recipe, recip
 
 BANDS = ("target", "hard", "first_ok", "burned")
 
+# dirty 판정에서 볼 경로. 렌더 결과를 바꿀 수 있는 것만 넣는다.
+CODE_PATHS = ("wemeet", "scripts", "tests", "pyproject.toml", "uv.lock")
+
 
 def code_commit() -> dict:
     """레시피 헤더에 박을 코드 상태. 코드가 바뀌면 같은 레시피도 다른 이미지가 된다 (설계 §1).
@@ -26,13 +29,19 @@ def code_commit() -> dict:
     dirty 면 커밋 해시만으로는 이미지를 재현할 수 없다. 막지 않고 표시만 한다 —
     측정 중에 코드를 만지는 것은 흔하고, 나중에 "이 숫자를 믿을 수 있나"를
     판단할 사람에게 필요한 것은 금지가 아니라 사실이다.
+
+    묻는 것은 "생성 코드가 커밋과 다른가" 이지 "작업 디렉터리가 깨끗한가" 가 아니다.
+    그래서 CODE_PATHS 로 좁힌다 — 트리 전체를 보면 data/stats/ 가 git 에 들어가는
+    유일한 생성물이라 앞선 버킷이 남긴 stats 파일이 다음 실행에서 untracked 로 잡히고,
+    dirty 가 거의 항상 true 가 된다(v1 발행분 9개 중 8개가 그랬다). 항상 true 인
+    필드는 진짜로 더러운 실행과 구분되지 않아서 정보량이 0이다.
     """
     def git(*args):
         return subprocess.run(("git", *args), capture_output=True, text=True,
                               check=True).stdout.strip()
     try:
         return {"commit": git("rev-parse", "HEAD"),
-                "dirty": bool(git("status", "--porcelain"))}
+                "dirty": bool(git("status", "--porcelain", "--", *CODE_PATHS))}
     except (OSError, subprocess.CalledProcessError):
         # 리포 밖에서 돌리거나 git 이 없을 때. 라벨링 자체를 막을 이유는 없다.
         return {"commit": None, "dirty": None}

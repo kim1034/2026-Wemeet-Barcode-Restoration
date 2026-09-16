@@ -4,6 +4,7 @@ data/eval 이 없으면 건너뛴다 -- CI 에서는 생성물이 없다.
 """
 import json
 import os
+import random
 
 import cv2
 import numpy as np
@@ -44,8 +45,14 @@ def test_round_trip_decodes(name):
 
     이게 진짜 검증이다 -- 굽기 경로와 NPZ 좌표계가 맞는지를 왕복으로 확인한다.
     설계 §8.5 가 '가장 비싼 버그' 로 지목한 방향 뒤집힘이 여기서 잡힌다.
+
+    500장 중 50장만 본다 -- 전수는 게이트에 너무 느리다(생성 시점과 리뷰에서 별도로
+    돌렸다). 앞 50장이 아니라 고정 시드로 뽑은 50장인 이유는, manifest 가 굽기 순서라
+    앞부분이 특정 샤드에 치우칠 수 있기 때문이다. 시드를 박아 게이트는 재현된다.
     """
-    rows = _rows(name)[:50]
+    rows = _rows(name)
+    picked = random.Random(20260916).sample(range(len(rows)), min(50, len(rows)))
+    rows = [rows[i] for i in sorted(picked)]
     ok = 0
     for row in rows:
         obs = cv2.imread(f"data/eval/{name}/{row['file']}", cv2.IMREAD_GRAYSCALE)
