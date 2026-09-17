@@ -185,26 +185,15 @@ def test_보정하지_않고_통과시킬_수_있다():
 # ── DecodeResult ───────────────────────────────────────────────────
 
 
-def test_판독_실패시_symbology도_None이어야_한다():
-    with pytest.raises(AssertionError):
-        DecodeResult(
-            text=None,
-            symbology="CODE128",
-            retry_count=0,
-            failure_reason="decode_failed",
-        )
-
-
 def test_실패에는_반드시_이유가_있어야_한다():
     with pytest.raises(AssertionError):
-        DecodeResult(text=None, symbology=None, retry_count=0, failure_reason=None)
+        DecodeResult(text=None, retry_count=0, failure_reason=None)
 
 
 def test_성공했는데_실패_이유가_있으면_거부된다():
     with pytest.raises(AssertionError):
         DecodeResult(
             text="123",
-            symbology="CODE128",
             retry_count=0,
             failure_reason="decode_failed",
         )
@@ -212,13 +201,12 @@ def test_성공했는데_실패_이유가_있으면_거부된다():
 
 def test_재시도는_3회를_넘을_수_없다():
     with pytest.raises(AssertionError):
-        DecodeResult(text="123", symbology="CODE128", retry_count=4)
+        DecodeResult(text="123", retry_count=4)
 
 
 def test_total_ms는_단계별_시간의_합이다():
     r = DecodeResult(
         text="123",
-        symbology="CODE128",
         retry_count=0,
         stage_ms={
             "detect": 40.0,
@@ -244,7 +232,7 @@ def test_판독_성공이면_ok는_True다():
             source=crop,
             field=_field(),
         ),
-        decode=DecodeResult(text="123", symbology="CODE128", retry_count=0),
+        decode=DecodeResult(text="123", retry_count=0),
     )
     assert result.ok is True
 
@@ -257,7 +245,6 @@ def test_탐지_실패여도_PipelineResult는_만들어진다():
         rectified=None,
         decode=DecodeResult(
             text=None,
-            symbology=None,
             retry_count=0,
             failure_reason="not_detected",
         ),
@@ -279,7 +266,6 @@ def test_보정하지_못해도_결과가_나온다():
         ),
         decode=DecodeResult(
             text=None,
-            symbology=None,
             retry_count=3,
             failure_reason="decode_failed",
             degraded=True,

@@ -110,7 +110,6 @@ class DecodeResult:
     """Stage 4 (디코딩) → 최종 출력"""
 
     text: str | None  # 판독 실패 시 None
-    symbology: str | None  # 예: "CODE128". 실패 시 None
     retry_count: int  # 0 ~ 3
     stage_ms: dict[str, float] = field(default_factory=dict)
     # 키: detect / decode_first / estimate / warp / decode / retry
@@ -118,13 +117,11 @@ class DecodeResult:
     #      "warp": 18.0, "decode": 26.0}
 
     failure_reason: str | None = None  # invalid_input / not_detected / decode_failed
-    candidate_count: int = 0  # 탐지된 바코드 총 개수
     degraded: bool = False  # 보정하지 못하고 원본 크롭으로 디코딩한 경우
 
     def __post_init__(self) -> None:
         assert 0 <= self.retry_count <= 3
         if self.text is None:
-            assert self.symbology is None
             assert self.failure_reason is not None  # 실패에는 항상 이유가 있다
         else:
             assert self.failure_reason is None
