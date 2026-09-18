@@ -1,0 +1,50 @@
+{
+  "bucket": "H",
+  "shards": 10,
+  "rendered": 3000,
+  "hit_cap": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "seen": {
+    "hard": 768,
+    "first_ok": 1906,
+    "target": 302,
+    "burned": 24
+  },
+  "kept": {
+    "hard": 768,
+    "first_ok": 1906,
+    "target": 302
+  },
+  "shortfall": {
+    "target": 9697,
+    "hard": 9231,
+    "first_ok": 8093
+  },
+  "target_presets": {
+    "sine": 86,
+    "octave": 156,
+    "crease": 42,
+    "cylinder": 18
+  },
+  "tau_suggestion": 0.05354059257462575,
+  "preset_mix_realized": {
+    "sine": 0.2847682119205298,
+    "octave": 0.5165562913907285,
+    "crease": 0.1390728476821192,
+    "cylinder": 0.059602649006622516
+  },
+  "code": {
+    "commit": "fc2a61411c001ac5c2e1b5a86c6708ca5965bbc9",
+    "dirty": true
+  }
+}
