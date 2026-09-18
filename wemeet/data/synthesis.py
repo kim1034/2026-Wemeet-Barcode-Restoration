@@ -107,7 +107,7 @@ def draw_recipe(rng: np.random.Generator, bucket: str, index: int) -> Recipe:
     d_m0 = float(rng.uniform(lo, hi))
     d_t = float(rng.uniform(1.3, min(2.6, 0.97 * d_m0)))
     return Recipe(
-        seed=int(rng.integers(0, 2 ** 31 - 1)),
+        seed=int(rng.integers(0, 2**31 - 1)),
         bucket=bucket,
         text=f"WEMEET{index % TEXT_MOD:04d}",
         d_m0=d_m0,
@@ -142,15 +142,20 @@ def _make_grad(recipe: Recipe, s_t: float):
         if rest <= 0.0:
             return zx, zy
         if recipe.preset == "crease":
-            a, b = grad_crease(w, h, rest, recipe.w_c_f * w,
-                               psi_deg=recipe.psi, offset=recipe.offset * w)
+            a, b = grad_crease(
+                w, h, rest, recipe.w_c_f * w, psi_deg=recipe.psi, offset=recipe.offset * w
+            )
         elif recipe.preset == "sine":
-            a, b = grad_sine(w, h, rest, recipe.lam_f * w,
-                             psi_deg=recipe.psi, phase=recipe.phase)
+            a, b = grad_sine(w, h, rest, recipe.lam_f * w, psi_deg=recipe.psi, phase=recipe.phase)
         else:
-            a, b = grad_crumple(w, h, rest, recipe.lam_f * w,
-                                rng=np.random.default_rng(recipe.seed),
-                                persistence=PERSISTENCE)
+            a, b = grad_crumple(
+                w,
+                h,
+                rest,
+                recipe.lam_f * w,
+                rng=np.random.default_rng(recipe.seed),
+                persistence=PERSISTENCE,
+            )
         return zx + a, zy + b
 
     return make
@@ -186,8 +191,7 @@ def build(recipe: Recipe) -> Sample:
     dst, src = control_points(g, recipe.n_x, recipe.n_y, obs.shape, u_lo, u_hi)
 
     obs = photometric(obs, rng, recipe.sigma, recipe.noise, recipe.jpeg)
-    return Sample(obs, dst, src, float(m.min()), sat, scale, w_flat, h_flat,
-                  g, u_lo, u_hi)
+    return Sample(obs, dst, src, float(m.min()), sat, scale, w_flat, h_flat, g, u_lo, u_hi)
 
 
 def recipe_to_dict(r: Recipe) -> dict:

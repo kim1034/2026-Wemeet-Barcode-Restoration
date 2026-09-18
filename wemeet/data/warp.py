@@ -19,7 +19,7 @@ def flat_coord(zx: np.ndarray):
         s_hat   행마다 0~1 로 정규화한 펴진 좌표 (h, w)
         s_total 펴진 총 길이(px). 행 평균
     """
-    m = 1.0 / np.sqrt(1.0 + zx ** 2)
+    m = 1.0 / np.sqrt(1.0 + zx**2)
     integrand = 1.0 / m
     s = np.cumsum(integrand, axis=1) - integrand[:, :1]
     s_hat = s / s[:, -1:]
@@ -50,8 +50,7 @@ def apply_warp(clean: np.ndarray, s_hat: np.ndarray) -> np.ndarray:
     map_x = (s_hat * (w0 - 1)).astype(np.float32)
     gy = np.linspace(0, h0 - 1, h_obs, dtype=np.float32)
     map_y = np.tile(gy[:, None], (1, w_obs))
-    return cv2.remap(clean, map_x, map_y, cv2.INTER_CUBIC,
-                     borderMode=cv2.BORDER_REPLICATE)
+    return cv2.remap(clean, map_x, map_y, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
 
 def build_G(s_hat: np.ndarray, n_v: int = 33, n_u: int = 513) -> np.ndarray:
@@ -77,12 +76,15 @@ def sample_G(g: np.ndarray, u: float, v: float) -> np.ndarray:
     i0, j0 = int(np.floor(fv)), int(np.floor(fu))
     i1, j1 = min(i0 + 1, n_v - 1), min(j0 + 1, n_u - 1)
     a, b = fv - i0, fu - j0
-    return ((1 - a) * (1 - b) * g[i0, j0] + (1 - a) * b * g[i0, j1]
-            + a * (1 - b) * g[i1, j0] + a * b * g[i1, j1])
+    return (
+        (1 - a) * (1 - b) * g[i0, j0]
+        + (1 - a) * b * g[i0, j1]
+        + a * (1 - b) * g[i1, j0]
+        + a * b * g[i1, j1]
+    )
 
 
-def control_points(g: np.ndarray, n_x: int, n_y: int, shape,
-                   u_lo: float = 0.0, u_hi: float = 1.0):
+def control_points(g: np.ndarray, n_x: int, n_y: int, shape, u_lo: float = 0.0, u_hi: float = 1.0):
     """정답 제어점. dst = 펴진 격자, src = 지금 있는 위치. 행 우선.
 
     u_lo/u_hi 는 크롭으로 남은 펴진 범위다. dst 는 그 범위를 다시 0~1 로

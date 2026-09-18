@@ -12,8 +12,9 @@ import numpy as np
 _SATURATION = 0.99
 
 
-def shade(base, zx, zy, light, ka: float = 0.35, kd: float = 0.50,
-          ks: float = 0.0, p: float = 100.0):
+def shade(
+    base, zx, zy, light, ka: float = 0.35, kd: float = 0.50, ks: float = 0.0, p: float = 100.0
+):
     """음영·정반사를 얹고 (이미지, 포화 화소 비율) 을 돌려준다.
 
     포화 화소 비율은 설계 §7 의 tau 다 — 기하가 소실된 불가 샘플을 가르는
@@ -39,8 +40,9 @@ def shade(base, zx, zy, light, ka: float = 0.35, kd: float = 0.50,
 
     # Blinn-Phong 음영: I = B * (k_a + k_d * diffuse) + k_s * specular
     # 정반사는 더한다 (곱하지 않는다)
-    img = np.clip(np.asarray(base, dtype=np.float64) / 255.0
-                  * (ka + kd * diffuse) + ks * specular, 0.0, 1.0)
+    img = np.clip(
+        np.asarray(base, dtype=np.float64) / 255.0 * (ka + kd * diffuse) + ks * specular, 0.0, 1.0
+    )
 
     # 포화 화소 비율 계산: (img >= 0.99) 의 비율
     sat = float((img >= _SATURATION).mean())

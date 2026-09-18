@@ -39,12 +39,17 @@ def code_commit() -> dict:
     dirty 가 거의 항상 true 가 된다(v1 발행분 9개 중 8개가 그랬다). 항상 true 인
     필드는 진짜로 더러운 실행과 구분되지 않아서 정보량이 0이다.
     """
+
     def git(*args):
-        return subprocess.run(("git", *args), capture_output=True, text=True,
-                              check=True).stdout.strip()
+        return subprocess.run(
+            ("git", *args), capture_output=True, text=True, check=True
+        ).stdout.strip()
+
     try:
-        return {"commit": git("rev-parse", "HEAD"),
-                "dirty": bool(git("status", "--porcelain", "--", *CODE_PATHS))}
+        return {
+            "commit": git("rev-parse", "HEAD"),
+            "dirty": bool(git("status", "--porcelain", "--", *CODE_PATHS)),
+        }
     except (OSError, subprocess.CalledProcessError):
         # 리포 밖에서 돌리거나 git 이 없을 때. 라벨링 자체를 막을 이유는 없다.
         return {"commit": None, "dirty": None}
@@ -55,7 +60,7 @@ def tps_flow(src_px, dst_px, shape, reg: float = 0.0):
     n = len(dst_px)
     d = np.linalg.norm(dst_px[:, None, :] - dst_px[None, :, :], axis=2)
     with np.errstate(divide="ignore", invalid="ignore"):
-        k = np.where(d > 0, d ** 2 * np.log(d ** 2), 0.0)
+        k = np.where(d > 0, d**2 * np.log(d**2), 0.0)
     k += reg * np.eye(n)
     p = np.hstack([np.ones((n, 1)), dst_px])
     a = np.zeros((n + 3, n + 3))
@@ -66,7 +71,7 @@ def tps_flow(src_px, dst_px, shape, reg: float = 0.0):
     grid = np.stack([gx.ravel(), gy.ravel()], axis=1).astype(np.float64)
     dg = np.linalg.norm(grid[:, None, :] - dst_px[None, :, :], axis=2)
     with np.errstate(divide="ignore", invalid="ignore"):
-        ug = np.where(dg > 0, dg ** 2 * np.log(dg ** 2), 0.0)
+        ug = np.where(dg > 0, dg**2 * np.log(dg**2), 0.0)
     pg = np.hstack([np.ones((len(grid), 1)), grid])
 
     out = []
@@ -128,12 +133,17 @@ def bake(kept, out_dir) -> int:
             sample = build(recipe)
             name = f"{n:05d}"
             cv2.imwrite(f"{out_dir}/{name}.png", sample.obs)
-            np.savez(f"{out_dir}/{name}.npz",
-                     dst_norm=sample.dst_norm, src_norm=sample.src_norm)
+            np.savez(f"{out_dir}/{name}.npz", dst_norm=sample.dst_norm, src_norm=sample.src_norm)
             row = recipe_to_dict(recipe)
-            row.update(file=f"{name}.png", npz=f"{name}.npz", band=band,
-                       sat_ratio=sat, m_min=m_min,
-                       w_flat=sample.w_flat, h_flat=sample.h_flat)
+            row.update(
+                file=f"{name}.png",
+                npz=f"{name}.npz",
+                band=band,
+                sat_ratio=sat,
+                m_min=m_min,
+                w_flat=sample.w_flat,
+                h_flat=sample.h_flat,
+            )
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             n += 1
     return n
@@ -145,8 +155,15 @@ def split_counts(total: int, shards: int) -> list[int]:
     return [base + (1 if i < rem else 0) for i in range(shards)]
 
 
-def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
-                tau: float, shard: int = 0, shards: int = 1):
+def fill_bucket(
+    bucket: str,
+    per_band: dict,
+    render_cap: int,
+    seed: int,
+    tau: float,
+    shard: int = 0,
+    shards: int = 1,
+):
     """버킷 하나를 비중대로 채운다. 모자라면 메우지 않고 부족분으로 남긴다.
 
     render_cap 과 per_band 는 '전체' 값이고 여기서 샤드 몫으로 쪼갠다. 샤드마다
@@ -167,8 +184,7 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
     rendered = 0
     sat_of_target = []
 
-    while rendered < my_cap and any(
-            kept_count[b] < my_band.get(b, 0) for b in my_band):
+    while rendered < my_cap and any(kept_count[b] < my_band.get(b, 0) for b in my_band):
         recipe = draw_recipe(rng, bucket, index_offset + rendered)
         sample = build(recipe)
         rendered += 1
@@ -192,15 +208,12 @@ def fill_bucket(bucket: str, per_band: dict, render_cap: int, seed: int,
         "hit_cap": rendered >= my_cap,
         "seen": dict(seen),
         "kept": dict(kept_count),
-        "shortfall": {b: my_band[b] - kept_count[b] for b in my_band
-                      if kept_count[b] < my_band[b]},
-        "tau_suggestion": (float(np.percentile(sat_of_target, 95))
-                           if sat_of_target else None),
+        "shortfall": {b: my_band[b] - kept_count[b] for b in my_band if kept_count[b] < my_band[b]},
+        "tau_suggestion": (float(np.percentile(sat_of_target, 95)) if sat_of_target else None),
         # 목표 구간의 원자료만 남긴다. 드라이버가 샤드를 합쳐 한 번에 백분위수를
         # 내야 맞다 -- 샤드별 백분위수를 평균내면 틀린다 (설계 §5).
         "target_sats": sat_of_target,
-        "target_presets": dict(Counter(r.preset for r, b, _, _ in labelled
-                                       if b == "target")),
+        "target_presets": dict(Counter(r.preset for r, b, _, _ in labelled if b == "target")),
         "labelled": labelled,
     }
     return kept, stats
@@ -210,22 +223,27 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bucket", required=True, choices=sorted(ALL_BUCKETS))
     ap.add_argument("--n", type=int, required=True, help="렌더 상한")
-    ap.add_argument("--per-band", default="5000/3500/1500",
-                    help="target/hard/first_ok")
+    ap.add_argument("--per-band", default="5000/3500/1500", help="target/hard/first_ok")
     ap.add_argument("--tau", type=float, default=0.0741)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--bake", default=None,
-                    help="평가 세트용. 이 디렉터리에 이미지를 굽는다")
-    ap.add_argument("--shard", default="0/1",
-                    help="i/N. 샤드 i 만 돈다. --n 과 --per-band 는 전체 값이다")
+    ap.add_argument("--bake", default=None, help="평가 세트용. 이 디렉터리에 이미지를 굽는다")
+    ap.add_argument(
+        "--shard", default="0/1", help="i/N. 샤드 i 만 돈다. --n 과 --per-band 는 전체 값이다"
+    )
     args = ap.parse_args()
 
     t, h, f = (int(v) for v in args.per_band.split("/"))
     shard, shards = (int(v) for v in args.shard.split("/"))
-    kept, stats = fill_bucket(args.bucket, {"target": t, "hard": h,
-                                            "first_ok": f},
-                              args.n, args.seed, args.tau, shard, shards)
+    kept, stats = fill_bucket(
+        args.bucket,
+        {"target": t, "hard": h, "first_ok": f},
+        args.n,
+        args.seed,
+        args.tau,
+        shard,
+        shards,
+    )
     # 레시피는 기록의 원본이다: burned 와 쿼터를 넘긴 first_ok 도 포함해
     # 렌더된 전부를 쓴다. "버림" 은 학습 로더의 일이다 (설계 총칙).
     labelled = stats.pop("labelled")

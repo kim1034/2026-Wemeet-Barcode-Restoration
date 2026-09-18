@@ -56,11 +56,12 @@ def test_wrong_tps_kernel_fails_to_decode_a_known_target_sample():
     for i in range(200):
         sample = build(draw_recipe(rng, "L", i))
         if decode(sample.obs) is not None:
-            continue                      # 1차 성공 -- 목표 구간이 아니다
-        fixed = rectify(sample.obs, sample.dst_norm, sample.src_norm,
-                        (sample.h_flat, sample.w_flat))
+            continue  # 1차 성공 -- 목표 구간이 아니다
+        fixed = rectify(
+            sample.obs, sample.dst_norm, sample.src_norm, (sample.h_flat, sample.w_flat)
+        )
         if decode(fixed) is not None:
-            return                        # 목표 표본을 찾았고 커널이 그것을 폈다
+            return  # 목표 표본을 찾았고 커널이 그것을 폈다
     pytest.fail("200 렌더 안에 목표 구간 표본이 없다 -- TPS 커널을 의심하라")
 
 
@@ -71,6 +72,7 @@ def test_bands_are_exactly_the_four_in_the_spec():
 def test_burned_requires_saturation_above_tau(monkeypatch):
     """포화가 tau 를 넘는 불가만 burned 다. 나머지 불가는 hard 로 남긴다."""
     import scripts.label_recipes as mod
+
     monkeypatch.setattr(mod, "decode", lambda img: None)
     obs = np.zeros((20, 40), dtype=np.uint8)
     dst = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
@@ -83,6 +85,7 @@ def test_burned_requires_saturation_above_tau(monkeypatch):
 def test_first_ok_short_circuits_the_second_decode(monkeypatch):
     """단락이 없으면 H 버킷이 20h -> 33h 가 된다."""
     import scripts.label_recipes as mod
+
     calls = []
 
     def counting_decode(img):
@@ -111,16 +114,18 @@ def test_label_sample_rejects_a_valid_but_wrong_decode():
     assert decode(clean) == rendered_text  # 표본 자체가 유효한 판독이어야 의미가 있다
 
     identity = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
-    sample = Sample(clean, identity, identity, 0.5, sat_ratio=0.0, scale=1.0,
-                    w_flat=w_flat, h_flat=h_flat)
+    sample = Sample(
+        clean, identity, identity, 0.5, sat_ratio=0.0, scale=1.0, w_flat=w_flat, h_flat=h_flat
+    )
 
     band = label_sample(sample, (h_flat, w_flat), tau=0.04, text="WEMEET9999")
     assert band in ("hard", "burned")
 
 
 def test_fill_bucket_stops_at_the_render_cap():
-    kept, stats = fill_bucket("L", {"target": 2, "hard": 2, "first_ok": 1},
-                              render_cap=40, seed=1, tau=0.04)
+    kept, stats = fill_bucket(
+        "L", {"target": 2, "hard": 2, "first_ok": 1}, render_cap=40, seed=1, tau=0.04
+    )
     assert stats["rendered"] <= 40
     assert len(kept) <= 5
     for band, quota in {"target": 2, "hard": 2, "first_ok": 1}.items():
@@ -129,8 +134,9 @@ def test_fill_bucket_stops_at_the_render_cap():
 
 def test_fill_bucket_never_backfills_a_shortfall():
     """H 에서 불가가 모자라도 1차 성공으로 메우지 않는다 (설계 §7)."""
-    kept, stats = fill_bucket("L", {"target": 1, "hard": 1, "first_ok": 1},
-                              render_cap=30, seed=2, tau=0.04)
+    kept, stats = fill_bucket(
+        "L", {"target": 1, "hard": 1, "first_ok": 1}, render_cap=30, seed=2, tau=0.04
+    )
     for band, quota in {"target": 1, "hard": 1, "first_ok": 1}.items():
         assert stats["kept"][band] <= quota
 
@@ -177,8 +183,9 @@ def test_fill_bucket_records_every_recipe_including_burned_and_surplus():
     만든다 -- kept 는 여전히 쿼터만큼(1개)만 담아 기존 계약을 안 건드리면서,
     labelled 는 렌더된 30개 전부를 담아야 한다.
     """
-    kept, stats = fill_bucket("L", {"target": 1, "hard": 1, "first_ok": 1},
-                              render_cap=30, seed=1, tau=0.04)
+    kept, stats = fill_bucket(
+        "L", {"target": 1, "hard": 1, "first_ok": 1}, render_cap=30, seed=1, tau=0.04
+    )
     labelled_seen = Counter(band for _, band, _, _ in stats["labelled"])
     assert len(stats["labelled"]) == stats["rendered"]
     assert dict(labelled_seen) == stats["seen"]
@@ -195,8 +202,9 @@ def test_recipe_header_records_the_code_commit_that_rendered_it():
     키 존재만 보면 상수 문자열을 박아 놔도 통과하므로, 실제 HEAD 와 맞는지를
     독립적으로(subprocess 로 다시 물어봐서) 대조한다.
     """
-    head = subprocess.run(("git", "rev-parse", "HEAD"), capture_output=True,
-                          text=True, check=True).stdout.strip()
+    head = subprocess.run(
+        ("git", "rev-parse", "HEAD"), capture_output=True, text=True, check=True
+    ).stdout.strip()
     _, stats = fill_bucket("L", {"first_ok": 1}, render_cap=1, seed=3, tau=0.08)
     assert stats["code"]["commit"] == head
     assert isinstance(stats["code"]["dirty"], bool)
@@ -272,8 +280,19 @@ def test_bake_writes_manifest_with_ground_truth(tmp_path):
     lines = (tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     row = json.loads(lines[0])
-    for key in ("file", "npz", "text", "band", "sat_ratio", "m_min",
-                "aspect", "w_c_f", "preset", "d_m0", "seed"):
+    for key in (
+        "file",
+        "npz",
+        "text",
+        "band",
+        "sat_ratio",
+        "m_min",
+        "aspect",
+        "w_c_f",
+        "preset",
+        "d_m0",
+        "seed",
+    ):
         assert key in row, key
     assert row["band"] == "target"
     assert (tmp_path / row["file"]).exists()
@@ -288,8 +307,7 @@ def test_split_counts_distributes_remainder_to_front():
 
 
 def _seeds(bucket, shard, shards, seed=5, cap=24):
-    _, stats = fill_bucket(bucket, {"target": 10**9}, cap, seed, 0.08,
-                           shard=shard, shards=shards)
+    _, stats = fill_bucket(bucket, {"target": 10**9}, cap, seed, 0.08, shard=shard, shards=shards)
     return [r.seed for r, _, _, _ in stats["labelled"]]
 
 

@@ -43,9 +43,7 @@ def test_effective_module_width_fractional():
         img = render_clean("WEMEET0001", module_px=module_px, height_px=200)
         effective = img.shape[1] / M
         error = abs(effective - module_px)
-        assert error <= 0.05, (
-            f"module_px={module_px}: effective={effective:.4f}, error={error:.4f}"
-        )
+        assert error <= 0.05, f"module_px={module_px}: effective={effective:.4f}, error={error:.4f}"
 
 
 def test_module_px_1_0_does_not_crash():

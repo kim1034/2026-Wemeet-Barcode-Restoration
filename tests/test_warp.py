@@ -37,7 +37,7 @@ def test_cumsum_of_m_fails_the_same_comparison():
     """설계 §10-2. 오류판(cumsum(m))은 위 대조에서 크게 벗어난다."""
     w, theta = 401, 45.0
     zx, _ = grad_cylinder(w, 8, theta)
-    m = 1.0 / np.sqrt(1.0 + zx ** 2)
+    m = 1.0 / np.sqrt(1.0 + zx**2)
 
     wrong = np.cumsum(m, axis=1) - m[:, :1]
     c, r = _cylinder_geometry(w, theta)
@@ -60,7 +60,7 @@ def test_m_and_slope_stay_consistent():
     """설계 §10-6. sqrt(1/m^2 - 1) 이 |z_x| 와 같아야 한다."""
     zx, _ = grad_crease(301, 8, slope=1.5, w_c=4.0)
     m, _, _ = flat_coord(zx)
-    recovered = np.sqrt(1.0 / m ** 2 - 1.0)
+    recovered = np.sqrt(1.0 / m**2 - 1.0)
     assert np.abs(recovered - np.abs(zx)).max() < 1e-9
 
 
@@ -78,7 +78,7 @@ def test_s_total_is_the_row_mean_not_any_single_row():
     zx, _ = grad_sine(201, 60, slope=1.0, lam=60.0, psi_deg=30.0)
     _, _, s_total = flat_coord(zx)
 
-    m = 1.0 / np.sqrt(1.0 + zx ** 2)
+    m = 1.0 / np.sqrt(1.0 + zx**2)
     row_totals = np.cumsum(1.0 / m, axis=1)[:, -1] - (1.0 / m)[:, 0]
 
     # 이 픽스처가 실제로 행마다 다른 총합을 갖는지 먼저 확인 (아니면 아래 대조가 공허하다)
@@ -94,8 +94,7 @@ def test_s_total_is_the_row_mean_not_any_single_row():
 def test_fit_obs_width_recovers_flat_length():
     """감기면 좁아 보인다. 펴진 길이가 w_flat 이 되도록 관측 폭을 맞춘다."""
     w_flat, h = 400, 8
-    w_obs, zx, _ = fit_obs_width(
-        lambda w, hh: grad_cylinder(w, hh, 50.0), w_flat, h)
+    w_obs, zx, _ = fit_obs_width(lambda w, hh: grad_cylinder(w, hh, 50.0), w_flat, h)
     _, _, s_total = flat_coord(zx)
     assert w_obs < w_flat
     assert abs(s_total - w_flat) / w_flat < 0.05

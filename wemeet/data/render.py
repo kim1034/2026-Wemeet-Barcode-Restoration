@@ -33,13 +33,16 @@ def render_clean(text: str, module_px: float, height_px: int) -> np.ndarray:
     writer = ImageWriter()
     obj = barcode.get("code128", text, writer=writer)
     buf = io.BytesIO()
-    obj.write(buf, options={
-        "module_width": base_module_mm,
-        "module_height": 12.0,
-        "quiet_zone": quiet_zone_mm,
-        "write_text": False,
-        "dpi": _DPI,
-    })
+    obj.write(
+        buf,
+        options={
+            "module_width": base_module_mm,
+            "module_height": 12.0,
+            "quiet_zone": quiet_zone_mm,
+            "write_text": False,
+            "dpi": _DPI,
+        },
+    )
     buf.seek(0)
     arr = cv2.imdecode(np.frombuffer(buf.read(), np.uint8), cv2.IMREAD_GRAYSCALE)
 
@@ -48,7 +51,7 @@ def render_clean(text: str, module_px: float, height_px: int) -> np.ndarray:
     # geometric_margin 이 이미 모사하는 검출기 여백과 이중 계상된다.
     # 비율을 상수로 박지 않고 이미지에서 찾는다 — 라이브러리가 바뀌어도 맞는다.
     rows = np.where(arr.min(axis=1) < 128)[0]
-    arr = arr[rows.min():rows.max() + 1]
+    arr = arr[rows.min() : rows.max() + 1]
 
     # 모듈 개수는 '렌더된 폭' 에서 낸다. module_count() 를 다시 부르면 위의
     # test_module_count_matches_rendered_width 가 동어반복이 된다 -- 그 테스트의

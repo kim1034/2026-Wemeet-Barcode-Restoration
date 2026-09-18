@@ -4,16 +4,27 @@ from scripts.generate_v1 import SHARDS, merge_stats, preset_mix, tau_from_sats
 
 
 def _part(shard, rendered, seen, kept, shortfall, hit):
-    return {"bucket": "L", "shard": shard, "shards": 3, "rendered": rendered,
-            "hit_cap": hit, "seen": seen, "kept": kept, "shortfall": shortfall,
-            "target_sats": [], "target_presets": {}}
+    return {
+        "bucket": "L",
+        "shard": shard,
+        "shards": 3,
+        "rendered": rendered,
+        "hit_cap": hit,
+        "seen": seen,
+        "kept": kept,
+        "shortfall": shortfall,
+        "target_sats": [],
+        "target_presets": {},
+    }
 
 
 def test_merge_sums_counters():
-    merged = merge_stats([
-        _part(0, 10, {"target": 2, "hard": 1}, {"target": 2}, {}, False),
-        _part(1, 20, {"target": 3, "burned": 4}, {"target": 3}, {"hard": 1}, True),
-    ])
+    merged = merge_stats(
+        [
+            _part(0, 10, {"target": 2, "hard": 1}, {"target": 2}, {}, False),
+            _part(1, 20, {"target": 3, "burned": 4}, {"target": 3}, {"hard": 1}, True),
+        ]
+    )
     assert merged["rendered"] == 30
     assert merged["seen"] == {"target": 5, "hard": 1, "burned": 4}
     assert merged["kept"] == {"target": 5}
@@ -22,10 +33,12 @@ def test_merge_sums_counters():
 
 def test_merge_keeps_hit_cap_per_shard():
     """부족분이 분포 탓인지 쪼갠 탓인지 갈리려면 샤드별로 남아야 한다 (설계 §5)."""
-    merged = merge_stats([
-        _part(0, 10, {}, {}, {}, False),
-        _part(1, 20, {}, {}, {}, True),
-    ])
+    merged = merge_stats(
+        [
+            _part(0, 10, {}, {}, {}, False),
+            _part(1, 20, {}, {}, {}, True),
+        ]
+    )
     assert merged["hit_cap"] == [False, True]
 
 

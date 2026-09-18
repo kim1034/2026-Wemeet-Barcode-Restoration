@@ -2,6 +2,7 @@
 
 data/eval 이 없으면 건너뛴다 -- CI 에서는 생성물이 없다.
 """
+
 import json
 import os
 import random
@@ -13,8 +14,9 @@ import pytest
 from scripts.label_recipes import decode, rectify
 
 SETS = ("low", "mid", "high")
-pytestmark = pytest.mark.skipif(not os.path.isdir("data/eval/low"),
-                                reason="평가 세트가 아직 안 구워졌다")
+pytestmark = pytest.mark.skipif(
+    not os.path.isdir("data/eval/low"), reason="평가 세트가 아직 안 구워졌다"
+)
 
 
 def _rows(name):
@@ -57,8 +59,7 @@ def test_round_trip_decodes(name):
     for row in rows:
         obs = cv2.imread(f"data/eval/{name}/{row['file']}", cv2.IMREAD_GRAYSCALE)
         z = np.load(f"data/eval/{name}/{row['npz']}")
-        fixed = rectify(obs, z["dst_norm"], z["src_norm"],
-                        (row["h_flat"], row["w_flat"]))
+        fixed = rectify(obs, z["dst_norm"], z["src_norm"], (row["h_flat"], row["w_flat"]))
         if decode(fixed) == row["text"]:
             ok += 1
     assert ok == len(rows), f"{name}: {ok}/{len(rows)}"

@@ -91,13 +91,13 @@ def test_crumple_persistence_default_differs_from_uniform():
     # 고주파 검출: 2차 미분(2-tap Laplacian)의 에너지
     hf_decay = float(np.sum(np.abs(np.diff(zx_decay, n=2, axis=1))))
     hf_uniform = float(np.sum(np.abs(np.diff(zx_uniform, n=2, axis=1))))
-    assert hf_decay < hf_uniform, \
-        f"persistence=0.7 should have lower high-freq energy ({hf_decay}) " \
+    assert hf_decay < hf_uniform, (
+        f"persistence=0.7 should have lower high-freq energy ({hf_decay}) "
         f"than uniform ({hf_uniform})"
+    )
 
     # 추가 검증: 필드들이 실제로 다르다 (같은 seed 이지만 가중치 때문에 다름)
-    assert not np.allclose(zx_decay, zx_uniform), \
-        "Fields with different persistence should differ"
+    assert not np.allclose(zx_decay, zx_uniform), "Fields with different persistence should differ"
 
 
 def test_sine_max_zx_equals_slope_at_varied_psi():
@@ -105,8 +105,7 @@ def test_sine_max_zx_equals_slope_at_varied_psi():
     for psi_deg in [0.0, 25.0, 45.0, -25.0, -45.0]:
         zx, _ = grad_sine(400, 8, slope=0.7, lam=150.0, psi_deg=psi_deg)
         max_zx = abs(zx).max()
-        assert abs(max_zx - 0.7) < 0.01, \
-            f"psi={psi_deg}°: max|z_x|={max_zx} should equal slope=0.7"
+        assert abs(max_zx - 0.7) < 0.01, f"psi={psi_deg}°: max|z_x|={max_zx} should equal slope=0.7"
 
 
 def test_crease_max_zx_equals_slope_at_varied_psi():
@@ -114,8 +113,7 @@ def test_crease_max_zx_equals_slope_at_varied_psi():
     for psi_deg in [0.0, 25.0, 45.0, -25.0, -45.0]:
         zx, _ = grad_crease(400, 8, slope=0.9, w_c=2.5, psi_deg=psi_deg)
         max_zx = abs(zx).max()
-        assert abs(max_zx - 0.9) < 0.01, \
-            f"psi={psi_deg}°: max|z_x|={max_zx} should equal slope=0.9"
+        assert abs(max_zx - 0.9) < 0.01, f"psi={psi_deg}°: max|z_x|={max_zx} should equal slope=0.9"
 
 
 def test_sine_raises_on_near_singular_psi():

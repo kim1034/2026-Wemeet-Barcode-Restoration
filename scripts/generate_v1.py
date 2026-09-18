@@ -92,14 +92,13 @@ def _stats_path(out: str) -> str:
     """
     name = os.path.basename(out)
     if name.endswith(".jsonl"):
-        name = name[:-len(".jsonl")]
+        name = name[: -len(".jsonl")]
     return os.path.join("data", "stats", name + ".stats.json")
 
 
 def generate(bucket, per_band, cap, seed, tau, shards, out, bake_dir=None):
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
-    jobs = [(bucket, per_band, cap, seed, tau, i, shards, out)
-            for i in range(shards)]
+    jobs = [(bucket, per_band, cap, seed, tau, i, shards, out) for i in range(shards)]
     with ProcessPoolExecutor(max_workers=shards) as ex:
         results = list(ex.map(_worker, jobs))
 
@@ -109,8 +108,14 @@ def generate(bucket, per_band, cap, seed, tau, shards, out, bake_dir=None):
     # 문제가 없지만, 세트를 재현하려면 이 넷이 다 있어야 한다 -- tau 는 밴드 라벨을
     # 정의하는 값이고(tau_suggestion 은 결과이지 입력이 아니다), render_cap 은
     # index_offset 을 통해 모든 샤드의 텍스트를 바꾼다.
-    stats = {"bucket": merged.pop("bucket"), "seed": seed, "render_cap": cap,
-             "per_band": dict(per_band), "tau": tau, **merged}
+    stats = {
+        "bucket": merged.pop("bucket"),
+        "seed": seed,
+        "render_cap": cap,
+        "per_band": dict(per_band),
+        "tau": tau,
+        **merged,
+    }
     stats["tau_suggestion"] = tau_from_sats(stats.pop("target_sats"))
     stats["preset_mix_realized"] = preset_mix(stats["target_presets"])
     stats["code"] = code_commit()
@@ -148,8 +153,16 @@ def main() -> None:
 
     t, h, f = (int(v) for v in args.per_band.split("/"))
     shards = args.shards or SHARDS.get(args.bucket, EVAL_SHARDS)
-    generate(args.bucket, {"target": t, "hard": h, "first_ok": f},
-             args.n, args.seed, args.tau, shards, args.out, args.bake)
+    generate(
+        args.bucket,
+        {"target": t, "hard": h, "first_ok": f},
+        args.n,
+        args.seed,
+        args.tau,
+        shards,
+        args.out,
+        args.bake,
+    )
 
 
 if __name__ == "__main__":

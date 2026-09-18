@@ -59,8 +59,9 @@ def test_build_is_bit_reproducible():
     """설계 §10-9. 같은 레시피 두 번 -> 이미지 바이트가 동일하다."""
     r = draw_recipe(np.random.default_rng(11), "L", 0)
     a, b = build(r), build(r)
-    assert hashlib.sha256(a.obs.tobytes()).hexdigest() == \
-           hashlib.sha256(b.obs.tobytes()).hexdigest()
+    assert (
+        hashlib.sha256(a.obs.tobytes()).hexdigest() == hashlib.sha256(b.obs.tobytes()).hexdigest()
+    )
     assert np.array_equal(a.src_norm, b.src_norm)
 
 
@@ -214,6 +215,7 @@ def test_dense_field_is_the_augmented_one_not_the_pre_augmentation_one():
 def test_h_obs_is_gone():
     """220 은 물리적으로 틀린 상수였다. 다시 스며들지 못하게 잠근다."""
     import wemeet.data.synthesis as syn
+
     assert not hasattr(syn, "H_OBS")
 
 
@@ -247,10 +249,27 @@ def test_crease_transition_is_relative_to_width():
     cyl_share=0 으로 두어 원통 성분을 끄고 주름만 본다.
     """
     r = Recipe(
-        seed=1, bucket="L", text="WEMEET0000", d_m0=2.0, d_t=1.5, aspect=2.15,
-        preset="crease", cyl_share=0.0, psi=0.0, w_c_f=0.029, lam_f=1.0,
-        phase=0.0, offset=0.0, light=(0.0, 0.0, 1.0), ks=0.0, p=100.0,
-        sigma=0.0, noise=0.0, jpeg=90, rot_deg=0.0, margin=(0.0, 0.0, 0.0, 0.0),
+        seed=1,
+        bucket="L",
+        text="WEMEET0000",
+        d_m0=2.0,
+        d_t=1.5,
+        aspect=2.15,
+        preset="crease",
+        cyl_share=0.0,
+        psi=0.0,
+        w_c_f=0.029,
+        lam_f=1.0,
+        phase=0.0,
+        offset=0.0,
+        light=(0.0, 0.0, 1.0),
+        ks=0.0,
+        p=100.0,
+        sigma=0.0,
+        noise=0.0,
+        jpeg=90,
+        rot_deg=0.0,
+        margin=(0.0, 0.0, 0.0, 0.0),
     )
     make = _make_grad(r, s_t=1.0)
     fractions = []
@@ -290,6 +309,7 @@ def test_recipe_roundtrip_rejects_old_recipes():
     조용한 성공이 조용한 오염이 된다.
     """
     from wemeet.data.synthesis import recipe_from_dict, recipe_to_dict
+
     r = draw_recipe(np.random.default_rng(2), "M", 3)
     d = recipe_to_dict(r)
     assert recipe_from_dict(d) == r

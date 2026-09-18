@@ -67,20 +67,24 @@ def octave_weights(octaves: int, persistence: float) -> np.ndarray:
     스파이크는 균등(persistence=1.0)이었다. 실측에서 균등은 목표 구간 5%,
     0.7 은 10% 다 (설계 §3).
     """
-    w = np.array([persistence ** j for j in range(octaves)], dtype=np.float64)
+    w = np.array([persistence**j for j in range(octaves)], dtype=np.float64)
     return w / w.sum()
 
 
-def grad_crumple(w, h, slope, lam0, rng, octaves=3, persistence=0.7,
-                 psi_spread=25.0):
+def grad_crumple(w, h, slope, lam0, rng, octaves=3, persistence=0.7, psi_spread=25.0):
     """여러 스케일 능선의 합 = 구김. 옥타브마다 파장이 절반, 기울기가 persistence 배."""
     weights = octave_weights(octaves, persistence)
     zx = np.zeros((h, w))
     zy = np.zeros((h, w))
     for j, weight in enumerate(weights):
-        a, b = grad_sine(w, h, slope * weight, lam0 / (2 ** j),
-                         psi_deg=float(rng.uniform(-psi_spread, psi_spread)),
-                         phase=float(rng.uniform(0, 2 * np.pi)))
+        a, b = grad_sine(
+            w,
+            h,
+            slope * weight,
+            lam0 / (2**j),
+            psi_deg=float(rng.uniform(-psi_spread, psi_spread)),
+            phase=float(rng.uniform(0, 2 * np.pi)),
+        )
         zx += a
         zy += b
     return zx, zy
@@ -94,10 +98,8 @@ def slope_budget(d_m0: float, c_min: float = 1.0) -> float:
     """
     ratio = d_m0 / c_min
     if ratio < 1.0:
-        raise ValueError(
-            f"d_m0={d_m0} 가 c_min={c_min} 보다 작아 S_max 가 정의되지 않는다"
-        )
-    return math.sqrt(ratio ** 2 - 1.0)
+        raise ValueError(f"d_m0={d_m0} 가 c_min={c_min} 보다 작아 S_max 가 정의되지 않는다")
+    return math.sqrt(ratio**2 - 1.0)
 
 
 def limit_slope(zx, zy, s_max: float):
