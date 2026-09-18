@@ -3,9 +3,15 @@ import math
 import numpy as np
 import pytest
 
-from wemeet.data.surface import (grad_crease, grad_crumple, grad_cylinder,
-                                 grad_sine, limit_slope, octave_weights,
-                                 slope_budget)
+from wemeet.data.surface import (
+    grad_crease,
+    grad_crumple,
+    grad_cylinder,
+    grad_sine,
+    limit_slope,
+    octave_weights,
+    slope_budget,
+)
 
 
 def test_cylinder_edge_slope_is_tan_theta():
@@ -86,7 +92,8 @@ def test_crumple_persistence_default_differs_from_uniform():
     hf_decay = float(np.sum(np.abs(np.diff(zx_decay, n=2, axis=1))))
     hf_uniform = float(np.sum(np.abs(np.diff(zx_uniform, n=2, axis=1))))
     assert hf_decay < hf_uniform, \
-        f"persistence=0.7 should have lower high-freq energy ({hf_decay}) than uniform ({hf_uniform})"
+        f"persistence=0.7 should have lower high-freq energy ({hf_decay}) " \
+        f"than uniform ({hf_uniform})"
 
     # 추가 검증: 필드들이 실제로 다르다 (같은 seed 이지만 가중치 때문에 다름)
     assert not np.allclose(zx_decay, zx_uniform), \

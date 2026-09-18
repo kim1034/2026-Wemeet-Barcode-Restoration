@@ -24,15 +24,15 @@ def shade(base, zx, zy, light, ka: float = 0.35, kd: float = 0.50,
     n /= np.linalg.norm(n, axis=-1, keepdims=True)
 
     # 광벡터 정규화
-    l = np.asarray(light, dtype=np.float64)
-    l = l / np.linalg.norm(l)
+    lv = np.asarray(light, dtype=np.float64)
+    lv = lv / np.linalg.norm(lv)
 
     # 반벡터 계산: h = (l + v) / |l + v|, v = (0, 0, 1)
-    hv = l + np.array([0.0, 0.0, 1.0])
+    hv = lv + np.array([0.0, 0.0, 1.0])
     hv /= np.linalg.norm(hv)
 
     # 확산 성분: max(0, n.l)
-    diffuse = np.clip(n @ l, 0.0, None)
+    diffuse = np.clip(n @ lv, 0.0, None)
 
     # 정반사 성분: (n.h)^p
     specular = np.clip(n @ hv, 0.0, None) ** p

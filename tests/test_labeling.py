@@ -1,19 +1,25 @@
+import json
+import os
 import pathlib
 import subprocess
 from collections import Counter
 
 import numpy as np
+import pytest
 
 from scripts.label_recipes import (
     BANDS,
+    bake,
     code_commit,
     decode,
     fill_bucket,
     label_sample,
     rectify,
+    split_counts,
     tps_flow,
 )
-from wemeet.data.synthesis import H_OBS, Sample, build, draw_recipe
+from wemeet.data.render import module_count, render_clean
+from wemeet.data.synthesis import ALL_BUCKETS, Sample, build, draw_recipe
 
 
 def test_tps_flow_is_identity_for_identical_control_points():
@@ -41,18 +47,21 @@ def test_wrong_tps_kernel_fails_to_decode_a_known_target_sample():
     실측: mutant 커널로도 4-corner 항등 오차 ~4e-15, 내부점 9개를 써도 동일),
     커널 오류는 제어점 "사이" 에서만 드러난다.
 
-    그래서 독립된 TPS 기준 없이, 1차 디코딩은 실패하지만 보정 후에는
-    성공하는 실제 target 표본이 보정 후에도 계속 디코딩되는지로 커널을
-    간접 검증한다. seed=5 로 뽑은 네 번째 레시피가 그런 표본임을 실측으로
-    확인했다 (decode(obs) 는 None, decode(rectify(...)) 는 성공).
+    특정 시드가 목표 표본을 준다고 박아두지 않는다 -- 분포가 조금만 움직여도
+    (aspect 축 추가, N_X 변경, tau 재측정) 그 가정이 무효가 된다. 대신 목표
+    구간 표본을 탐색한다. 커널이 틀리면 어떤 표본도 보정 후 디코딩되지 않으므로
+    탐색이 예산을 다 쓰고 실패한다 -- 판별력은 오히려 올라간다.
     """
     rng = np.random.default_rng(5)
-    for i in range(4):
-        recipe = draw_recipe(rng, "L", i)
-    sample = build(recipe)
-    assert decode(sample.obs) is None
-    fixed = rectify(sample.obs, sample.dst_norm, sample.src_norm, (H_OBS, sample.w_flat))
-    assert decode(fixed) is not None
+    for i in range(200):
+        sample = build(draw_recipe(rng, "L", i))
+        if decode(sample.obs) is not None:
+            continue                      # 1차 성공 -- 목표 구간이 아니다
+        fixed = rectify(sample.obs, sample.dst_norm, sample.src_norm,
+                        (sample.h_flat, sample.w_flat))
+        if decode(fixed) is not None:
+            return                        # 목표 표본을 찾았고 커널이 그것을 폈다
+    pytest.fail("200 렌더 안에 목표 구간 표본이 없다 -- TPS 커널을 의심하라")
 
 
 def test_bands_are_exactly_the_four_in_the_spec():
@@ -65,10 +74,10 @@ def test_burned_requires_saturation_above_tau(monkeypatch):
     monkeypatch.setattr(mod, "decode", lambda img: None)
     obs = np.zeros((20, 40), dtype=np.uint8)
     dst = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
-    hot = Sample(obs, dst, dst, 0.5, sat_ratio=0.20, scale=1.0, w_flat=40)
-    cool = Sample(obs, dst, dst, 0.5, sat_ratio=0.01, scale=1.0, w_flat=40)
-    assert label_sample(hot, (20, 40), tau=0.04) == "burned"
-    assert label_sample(cool, (20, 40), tau=0.04) == "hard"
+    hot = Sample(obs, dst, dst, 0.5, sat_ratio=0.20, scale=1.0, w_flat=40, h_flat=20)
+    cool = Sample(obs, dst, dst, 0.5, sat_ratio=0.01, scale=1.0, w_flat=40, h_flat=20)
+    assert label_sample(hot, (20, 40), tau=0.04, text="WEMEET0000") == "burned"
+    assert label_sample(cool, (20, 40), tau=0.04, text="WEMEET0000") == "hard"
 
 
 def test_first_ok_short_circuits_the_second_decode(monkeypatch):
@@ -83,9 +92,30 @@ def test_first_ok_short_circuits_the_second_decode(monkeypatch):
     monkeypatch.setattr(mod, "decode", counting_decode)
     obs = np.zeros((20, 40), dtype=np.uint8)
     dst = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
-    s = Sample(obs, dst, dst, 0.5, 0.0, 1.0, 40)
-    assert label_sample(s, (20, 40), tau=0.04) == "first_ok"
+    s = Sample(obs, dst, dst, 0.5, 0.0, 1.0, 40, 20)
+    assert label_sample(s, (20, 40), tau=0.04, text="WEMEET0000") == "first_ok"
     assert len(calls) == 1
+
+
+def test_label_sample_rejects_a_valid_but_wrong_decode():
+    """체크섬을 통과한 틀린 번호는 target 이 아니다.
+
+    Code128 은 약 1/103 로 훼손 판독이 체크섬을 통과한다. 「읽혔는가」로
+    판정하면 그런 표본이 target 으로 들어가 데이터셋을 오염시킨다.
+    """
+    rendered_text = "WEMEET0000"
+    d_m0 = 3.0
+    w_flat = int(round(module_count(rendered_text) * d_m0))
+    h_flat = int(round(w_flat / 3.0))
+    clean = render_clean(rendered_text, d_m0, h_flat)
+    assert decode(clean) == rendered_text  # 표본 자체가 유효한 판독이어야 의미가 있다
+
+    identity = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+    sample = Sample(clean, identity, identity, 0.5, sat_ratio=0.0, scale=1.0,
+                    w_flat=w_flat, h_flat=h_flat)
+
+    band = label_sample(sample, (h_flat, w_flat), tau=0.04, text="WEMEET9999")
+    assert band in ("hard", "burned")
 
 
 def test_fill_bucket_stops_at_the_render_cap():
@@ -121,12 +151,15 @@ def test_fill_bucket_shortfall_is_never_papered_over_by_relabeling():
     나오기 시작했다), 이 테스트가 지키려는 것은 "부족분을 정직하게 남기는가"
     이지 특정 시드의 밴드 구성이 아니다.
     """
-    quota = {"target": 1, "hard": 1, "first_ok": 1}
+    # 30 렌더로 120장을 채울 수 없다 -- 부족분이 시드가 아니라 산술로 보장된다.
+    # 예전에는 seed=1/cap=30 이 "실측으로" 부족분을 만든다는 데 기댔는데,
+    # 그 가정은 분포가 움직일 때마다 무효가 된다.
+    quota = {"target": 40, "hard": 40, "first_ok": 40}
     kept, stats = fill_bucket("L", quota, render_cap=30, seed=1, tau=0.04)
 
     for recipe, band, sat, m_min in kept:
         sample = build(recipe)
-        assert label_sample(sample, (H_OBS, sample.w_flat), 0.04) == band
+        assert label_sample(sample, (sample.h_flat, sample.w_flat), 0.04, recipe.text) == band
 
     assert len(kept) < sum(quota.values())
     assert stats["shortfall"], "진짜 부족분이 있어야 이 테스트가 의미를 갖는다"
@@ -176,10 +209,107 @@ def test_code_commit_reports_dirty_instead_of_hiding_it():
 
     이 테스트 파일 자체가 워킹 트리에 있는 동안에는 판정할 수 없으므로,
     임시 파일을 만들어 dirty 가 실제로 True 로 뒤집히는지를 본다.
+
+    탐침은 CODE_PATHS 안(scripts/)에 만든다 -- dirty 가 보는 것이 트리 전체가 아니라
+    "생성 코드가 커밋과 다른가" 라서, 그 밖에 파일을 두면 (의도대로) 안 뒤집힌다.
     """
-    scratch = pathlib.Path("__dirty_probe__.tmp")
+    scratch = pathlib.Path("scripts/__dirty_probe__.tmp")
     scratch.write_text("probe", encoding="utf-8")
     try:
         assert code_commit()["dirty"] is True
     finally:
         scratch.unlink()
+
+
+def test_code_commit_ignores_generated_output_in_data():
+    """data/stats/ 는 git 에 들어가는 유일한 생성물이라, 앞선 버킷이 남긴 stats 가
+    다음 실행에서 untracked 로 잡혀 dirty 를 거의 항상 true 로 만들었다(v1 발행분
+    9개 중 8개). 항상 true 면 진짜로 더러운 실행과 구분되지 않는다.
+
+    워킹 트리가 이미 더러울 수 있으므로 절대값이 아니라 '탐침이 판정을 바꾸지
+    않는다' 를 본다.
+    """
+    before = code_commit()["dirty"]
+    scratch = pathlib.Path("data/__dirty_probe__.tmp")
+    scratch.write_text("probe", encoding="utf-8")
+    try:
+        assert code_commit()["dirty"] is before
+    finally:
+        scratch.unlink()
+
+
+def test_code_commit_dirty_check_is_cwd_independent():
+    """git pathspec 은 접두어가 없으면 현재 작업 디렉터리 기준으로 풀린다.
+    CODE_PATHS 가 ":/" 매직 접두어 없이 상대 경로였을 때는, code_commit() 을
+    scripts/ 같은 하위 디렉터리에서 호출하면 그 경로들이 아무것도 못 찾고
+    dirty 가 조용히 False 로 나왔다 -- 진짜로 코드가 바뀐 실행인데도 "커밋
+    해시만으로 재현 가능" 이라고 거짓 기록을 남기는 셈이다. 여기서는 실제로
+    추적 중인 코드 파일을 고쳐놓고 하위 디렉터리에서 호출해 dirty 가 True 로
+    잡히는지 본다.
+    """
+    target = pathlib.Path("scripts/generate_v1.py")
+    original = target.read_text(encoding="utf-8")
+    cwd = os.getcwd()
+    try:
+        target.write_text(original + "\n# dirty probe\n", encoding="utf-8")
+        os.chdir("scripts")
+        assert code_commit()["dirty"] is True
+    finally:
+        os.chdir(cwd)
+        target.write_text(original, encoding="utf-8")
+
+
+def test_eval_buckets_are_selectable():
+    assert {"low", "mid", "high"} <= set(ALL_BUCKETS)
+
+
+def test_bake_writes_manifest_with_ground_truth(tmp_path):
+    """정답 번호 없이는 디코딩률을 못 잰다 — manifest 의 존재 이유다 (설계 §3)."""
+    kept, _ = fill_bucket("low", {"target": 1}, 400, seed=7, tau=0.08)
+    assert kept, "400 렌더 안에 목표 구간이 하나도 없다 — 출현율을 의심하라"
+    bake(kept, tmp_path)
+
+    lines = (tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    row = json.loads(lines[0])
+    for key in ("file", "npz", "text", "band", "sat_ratio", "m_min",
+                "aspect", "w_c_f", "preset", "d_m0", "seed"):
+        assert key in row, key
+    assert row["band"] == "target"
+    assert (tmp_path / row["file"]).exists()
+    assert (tmp_path / row["npz"]).exists()
+
+
+def test_split_counts_distributes_remainder_to_front():
+    assert split_counts(10, 3) == [4, 3, 3]
+    assert split_counts(9, 3) == [3, 3, 3]
+    assert sum(split_counts(5000, 7)) == 5000
+    assert max(split_counts(5000, 7)) - min(split_counts(5000, 7)) <= 1
+
+
+def _seeds(bucket, shard, shards, seed=5, cap=24):
+    _, stats = fill_bucket(bucket, {"target": 10**9}, cap, seed, 0.08,
+                           shard=shard, shards=shards)
+    return [r.seed for r, _, _, _ in stats["labelled"]]
+
+
+def test_shard_is_reproducible():
+    assert _seeds("L", 0, 3) == _seeds("L", 0, 3)
+
+
+def test_shards_are_independent():
+    assert _seeds("L", 0, 3) != _seeds("L", 1, 3)
+
+
+def test_shards_together_render_the_whole_cap():
+    total = sum(len(_seeds("L", i, 3, cap=24)) for i in range(3))
+    assert total == 24
+
+
+def test_shard_rng_matches_documented_scheme():
+    """default_rng([seed, shard]) 가 독립이면서 재현되는지 (설계 §5)."""
+    a = np.random.default_rng([42, 0]).random(3)
+    b = np.random.default_rng([42, 1]).random(3)
+    c = np.random.default_rng([42, 0]).random(3)
+    assert not np.allclose(a, b)
+    assert np.allclose(a, c)

@@ -3,15 +3,22 @@ import hashlib
 from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from wemeet.data.optics import shade
 from wemeet.data.synthesis import (
+    ALL_BUCKETS,
+    ASPECT_HI,
+    ASPECT_LO,
     BUCKETS,
+    EVAL_BUCKETS,
     K_A,
     K_D,
     N_X,
     N_Y,
     PRESETS,
+    Recipe,
+    _make_grad,
     build,
     draw_recipe,
     recipe_from_dict,
@@ -202,3 +209,97 @@ def test_dense_field_is_the_augmented_one_not_the_pre_augmentation_one():
     assert inside.min() > 0.0
     assert inside.max() < w - 1
     assert s.g[:, :, 1].max() <= h - 1
+
+
+def test_h_obs_is_gone():
+    """220 은 물리적으로 틀린 상수였다. 다시 스며들지 못하게 잠근다."""
+    import wemeet.data.synthesis as syn
+    assert not hasattr(syn, "H_OBS")
+
+
+def test_aspect_is_drawn_in_range():
+    rng = np.random.default_rng(0)
+    for bucket in BUCKETS:
+        for i in range(30):
+            r = draw_recipe(rng, bucket, i)
+            assert ASPECT_LO <= r.aspect <= ASPECT_HI
+
+
+def test_flat_label_aspect_matches_recipe():
+    """펴진 라벨의 w/h 가 레시피의 aspect 다 (설계 검증 #2).
+
+    관측 크롭이 아니라 펴진 것을 잰다 — 감기면 좁아 보이는 것이 물리적으로 맞다.
+    """
+    rng = np.random.default_rng(1)
+    for bucket in BUCKETS:
+        for i in range(10):
+            r = draw_recipe(rng, bucket, i)
+            s = build(r)
+            assert s.w_flat / s.h_flat == pytest.approx(r.aspect, abs=0.02)
+            assert ASPECT_LO - 0.02 <= s.w_flat / s.h_flat <= ASPECT_HI + 0.02
+
+
+def test_crease_transition_is_relative_to_width():
+    """주름 전이가 이미지 폭의 '같은 비율' 을 차지한다 (설계 검증 #4).
+
+    w_c 가 절대 픽셀이던 시절에는 폭이 3배가 되면 비율이 1/3 로 줄었다 —
+    고해상도 버킷만 물리적으로 3.75배 날카로운 주름을 받았다.
+    cyl_share=0 으로 두어 원통 성분을 끄고 주름만 본다.
+    """
+    r = Recipe(
+        seed=1, bucket="L", text="WEMEET0000", d_m0=2.0, d_t=1.5, aspect=2.15,
+        preset="crease", cyl_share=0.0, psi=0.0, w_c_f=0.029, lam_f=1.0,
+        phase=0.0, offset=0.0, light=(0.0, 0.0, 1.0), ks=0.0, p=100.0,
+        sigma=0.0, noise=0.0, jpeg=90, rot_deg=0.0, margin=(0.0, 0.0, 0.0, 0.0),
+    )
+    make = _make_grad(r, s_t=1.0)
+    fractions = []
+    for w in (600, 1800):
+        zx, _ = make(w, 150)
+        row = zx[75]
+        peak = float(np.abs(row).max())
+        inside = np.where(np.abs(row) < 0.8 * peak)[0]
+        fractions.append((inside.max() - inside.min() + 1) / w)
+    assert fractions[0] == pytest.approx(fractions[1], rel=0.05), fractions
+    # 분석해: 2*atanh(0.8)*w_c_f = 0.0637
+    assert fractions[0] == pytest.approx(2 * np.arctanh(0.8) * r.w_c_f, rel=0.05)
+
+
+def test_text_wraps_at_10000():
+    """10,000번째부터 텍스트가 길어지면 w_flat 이 d_m0 과 무관하게 움직인다 (설계 §2)."""
+    a = draw_recipe(np.random.default_rng(0), "L", 0)
+    b = draw_recipe(np.random.default_rng(0), "L", 10000)
+    c = draw_recipe(np.random.default_rng(0), "L", 107999)
+    assert a.text == b.text == "WEMEET0000"
+    assert c.text == "WEMEET7999"
+
+
+def test_eval_buckets_are_inside_train_buckets():
+    """학습 분포가 평가 3벌을 덮어야 한다 — 안 덮으면 성능 차이가 분포 불일치가 된다."""
+    for ev, tr in (("low", "L"), ("mid", "M"), ("high", "H")):
+        elo, ehi = EVAL_BUCKETS[ev]
+        tlo, thi = BUCKETS[tr]
+        assert tlo <= elo and ehi <= thi, f"{ev} 가 {tr} 밖으로 나간다"
+    assert set(ALL_BUCKETS) == set(BUCKETS) | set(EVAL_BUCKETS)
+
+
+def test_recipe_roundtrip_rejects_old_recipes():
+    """aspect·w_c_f 없는 옛 JSON 은 조용히 통과하면 안 된다 (설계 §8).
+
+    옛 레시피를 새 파이프라인으로 재생성하면 다른 이미지가 나오므로,
+    조용한 성공이 조용한 오염이 된다.
+    """
+    from wemeet.data.synthesis import recipe_from_dict, recipe_to_dict
+    r = draw_recipe(np.random.default_rng(2), "M", 3)
+    d = recipe_to_dict(r)
+    assert recipe_from_dict(d) == r
+    old = {k: v for k, v in d.items() if k not in ("aspect", "w_c_f")}
+    old["w_c"] = 4.0
+    with pytest.raises(TypeError):
+        recipe_from_dict(old)
+
+
+def test_sample_carries_h_flat():
+    s = build(draw_recipe(np.random.default_rng(3), "L", 0))
+    assert isinstance(s.h_flat, int) and s.h_flat > 0
+    assert dataclasses.fields(type(s))[7].name == "h_flat"
