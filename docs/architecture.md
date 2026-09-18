@@ -35,33 +35,33 @@ wemeet/
 ├── schemas.py             파트 간 계약 (아무것도 import 안 함)
 │
 ├── ai/                    ← AI파트
-│   ├── detection.py           Stage 1  검출·기울기 보정        (2단계)
-│   ├── geometry.py            Stage 2  기하 추정              (2단계)
+│   ├── detection/              Stage 1  검출·기울기 보정        __init__.py 가 detect() 를 내보낸다
+│   ├── geometry/                Stage 2  기하 추정              __init__.py 가 estimate_geometry() 를 내보낸다
 │   ├── train_detection.py     검출 모델 학습                 (2단계)
 │   ├── train_geometry.py      기하 추정 모델 학습             (2단계)
 │   └── configs/               학습 설정 YAML                 (2단계)
 │
 ├── sw/                    ← SW파트
-│   ├── rectify.py             Stage 3  기하 보정 (OpenCV)     (2단계)
-│   ├── decoding.py            Stage 4  디코더 + 반사 대응     (2단계)
-│   ├── pipeline.py            4단계 연결 + 재시도 루프        (2단계)
+│   ├── rectify/                 Stage 3  기하 보정 (OpenCV)     __init__.py 가 apply_field() 를 내보낸다
+│   ├── decoding/                Stage 4  디코더 + 반사 대응     __init__.py 가 decode() 를 내보낸다
+│   ├── pipeline/                 4단계 연결 + 재시도 루프        __init__.py 가 run() 을 내보낸다
 │   └── server.py              FastAPI                       (2단계)
 │
 └── data/                  ← 데이터파트
     ├── download.py            HF Hub에서 받아오기            (2단계)
-    ├── synthesis.py           왜곡 + 정답 파라미터 합성       (2단계)
+    ├── synthesis.py           왜곡 + 정답 파라미터 합성       구현됨
     └── ground_truth.py        실촬영 정답 번호 확보          (2단계)
 
 web/                       React 화면 (SW파트)               (2단계)
 tests/
 ├── conftest.py            바코드 이미지 생성 픽스처
-└── test_schemas.py        계약 검증 22개
+└── test_schemas.py        계약 검증
 downloads/                 받아온 이미지·모델 (git 제외)
 ```
 
-`(2단계)` 표시는 아직 만들지 않은 파일입니다. 지금 있는 것은 `schemas.py`와 `tests/`뿐입니다.
+`detection/`, `geometry/`, `rectify/`, `decoding/`, `pipeline/`는 폴더입니다 — 그 안의 `__init__.py`가 각 단계의 공개 함수(`detect`, `estimate_geometry`, `apply_field`, `decode`, `run`)를 내보냅니다. 폴더 안에 파일을 몇 개로 나누든 바깥에서 보는 import 경로(`from wemeet.ai.detection import detect` 등)는 바뀌지 않습니다. `(2단계)` 표시는 아직 만들지 않은 파일입니다.
 
-파일 이름이 파이프라인 단계와 맞습니다. `detection.py`는 1단계, `geometry.py`는 2단계, `rectify.py`는 3단계, `decoding.py`는 4단계입니다.
+파일/폴더 이름이 파이프라인 단계와 맞습니다. `detection/`은 1단계, `geometry/`는 2단계, `rectify/`는 3단계, `decoding/`은 4단계입니다.
 
 ---
 
@@ -143,29 +143,30 @@ wemeet.ai is not allowed to import wemeet.sw:
 계약으로 고정된 형태입니다. 여기서 벗어나면 통합이 깨집니다.
 
 ```python
-# wemeet/ai/detection.py            @AI파트
-def detect(image_bgr: np.ndarray) -> list[DetectedBarcode]: ...
+# wemeet/ai/detection/__init__.py   @AI파트
+def detect(image_bgr: np.ndarray) -> DetectedBarcode | None: ...
+#   이 프로젝트는 사진 한 장에 바코드가 하나만 있다고 가정한다.
+#   못 찾으면 None. 예외를 던지지 않는다.
 
-# wemeet/ai/geometry.py             @AI파트
+# wemeet/ai/geometry/__init__.py    @AI파트
 def estimate_geometry(target: DetectedBarcode) -> GeometryField: ...
 #   이미지를 반환하지 않는다. 반환형에 이미지 필드가 없다.
-#   리스트가 아니라 하나를 받는다 — 무엇을 보정할지는 pipeline 이 정한다.
 
-# wemeet/sw/rectify.py              @SW파트
+# wemeet/sw/rectify/__init__.py     @SW파트
 def apply_field(
     target: DetectedBarcode,
     field: GeometryField,
     interpolation: int = cv2.INTER_CUBIC,
 ) -> RectifiedBarcode: ...
 
-# wemeet/sw/decoding.py             @SW파트
+# wemeet/sw/decoding/__init__.py    @SW파트
 def decode(image: RectifiedBarcode) -> DecodeResult: ...
 
-# wemeet/sw/pipeline.py             @SW파트
+# wemeet/sw/pipeline/__init__.py    @SW파트
 def run(image_bgr: np.ndarray) -> PipelineResult: ...
 ```
 
-`estimate_geometry()`가 리스트가 아니라 단일 객체를 받는 것이 중요합니다. "검출 결과가 여러 개일 때 무엇을 보정할지"는 AI파트가 아니라 파이프라인이 정할 문제입니다. 이 경계를 흐리면 두 파트가 같은 결정을 서로 다르게 구현합니다.
+`detect()`가 리스트가 아니라 단일 객체(`DetectedBarcode | None`)를 반환하는 것이 중요합니다. 예전에는 "검출 결과가 여러 개일 때 무엇을 보정할지"를 파이프라인이 골랐지만, 지금은 애초에 바코드가 하나뿐이라는 전제라 그 선택 로직 자체가 없습니다.
 
 **파이프라인은 예외를 던지지 않습니다.** 어떤 상황에서도 `PipelineResult`를 반환합니다. 현장 컨베이어에서 예외가 올라오면 서비스가 멈추고, 그것이 곧 노리드 존 정체입니다. 실패는 예외가 아니라 **값**으로 표현합니다 — 실패한 `DecodeResult`에는 항상 `failure_reason`이 들어갑니다.
 
@@ -175,17 +176,17 @@ def run(image_bgr: np.ndarray) -> PipelineResult: ...
 
 사진 한 장이 들어와서 번호가 나오기까지, **어느 파일의 어느 줄이 언제 실행되는지**를 따라갑니다.
 
-> 아래 코드는 **아직 만들지 않았습니다** (2단계 산출물). 계약(`schemas.py`)에 따라 이런 형태가 될 것이라는 예시입니다.
+> `wemeet/sw/pipeline/`는 이미 구현돼 있습니다. 아래는 그 실제 연결 로직을 그대로 옮긴 것이고, `_timed`/`ms`(단계별 시간 기록)만 아직 실제 코드에는 없는 부분이라 예시로 남겨뒀습니다. `wemeet/ai/detection/`, `wemeet/ai/geometry/`는 아직 `NotImplementedError` 스켈레톤입니다 (AI파트가 채울 자리).
 
 ### 호출 스택
 
 ```
 server.py                     POST /api/decode 를 받는다        [SW파트]
    └─ pipeline.run()          전체를 지휘한다                   [SW파트]
-        ├─ detect()           ai/detection.py 가 실행된다       [AI파트]
+        ├─ detect()           ai/detection/ 가 실행된다         [AI파트]
         ├─ decode()           1차 시도 — 보정 없이 먼저 읽어본다  [SW파트]
-        ├─ estimate_geometry()  ai/geometry.py 가 실행된다      [AI파트]
-        ├─ apply_field()      sw/rectify.py 가 실행된다         [SW파트]
+        ├─ estimate_geometry()  ai/geometry/ 가 실행된다        [AI파트]
+        ├─ apply_field()      sw/rectify/ 가 실행된다           [SW파트]
         └─ decode()           최종 판독 + 재시도                [SW파트]
 ```
 
@@ -203,45 +204,43 @@ from wemeet.sw.rectify import apply_field
 
 
 def run(image_bgr):
-    ms = {}
+    # ② 검출 — 이 줄에서 AI파트 코드가 실행된다. 하나 또는 None
+    detected = _timed(ms, "detect", detect, image_bgr)
 
-    # ② 검출 — 이 줄에서 AI파트 코드가 실행된다
-    found = _timed(ms, "detect", detect, image_bgr)
-
-    # ③ 판단은 SW가 한다. AI는 "찾은 것"만 돌려줬을 뿐이다
-    if not found:
+    # ③ 판단은 SW가 한다. AI는 "찾았는지 아닌지"만 돌려줬을 뿐이다
+    if detected is None:
         return _fail(image_bgr, "not_detected", ms)
-    best = max(found, key=lambda b: b.confidence)   # 2개 이상이면 1등만
 
     # ④ 1차 시도 — 기울기 보정만으로 읽히는지 본다.
     #    수직으로만 휜 바코드는 여기서 끝난다 (실측: 진폭 32px 까지 읽힌다)
     plain = RectifiedBarcode(
-        image_gray_uint8=cv2.cvtColor(best.crop_bgr_uint8, cv2.COLOR_BGR2GRAY),
-        source=best,
+        image_gray_uint8=cv2.cvtColor(detected.crop_bgr_uint8, cv2.COLOR_BGR2GRAY),
+        source=detected,
         field=None,                                 # None = 보정하지 않았다
     )
     result = _timed(ms, "decode_first", decode, plain)
     if result.text is not None:
-        return _ok(image_bgr, best, plain, result, ms, len(found))
+        return _ok(image_bgr, detected, plain, result, ms)
 
     # ⑤ 안 읽혔다. 얼마나 휘었는지 추정한다 — 이미지가 아니라 숫자를 받는다
-    field = _timed(ms, "estimate", estimate_geometry, best)
+    field = _timed(ms, "estimate", estimate_geometry, detected)
     if field.confidence < 0.3:                      # 추정을 신뢰할 수 없다
         result.degraded = True
-        return _fail_with(image_bgr, best, plain, result, ms, len(found))
+        return _fail_with(image_bgr, detected, plain, result, ms)
 
     # ⑥ 보정 + 디코딩. 실패하면 보정 파라미터를 바꿔 최대 3회
     for i, opts in enumerate(_RETRIES):
-        rectified = _timed(ms, "warp", apply_field, best, field, **opts)
+        rectified = _timed(ms, "warp", apply_field, detected, field, **opts)
         result = _timed(ms, "decode" if i == 0 else "retry", decode, rectified)
         result.retry_count = i
-        result.candidate_count = len(found)         # ⑦ decode() 가 모르는 정보
         if result.text is not None:
-            return _ok(image_bgr, best, rectified, result, ms, len(found))
+            return _ok(image_bgr, detected, rectified, result, ms)
 
     result.failure_reason = "decode_failed"
-    return _fail_with(image_bgr, best, rectified, result, ms, len(found))
+    return _fail_with(image_bgr, detected, rectified, result, ms)
 ```
+
+> `stage_ms` 계측(`_timed`)은 아직 실제 `pipeline/__init__.py`에 들어있지 않습니다. 현재 구현은 연결 로직만 있고, 단계별 시간 기록은 이후 작업입니다.
 
 ### 각 번호가 중요한 이유
 
@@ -249,11 +248,10 @@ def run(image_bgr):
 |---|---|
 | ① | **import가 SW 쪽에만 있습니다.** AI 파일에 `from wemeet.sw...` 가 생기면 순환이 되고 CI가 막습니다 |
 | ② | `detect()` 는 먼저 실행되지만 **부른 쪽은 `run()`** 입니다. "데이터는 AI → SW, 호출은 SW → AI"의 실제 모습입니다 |
-| ③ | "0개면?", "2개 이상이면?" 같은 판단이 **파이프라인에 모여 있습니다.** AI 안으로 새면 두 파트가 같은 결정을 서로 다르게 구현합니다 |
+| ③ | "못 찾았으면?" 같은 판단이 **파이프라인에 모여 있습니다.** AI 안으로 새면 두 파트가 같은 결정을 서로 다르게 구현합니다. 이 프로젝트는 사진 한 장에 바코드가 하나뿐이라고 가정하므로 "여러 개면 뭘 고를지" 판단 자체가 없습니다 |
 | ④ | **1차 디코딩을 AI가 하지 않습니다.** AI가 디코더를 부르면 `wemeet.sw` import가 되어 규칙 위반입니다. "먼저 읽어보고 안 되면 보정한다"는 조율 판단이므로 지휘자의 일입니다 |
 | ⑤ | AI가 돌려주는 것은 **제어점 좌표 몇십 개**입니다. 이미지가 아니므로 없는 바코드를 만들어낼 수 없습니다 |
 | ⑥ | 재시도가 **보정을 다시 하는 것**입니다. 보간법이나 제어점 스케일을 바꿔 다시 펴고 다시 읽습니다 |
-| ⑦ | `candidate_count` 를 파이프라인이 채웁니다 — 몇 개 찾았는지는 `decode()` 가 알 수 없는 정보입니다 |
 
 ### 재시도에서 무엇을 바꾸나
 
@@ -274,8 +272,7 @@ def run(image_bgr):
 | 1차에서 바로 읽힘 | 있음 | `field=None` | `"123456"` | `None` | 약 150ms |
 | 보정 후 읽힘 | 있음 | 있음 | `"123456"` | `None` | |
 | 이미지 형식 오류 | `None` | `None` | `None` | `invalid_input` | 즉시 종료 |
-| 검출 0개 | `None` | `None` | `None` | `not_detected` | 이후 단계 생략 |
-| 검출 2개 이상 | 1등만 | 있음 | 보통 성공 | `None` | `candidate_count`에 총 개수 |
+| 검출 0개(못 찾음) | `None` | `None` | `None` | `not_detected` | 이후 단계 생략 |
 | 기하 추정 신뢰도 낮음 | 있음 | `field=None` | `None` | `decode_failed` | `degraded=True` |
 | 재시도 후에도 실패 | 있음 | 있음 | `None` | `decode_failed` | `retry_count=3` |
 | 500ms 초과 | 있음 | 있음 | 보통 성공 | `None` | **중단하지 않는다.** 시간만 기록 |

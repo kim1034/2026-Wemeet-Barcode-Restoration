@@ -39,8 +39,8 @@ boxes = detect(image)      # 실험할 때 이게 편합니다
 
 | 파일 | 무엇 |
 |---|---|
-| `wemeet/ai/detection.py` | 1단계 — 바코드 찾아서 자르기 |
-| `wemeet/ai/geometry.py` | 2단계 — 얼마나 휘었는지 예측 (이미지 안 만듦) |
+| `wemeet/ai/detection/` | 1단계 — 바코드 찾아서 자르기 (`__init__.py`가 `detect()`를 내보냄) |
+| `wemeet/ai/geometry/` | 2단계 — 얼마나 휘었는지 예측 (이미지 안 만듦, `__init__.py`가 `estimate_geometry()`를 내보냄) |
 | `wemeet/ai/train_detection.py` | 탐지 모델 학습 |
 | `wemeet/ai/train_geometry.py` | 기하 추정 모델 학습 |
 | `wemeet/ai/configs/` | 학습 설정 YAML |
@@ -73,26 +73,25 @@ module 'wemeet.sw.schemas' (most likely due to a circular import)
 
 ---
 
-## `wemeet/ai/detection.py` — 1단계 탐지
+## `wemeet/ai/detection/` — 1단계 탐지
 
 ### 무엇을 하는 파일인가
 
 사진 한 장을 받아서 바코드가 있는 부분만 잘라냅니다. 비스듬히 놓인 바코드는 **똑바로 세워서** 잘라냅니다.
 
+**이 프로젝트는 사진 한 장에 바코드가 하나만 있다고 가정합니다.** 그래서 리스트가 아니라 하나(또는 못 찾으면 `None`)만 반환합니다.
+
 ### 구현할 함수
 
 ```python
-def detect(image_bgr: np.ndarray) -> list[DetectedBarcode]:
+def detect(image_bgr: np.ndarray) -> DetectedBarcode | None:
 ```
 
 | | 내용 |
 |---|---|
 | 입력 | BGR 이미지, 0~255, shape `(H, W, 3)`, dtype `uint8` |
-| 출력 | `DetectedBarcode` 리스트 |
-| 못 찾으면 | 빈 리스트 `[]` — **예외를 던지지 마세요** |
-| 여러 개 찾으면 | `confidence` 높은 순으로 정렬해서 전부 반환 |
-
-여러 개 중에 무엇을 쓸지는 **우리가 정하지 않습니다.** SW파트의 파이프라인이 정합니다. 우리는 찾은 걸 다 주고 정렬만 해줍니다.
+| 출력 | `DetectedBarcode` 하나, 또는 못 찾으면 `None` |
+| 못 찾으면 | `None` — **예외를 던지지 마세요** |
 
 ### 반환할 것
 
@@ -144,21 +143,21 @@ DetectedBarcode(
 `TODO` 자리에 이걸 넣으면 파이프라인이 일단 돌아갑니다. 이미지 중앙 40%를 그냥 자르는 가짜 구현입니다.
 
 ```python
-def detect(image_bgr: np.ndarray) -> list[DetectedBarcode]:
+def detect(image_bgr: np.ndarray) -> DetectedBarcode | None:
     h, w = image_bgr.shape[:2]
     crop = image_bgr[int(h * 0.3):int(h * 0.7), int(w * 0.3):int(w * 0.7)]
-    return [DetectedBarcode(
+    return DetectedBarcode(
         crop_bgr_uint8=crop,
         angle_deg_ccw=0.0,
         confidence=0.5,
-    )]
+    )
 ```
 
 가짜라도 넣어두면 전체가 돌아가고, 자기가 만든 게 어디에 쓰이는지 눈으로 볼 수 있습니다.
 
 ---
 
-## `wemeet/ai/geometry.py` — 2단계 기하 추정
+## `wemeet/ai/geometry/` — 2단계 기하 추정
 
 ### 무엇을 하는 파일인가
 
@@ -185,7 +184,7 @@ def estimate_geometry(target: DetectedBarcode) -> GeometryField:
 | 입력 | `DetectedBarcode` **하나** (리스트 아님) |
 | 출력 | `GeometryField` — 제어점 좌표 몇십 개. 이미지가 아닙니다 |
 
-리스트가 아니라 하나만 받습니다. 여러 개 중에 무엇을 보정할지는 파이프라인이 정합니다.
+리스트가 아니라 하나만 받습니다 — `detect()`도 하나만 반환하므로 자연스럽게 이어집니다.
 
 ### 입력은 이미지입니다 — 출력만 숫자입니다
 
@@ -418,8 +417,8 @@ wandb.summary.update({
 **Q. `schemas.py`를 고쳐야 할 것 같은데요?**
 혼자 고치지 마세요. SW파트 승인이 있어야 머지됩니다. Issue를 만들고 `decision` 라벨을 붙여서 상의하세요. 이 파일이 우리와 SW파트를 잇는 유일한 약속입니다.
 
-**Q. 탐지가 여러 개 찾았는데 어떻게 하죠?**
-전부 반환하고 `confidence` 순으로 정렬만 하세요. 무엇을 쓸지는 파이프라인이 정합니다.
+**Q. 사진 한 장에 바코드가 여러 개 찍히면 어떻게 하죠?**
+지금 계약은 한 장에 하나만 있다고 가정합니다. 실제로 여러 개가 흔하다면 `schemas.py`를 고치는 논의가 필요하니, 혼자 처리하지 말고 Issue로 SW파트와 상의하세요.
 
 **Q. 기하 추정이 실패하면 예외를 던져야 하나요?**
 아니요. 파이프라인이 알아서 처리합니다. 예외를 던지면 SW파트가 잡아서 원본 크롭으로 대체합니다.
