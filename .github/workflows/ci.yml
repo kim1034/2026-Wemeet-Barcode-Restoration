@@ -11,6 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: zbar 설치 (pyzbar 런타임 의존성)
+        run: sudo apt-get update && sudo apt-get install -y libzbar0
+
       - name: uv 설치
         uses: astral-sh/setup-uv@v6
         with:

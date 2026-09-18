@@ -17,9 +17,17 @@
 """
 
 from PIL import Image  # 파이썬에서 이미지를 다루는 라이브러리
-from pyzbar.pyzbar import decode as _pyzbar_decode
 
 from wemeet.schemas import DecodeResult, RectifiedBarcode
+
+# pyzbar 는 OS 레벨 공유 라이브러리(zbar)가 있어야 동작한다. Windows 휠은
+# 그 라이브러리를 번들해서 문제없지만, Linux(CI)는 시스템에 libzbar0 가
+# 따로 설치돼 있지 않으면 import 자체가 ImportError 로 죽는다. zxingcpp 와
+# 같은 방식으로 방어해서, 없는 환경에서는 그 백엔드만 조용히 빠지게 한다.
+try:
+    from pyzbar.pyzbar import decode as _pyzbar_decode
+except ImportError:
+    _pyzbar_decode = None
 
 try:
     import zxingcpp as _zxingcpp
@@ -28,6 +36,8 @@ except ImportError:
 
 
 def _decode_with_pyzbar(gray_image: Image.Image) -> str | None:
+    if _pyzbar_decode is None:
+        return None
     try:
         found = _pyzbar_decode(gray_image)
         if not found:
