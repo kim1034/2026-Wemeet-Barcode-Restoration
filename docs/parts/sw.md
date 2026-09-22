@@ -233,8 +233,6 @@ gray = cv2.cvtColor(target.crop_bgr_uint8, cv2.COLOR_BGR2GRAY)
 fixed = cv2.remap(gray, map_x, map_y, interpolation, borderMode=cv2.BORDER_REPLICATE)
 ```
 
-`field.method == "perspective"` 면 `cv2.getPerspectiveTransform` + `cv2.warpPerspective`를 씁니다. 제어점 4개일 때만 유효합니다.
-
 ### 지켜야 할 것
 
 - 기준 예산은 **24ms**입니다. 재시도에서 3번 불릴 수 있으므로 실제 p50/p95를 기록합니다

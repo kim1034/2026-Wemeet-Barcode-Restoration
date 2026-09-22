@@ -161,12 +161,6 @@ def test_nan_control_points_pass_through(clean_barcode_bgr):
     _assert_passthrough(result, clean_barcode_bgr)
 
 
-def test_non_tps_method_passes_through(clean_barcode_bgr):
-    # 계약은 "perspective" 를 허용하지만 rectify 는 TPS 만 처리한다
-    result = apply_field(_detected(clean_barcode_bgr), _field(DST.copy(), method="perspective"))
-    _assert_passthrough(result, clean_barcode_bgr)
-
-
 @pytest.mark.parametrize("out_scale", [0.0, -1.0, float("nan"), float("inf")])
 def test_invalid_out_scale_is_a_programming_error(clean_barcode_bgr, out_scale):
     with pytest.raises(ValueError):

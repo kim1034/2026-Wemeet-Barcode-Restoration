@@ -67,7 +67,7 @@ class GeometryField:
 
     control_points_dst_norm: np.ndarray  # (N, 2) 펴진 격자. 보통 규칙적인 격자
     control_points_src_norm: np.ndarray  # (N, 2) 휜 이미지에서의 위치
-    method: str  # "tps" | "perspective"
+    method: str  # "tps" 만 허용. 16×3 격자 TPS 로 확정됐다 (docs/decisions/0003)
     confidence: float  # 0.0 ~ 1.0
 
     def __post_init__(self) -> None:
@@ -76,7 +76,7 @@ class GeometryField:
         assert self.control_points_dst_norm.shape[1] == 2
         # 4개 미만은 TPS 를 풀 수 없다. 실측으로 8개를 권장한다 (설계 §8.2)
         assert len(self.control_points_dst_norm) >= 4
-        assert self.method in ("tps", "perspective")
+        assert self.method == "tps"
         assert 0.0 <= self.confidence <= 1.0
 
         # 픽셀 좌표를 넣는 실수를 여기서 잡는다.

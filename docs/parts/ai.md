@@ -247,7 +247,7 @@ from wemeet.schemas import GeometryField
 GeometryField(
     control_points_dst_norm = dst,     # (N, 2) 펴진 격자 위치. 보통 규칙적인 격자
     control_points_src_norm = src,      # (N, 2) 그 내용이 "지금" 있는 위치
-    method                  = "tps",    # "tps" 또는 "perspective"
+    method                  = "tps",    # "tps" 만 허용
     confidence              = 0.82,     # 0.0 ~ 1.0
 )
 ```

@@ -12,7 +12,7 @@ AI가 예측한 것은 좌표뿐이다 (`wemeet/schemas.py` 의 `GeometryField`)
     field                   정규화 제어점 dst/src (N, 2). 확정 격자는 16×3 = 48점
     →  RectifiedBarcode.image_gray_uint8  (round(H·out_scale), round(W·out_scale)) uint8
 
-보정할 수 없으면(제어점이 특이·비정상, method 가 "tps" 가 아님) 예외 대신 원본
+보정할 수 없으면(제어점이 특이·비정상) 예외 대신 원본
 크롭을 흑백으로 그대로 통과시키고 `field=None` 으로 표시한다 — 파이프라인은 이런
 입력 하나 때문에 죽으면 안 된다 (docs/architecture.md).
 
@@ -89,11 +89,6 @@ def apply_field(
     # dst 는 출력 캔버스 기준, src 는 입력 크롭 기준 — 두 캔버스 크기가 다를 수 있다.
     dst_px = dst_norm * np.array([out_w - 1, out_h - 1], dtype=np.float64)
     src_px = src_norm * np.array([in_w - 1, in_h - 1], dtype=np.float64)
-
-    # 계약(schemas.py)은 "perspective" 도 허용하지만 2단계는 16×3 TPS 로 확정됐고
-    # 4점 원근 변환을 보낼 계획이 없다. 쓰이지 않는 분기를 두지 않고 통과시킨다.
-    if field.method != "tps":
-        return _passthrough(target, gray)
 
     try:
         map_x, map_y = tps_maps(dst_px, src_px, (out_h, out_w), step=_FLOW_STEP_PX * out_scale)
