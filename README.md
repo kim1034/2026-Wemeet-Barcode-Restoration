@@ -244,18 +244,26 @@ data/...    데이터파트
 
 ## 지금 상태
 
-**골격까지 만들었습니다.** `uv sync` → `uv run pytest` 가 통과하고, 파트 간 import 규칙이 CI로 강제됩니다.
+**골격과 Stage 2 후보 학습 코드까지 만들었습니다.** `uv sync` → `uv run pytest` 가 통과하고,
+파트 간 import 규칙이 CI로 강제됩니다. 2026-09-21에는 GPU 서버에서 ResNet18-C3 후보
+학습도 완료했습니다. 학습 곡선과 체크포인트는 [W&B 실행 기록](https://wandb.ai/kim-1034/wemeet-barcode/runs/p9eghdt2),
+조건과 결과 해석은 [실험 보고서](docs/experiments/2026-09-21-stage2-resnet18-c3/README.md)에 있습니다.
 
-아직 없는 것은 각 단계의 실제 코드입니다.
+학습이 끝났다는 뜻은 기하 좌표 예측 모델이 만들어졌다는 뜻입니다. 예측 좌표로 이미지를
+펴고 실제 바코드를 읽는 Stage 3·4 평가는 아직 남아 있습니다.
 
-| 있다 | 없다 (2단계) |
+| 있다 | 아직 구현하지 않은 것 |
 |---|---|
 | `wemeet/schemas.py` — 파트 간 계약 | `detection.py` / `geometry.py` |
-| `tests/` — 계약 검증 22개 + 바코드 픽스처 | `rectify.py` / `decoding.py` / `pipeline.py` / `server.py` |
+| `wemeet/ai/geometry/model.py` — ResNet18-C3 후보 모델 | `wemeet/ai/geometry/__init__.py`의 실제 추론 연결 |
+| `scripts/train_geometry.py` — Stage 2 후보 학습 루프 | `rectify.py` / `decoding.py` / `pipeline.py` / `server.py` |
+| [ResNet18-C3 v1 실험 보고서](docs/experiments/2026-09-21-stage2-resnet18-c3/README.md) | held-out 디코딩·rescue rate 평가 |
+| `tests/` — 계약 검증 22개 + 바코드 픽스처 | `web/` React 화면 |
 | CI 3검사 (ruff · import-linter · pytest) | `download.py` / `synthesis.py` / `ground_truth.py` |
-| [구조와 규칙](docs/architecture.md) | `web/` React 화면 |
+| [구조와 규칙](docs/architecture.md) | — |
 
-위 "데이터 받기"의 `wemeet.data.download` 도 2단계에서 만듭니다. 지금은 받아올 데이터 자체가 없습니다.
+학습 데이터는 W&B Artifact로 보관하고, 저장소에는 재현에 필요한 레시피·코드와 실험 기록만 둡니다.
+`wemeet.data.download`와 운영 파이프라인 연결은 다음 단계입니다.
 
 파트별 문서에 "무엇을 만들어야 하는지"가 적혀 있으니 그걸 보고 만들면 됩니다.
 
