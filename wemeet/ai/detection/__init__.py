@@ -18,14 +18,10 @@
 
 **ultralytics 가 없어도 이 모듈은 import 됩니다.** 실제로 `detect()` 를 부를
 때 처음 필요해집니다 (yolo_obb.py 의 라이선스 주석 참고).
-
-검출 입력에는 CLAHE 대비 향상을 적용합니다(`contrast.py`) — 크롭 자체는
-원본에서 뜨므로 Stage 2 도메인과는 무관합니다.
 """
 
 import numpy as np
 
-from wemeet.ai.detection.contrast import enhance_for_detection
 from wemeet.ai.detection.geometry import CROP_PAD, crop_upright, decide_ratio, fit_ratio, upright
 from wemeet.ai.detection.yolo_obb import DEFAULT_IMGSZ, load_model
 from wemeet.schemas import DetectedBarcode
@@ -34,8 +30,6 @@ __all__ = ["detect"]
 
 #: 이 값 미만은 바코드로 치지 않는다.
 CONF_THRESHOLD = 0.25
-#: 검출 입력에 CLAHE 대비 향상을 적용할지. 끄면 원본 그대로 모델에 들어간다.
-USE_CLAHE = True
 
 
 def detect(image_bgr: np.ndarray) -> DetectedBarcode | None:
@@ -51,9 +45,8 @@ def detect(image_bgr: np.ndarray) -> DetectedBarcode | None:
     if image_bgr is None or image_bgr.ndim != 3 or image_bgr.size == 0:
         return None
 
-    detection_input = enhance_for_detection(image_bgr) if USE_CLAHE else image_bgr
     result = load_model().predict(
-        detection_input, imgsz=DEFAULT_IMGSZ, conf=CONF_THRESHOLD, verbose=False
+        image_bgr, imgsz=DEFAULT_IMGSZ, conf=CONF_THRESHOLD, verbose=False
     )[0]
     obb = result.obb
     if obb is None or len(obb) == 0:
