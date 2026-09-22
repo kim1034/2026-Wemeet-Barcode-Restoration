@@ -76,6 +76,51 @@ GPU:            gpu-06, A100-PCIE-40GB, CUDA 12.6
 오차는 합성 정답 control point와 모델 예측 좌표 사이의 pixel 오차다. W&B에는
 epoch별 `train/*`, `val/*`, `epoch`, GPU 시스템 지표와 모델 Artifact가 기록되어 있다.
 
+## Held-out exact-decode 평가
+
+학습에 사용하지 않은 `eval/low`, `eval/mid`, `eval/high`를 각 500장씩 사용해
+총 1,500장을 평가했다. 모델이 예측한 `src_norm`과 고정 `16×3` destination grid를
+사용하고, 출력 크기는 각 manifest의 `(h_flat, w_flat)`로 맞췄다. 보정은 TPS,
+디코더는 `zxing-cpp`이며, 결과 문자열이 manifest의 `text`와 **정확히 같은 경우만**
+성공으로 세었다.
+
+```python
+fixed = rectify(obs, dst_grid(), predicted_src_norm, (h_flat, w_flat))
+got = decode(fixed)
+correct = got == text
+misread = got is not None and got != text
+```
+
+평가 세트는 원래 보정 전 exact decode가 실패하고 정답 control point로 보정하면
+읽히는 `target` 샘플만 포함하므로, 아래 `rescue_rate`는 `ok / 1500`으로 계산했다.
+
+| bucket | n | exact success (`ok`) | misread | decode failed | rescue rate | misread rate |
+|---|---:|---:|---:|---:|---:|---:|
+| low | 500 | 338 | 2 | 160 | 67.60% | 0.40% |
+| mid | 500 | 367 | 1 | 132 | 73.40% | 0.20% |
+| high | 500 | 362 | 4 | 134 | 72.40% | 0.80% |
+| **total** | **1,500** | **1,067** | **7** | **426** | **71.13%** | **0.47%** |
+
+보정과 디코딩만 포함한 평균 시간은 low 165ms, mid 339ms, high 914ms였다. 이 값은
+검출·모델 추론·파이프라인 재시도를 포함하지 않으며, full-resolution TPS를 순차
+계산한 측정이다.
+
+평가 구현은 [`scripts/evaluate_geometry.py`](../../../scripts/evaluate_geometry.py)다.
+실행 결과의 상세 JSON은 로컬 `runs/geometry-eval-resnet18-c3-v1.json`에 생성되며,
+대용량 산출물과 체크포인트는 Git에 넣지 않는다.
+
+재현 명령은 저장소 루트에서 다음과 같다. `--wandb`를 붙이면 현재 계정의 W&B
+인증으로 별도 평가 실행과 JSON Artifact를 기록한다.
+
+```bash
+python scripts/evaluate_geometry.py \
+  --data-root ../data/barcode-datasets-a833a3a59441/synthetic/v1 \
+  --checkpoint runs/restoration-resnet18-c3-v1/best.pt \
+  --output runs/geometry-eval-resnet18-c3-v1.json \
+  --batch-size 32 \
+  --wandb
+```
+
 ## 재현 명령
 
 저장소 루트에서 GPU 환경과 W&B 인증을 준비한 뒤 다음처럼 실행한다. API 키는
@@ -106,10 +151,9 @@ python -m scripts.train_geometry \
 
 ## 다음 단계
 
-1. `best.pt`로 held-out `eval/low`, `eval/mid`, `eval/high`를 추론한다.
-2. 예측 control point와 고정 destination grid를 Stage 3 TPS/OpenCV 보정에 연결한다.
-3. 보정 전후 exact barcode decode를 측정한다.
-4. rescue rate, false decode rate, bucket별 성공률, end-to-end latency를 같은 W&B 프로젝트에 기록한다.
-5. 그 결과를 기준으로 ResNet18-C3를 MobileNetV3-Small·EfficientNet-B0와 비교하고 최종 백본을 결정한다.
+1. 이번 exact-decode 결과를 W&B의 별도 `eval` 실행으로 업로드한다.
+2. 실제 검출기 crop과 실촬영 데이터에서도 같은 exact-decode 지표를 측정한다.
+3. 재시도 배율·TPS 격자 축소를 적용한 end-to-end latency와 성공률을 측정한다.
+4. 그 결과를 기준으로 ResNet18-C3를 MobileNetV3-Small·EfficientNet-B0와 비교하고 최종 백본을 결정한다.
 
-현재 저장소에는 이 held-out rectification·decode 평가 코드는 아직 없다.
+현재 저장소에는 실제 검출기 crop·실촬영 이미지·전체 재시도 경로를 포함한 end-to-end 평가는 아직 없다.

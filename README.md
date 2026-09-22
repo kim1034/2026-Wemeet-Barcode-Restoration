@@ -249,15 +249,16 @@ data/...    데이터파트
 학습도 완료했습니다. 학습 곡선과 체크포인트는 [W&B 실행 기록](https://wandb.ai/kim-1034/wemeet-barcode/runs/p9eghdt2),
 조건과 결과 해석은 [실험 보고서](docs/experiments/2026-09-21-stage2-resnet18-c3/README.md)에 있습니다.
 
-학습이 끝났다는 뜻은 기하 좌표 예측 모델이 만들어졌다는 뜻입니다. 예측 좌표로 이미지를
-펴고 실제 바코드를 읽는 Stage 3·4 평가는 아직 남아 있습니다.
+학습 후 합성 held-out 1,500장에 대해 예측 좌표로 이미지를 펴고 exact decode하는
+평가까지 완료했습니다. 실제 검출기 crop·실촬영 이미지·전체 재시도 파이프라인 평가는
+아직 남아 있습니다.
 
 | 있다 | 아직 구현하지 않은 것 |
 |---|---|
 | `wemeet/schemas.py` — 파트 간 계약 | `detection.py` / `geometry.py` |
 | `wemeet/ai/geometry/model.py` — ResNet18-C3 후보 모델 | `wemeet/ai/geometry/__init__.py`의 실제 추론 연결 |
 | `scripts/train_geometry.py` — Stage 2 후보 학습 루프 | `rectify.py` / `decoding.py` / `pipeline.py` / `server.py` |
-| [ResNet18-C3 v1 실험 보고서](docs/experiments/2026-09-21-stage2-resnet18-c3/README.md) | held-out 디코딩·rescue rate 평가 |
+| [ResNet18-C3 v1 실험 보고서](docs/experiments/2026-09-21-stage2-resnet18-c3/README.md) | 실촬영·end-to-end 평가 |
 | `tests/` — 계약 검증 22개 + 바코드 픽스처 | `web/` React 화면 |
 | CI 3검사 (ruff · import-linter · pytest) | `download.py` / `synthesis.py` / `ground_truth.py` |
 | [구조와 규칙](docs/architecture.md) | — |
