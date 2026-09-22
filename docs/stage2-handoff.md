@@ -18,7 +18,7 @@
 GeometryField(
     control_points_dst_norm = ...,   # (N, 2) 펴진 뒤의 격자 위치
     control_points_src_norm = ...,   # (N, 2) 그 내용이 "지금" 있는 위치
-    method                  = "tps", # "tps" 또는 "perspective"
+    method                  = "tps", # "tps" 만 허용
     confidence              = ...,   # 0.0 ~ 1.0
 )
 ```
@@ -93,8 +93,8 @@ def apply_field(
           → RectifiedBarcode
 ```
 
-`method == "perspective"` 면 `cv2.getPerspectiveTransform` + `warpPerspective` 입니다.
-**제어점이 정확히 4개일 때만 유효합니다** (계약이 강제하지 않으니 3단계에서 확인하세요).
+보정 방식은 **TPS 하나**입니다. `perspective`(4점 원근 변환)는 2026-09-22 에 계약에서
+뺐습니다 — 격자가 16×3 으로 확정돼 4점을 보낼 일이 없습니다.
 
 ### 격자 축소 1/4 은 선택이 아니라 필수입니다
 
@@ -313,7 +313,6 @@ if field.confidence < 0.3:      # 항상 같은 값이 오므로 의미가 없�
 | 구멍 | 무슨 사고가 나나 |
 |---|---|
 | `isinstance(np.ndarray)` 검사가 없음 | **`torch.Tensor` 가 모든 `assert` 를 통과**하고 3단계 numpy 연산 깊은 곳에서 터집니다. 2단계는 torch 로 작업하므로 실제로 일어납니다 |
-| `method="perspective"` 에 `N==4` 강제가 없음 | `getPerspectiveTransform` 은 정확히 4점을 요구합니다 |
 | 동일선상 4점을 막지 않음 | 아핀 항이 퇴화합니다 |
 | **모델 출력의 단조성 검사가 없음** | 학습된 모델이 모순된 제어점을 내면 필드가 접혀 **막대가 복사·소실됩니다.** 합성 데이터 검증(`m > 0`)은 이걸 못 잡습니다 — 합성에서만 참인 성질입니다 |
 

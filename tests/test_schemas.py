@@ -88,13 +88,17 @@ def test_좌표가_xy_두_개가_아니면_거부된다():
         )
 
 
-def test_모르는_보정_방식은_거부된다():
-    """'restore' 같은 값이 들어오면 막는다. 우리는 이미지를 생성하지 않는다."""
+@pytest.mark.parametrize("method", ["restore", "perspective"])
+def test_tps_가_아닌_보정_방식은_거부된다(method):
+    """'restore' 같은 값이 들어오면 막는다. 우리는 이미지를 생성하지 않는다.
+
+    'perspective' 도 막는다 — 보정은 16×3 격자 TPS 하나로 확정됐다.
+    """
     with pytest.raises(AssertionError):
         GeometryField(
             control_points_dst_norm=np.zeros((8, 2)),
             control_points_src_norm=np.zeros((8, 2)),
-            method="restore",
+            method=method,
             confidence=0.5,
         )
 
