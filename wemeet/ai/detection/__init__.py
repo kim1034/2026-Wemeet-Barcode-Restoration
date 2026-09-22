@@ -16,12 +16,20 @@
 
     합성 val 2,000장 · mAP50 0.973 · mAP50-95 0.943 · 추론 4.1ms (RTX 4050)
 
+    **위 수치는 CLAHE 적용 전 원본 이미지 기준이다.** CLAHE(`enhance.py`)는
+    이후 추가된 전처리라 재측정 전까지는 참고치일 뿐이다.
+
 **ultralytics 가 없어도 이 모듈은 import 됩니다.** 실제로 `detect()` 를 부를
 때 처음 필요해집니다 (yolo_obb.py 의 라이선스 주석 참고).
 """
 
 import numpy as np
 
+from wemeet.ai.detection.enhance import (
+    DEFAULT_CLIP_LIMIT,
+    DEFAULT_TILE_GRID_SIZE,
+    enhance_for_detection,
+)
 from wemeet.ai.detection.geometry import CROP_PAD, crop_upright, decide_ratio, fit_ratio, upright
 from wemeet.ai.detection.yolo_obb import DEFAULT_IMGSZ, load_model
 from wemeet.schemas import DetectedBarcode
@@ -32,7 +40,12 @@ __all__ = ["detect"]
 CONF_THRESHOLD = 0.25
 
 
-def detect(image_bgr: np.ndarray) -> DetectedBarcode | None:
+def detect(
+    image_bgr: np.ndarray,
+    use_clahe: bool = True,
+    clahe_clip_limit: float = DEFAULT_CLIP_LIMIT,
+    clahe_tile_grid_size: tuple[int, int] = DEFAULT_TILE_GRID_SIZE,
+) -> DetectedBarcode | None:
     """사진에서 바코드 영역을 찾아 기울기 보정 후 크롭한다.
 
     - 이 프로젝트는 사진 한 장에 바코드가 하나만 있다고 가정한다
@@ -41,12 +54,21 @@ def detect(image_bgr: np.ndarray) -> DetectedBarcode | None:
 
     크롭은 **막대 영역을 규격 비율(5:3 또는 6:4)로 맞추고 각 변에 10% 여백을
     붙인 것**이다. 여백은 2단계 기하 추정이 막대 끝을 판단할 여지를 남긴다.
+
+    `use_clahe=True`(기본값)면 검출 모델 입력에만 CLAHE로 대비를 올린다
+    (`enhance.py`). **크롭 자체는 항상 원본 `image_bgr`에서 뜬다** — CLAHE
+    처리된 픽셀을 크롭으로 내보내면 Stage 2가 학습한 도메인과 어긋난다.
     """
     if image_bgr is None or image_bgr.ndim != 3 or image_bgr.size == 0:
         return None
 
+    detection_input = (
+        enhance_for_detection(image_bgr, clahe_clip_limit, clahe_tile_grid_size)
+        if use_clahe
+        else image_bgr
+    )
     result = load_model().predict(
-        image_bgr, imgsz=DEFAULT_IMGSZ, conf=CONF_THRESHOLD, verbose=False
+        detection_input, imgsz=DEFAULT_IMGSZ, conf=CONF_THRESHOLD, verbose=False
     )[0]
     obb = result.obb
     if obb is None or len(obb) == 0:
