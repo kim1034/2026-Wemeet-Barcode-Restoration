@@ -98,6 +98,11 @@ Cheetah 내부 GPU 시간당 요금은 실행 기록에 포함되어 있지 않�
 없다. 실제 비용은 `17.672 GPU-hours × A100-PCIE-40GB 내부 단가(원/GPU-hour)`로
 계산하면 된다. 예를 들어 단가가 1,000원/GPU-hour라면 17,672원이다.
 
+입력 `3×160×384`, batch 1에서 합성곱 기준 계산량은 **1.807 GMACs**, MAC 하나를
+두 FLOPs로 세는 관례에서는 약 **3.615 GFLOPs**다. GPU-06의 A100에서 별도로 잰
+모델 forward만의 시간은 median 1.629ms, p95 1.898ms였고, peak allocated memory는
+21.25 MiB였다. 전처리·TPS 보정·zxing 디코딩 시간은 여기에 포함되지 않는다.
+
 ## Held-out exact-decode 평가
 
 학습에 사용하지 않은 `eval/low`, `eval/mid`, `eval/high`를 각 500장씩 사용해
