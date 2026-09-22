@@ -157,7 +157,11 @@ def apply_field(
     target: DetectedBarcode,
     field: GeometryField,
     interpolation: int = cv2.INTER_CUBIC,
+    out_scale: float = 1.0,
 ) -> RectifiedBarcode: ...
+#   출력 크기 = 크롭 크기 × out_scale. TPS 는 출력 크기에 따라 보간이 달라진다
+#   (stage3-rectify-guide.md 3절). method 가 "tps" 가 아니거나 제어점이
+#   특이하면 예외 대신 원본 크롭을 흑백으로 통과시키고 field=None 으로 표시한다.
 
 # wemeet/sw/decoding/__init__.py    @SW파트
 def decode(image: RectifiedBarcode) -> DecodeResult: ...
