@@ -120,6 +120,15 @@ def package(checkpoint: Path, staging_dir: Path) -> Path:
     shutil.copy2(checkpoint, best_path)
 
     config = _jsonable(payload.get("config", {}))
+    # The training checkpoint contains absolute paths from one GPU host. Keep
+    # the reproducibility labels but never publish an internal filesystem path
+    # in a public model repository.
+    if "data_root" in config:
+        config["data_root"] = "synthetic/v1"
+    if "dataset_root" in config:
+        config["dataset_root"] = "synthetic/v1"
+    if "output_dir" in config:
+        config["output_dir"] = "runs/restoration-resnet18-c3-v1"
     val = _jsonable(payload.get("val", {}))
     metadata = {
         "model_type": "ResNet18-C3",

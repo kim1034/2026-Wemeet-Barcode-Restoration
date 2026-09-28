@@ -166,12 +166,12 @@ barcode-weights/
 │   └── v2-yolo-obb/
 │       ├── best.pt
 │       └── config.yaml          학습에 쓴 설정 (재현용)
-└── restoration/
-        └── resnet18-c3/
-            ├── README.md
-            ├── config.json
-            ├── model_state_dict.pt
-            └── best.pt
+└── geometry/
+    └── resnet18-c3/
+        ├── README.md
+        ├── config.json
+        ├── model_state_dict.pt
+        └── best.pt
 ```
 
 가중치와 함께 **학습 설정을 반드시 같이 올린다.** 설정 없는 가중치는 재현이 불가능해서 반년 뒤에 쓸 수 없다.
