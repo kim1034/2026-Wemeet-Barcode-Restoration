@@ -66,6 +66,12 @@ GPU:            gpu-06, A100-PCIE-40GB, CUDA 12.6
 학습 구현은 [`scripts/train_geometry.py`](../../../scripts/train_geometry.py), 모델은
 [`wemeet/ai/geometry/model.py`](../../../wemeet/ai/geometry/model.py)에 있다.
 
+운영 추론 어댑터는 [`wemeet/ai/geometry/__init__.py`](../../../wemeet/ai/geometry/__init__.py)에
+있다. 어댑터는 로컬 `downloads/geometry/resnet18-c3/model_state_dict.pt`를 우선 사용하고,
+파일이 없으면 `123metro/barcode-weights/geometry/resnet18-c3/model_state_dict.pt`를
+Hugging Face Hub에서 내려받아 프로세스 안에서 캐시한다. `wemeet/sw/pipeline`의
+기존 `estimate_geometry()` 호출이 이 어댑터를 바로 사용한다.
+
 ## 결과
 
 | 체크포인트 | epoch | validation loss | 평균 오차(px) | RMSE(px) | P95(px) |
@@ -175,6 +181,15 @@ python -m scripts.train_geometry \
 
 체크포인트와 split 파일은 `runs/` 아래에 생성되며 Git에는 올리지 않는다. `.gitignore`
 가 `runs/`, `*.pt`를 제외하므로 대용량 파일은 W&B Artifact에 보관한다.
+
+Hugging Face 모델 패키지는 다음 명령으로 만들고 `--upload`를 붙여 게시한다. HF
+Write 토큰은 `hf auth login`으로 먼저 저장해야 하며, 토큰 자체를 명령어나 Git에
+넣지 않는다.
+
+```bash
+python scripts/publish_geometry_model.py
+python scripts/publish_geometry_model.py --upload
+```
 
 ## 다음 단계
 

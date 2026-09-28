@@ -180,7 +180,7 @@ def run(image_bgr: np.ndarray) -> PipelineResult: ...
 
 사진 한 장이 들어와서 번호가 나오기까지, **어느 파일의 어느 줄이 언제 실행되는지**를 따라갑니다.
 
-> `wemeet/sw/pipeline/`는 이미 구현돼 있습니다. 아래는 그 실제 연결 로직을 그대로 옮긴 것이고, `_timed`/`ms`(단계별 시간 기록)만 아직 실제 코드에는 없는 부분이라 예시로 남겨뒀습니다. `wemeet/ai/detection/`, `wemeet/ai/geometry/`는 아직 `NotImplementedError` 스켈레톤입니다 (AI파트가 채울 자리).
+> `wemeet/sw/pipeline/`는 이미 구현돼 있습니다. 아래는 그 실제 연결 로직을 그대로 옮긴 것이고, `_timed`/`ms`(단계별 시간 기록)만 아직 실제 코드에는 없는 부분이라 예시로 남겨뒀습니다. `wemeet/ai/geometry/`에는 ResNet18-C3 추론 어댑터가, `wemeet/ai/detection/`에는 HF 탐지 가중치를 읽는 어댑터가 구현되어 있습니다. 두 단계 모두 실제 실행에는 각 모델 가중치와 해당 런타임 의존성이 필요합니다.
 
 ### 호출 스택
 

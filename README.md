@@ -255,9 +255,10 @@ data/...    데이터파트
 
 | 있다 | 아직 구현하지 않은 것 |
 |---|---|
-| `wemeet/schemas.py` — 파트 간 계약 | `detection.py` / `geometry.py` |
-| `wemeet/ai/geometry/model.py` — ResNet18-C3 후보 모델 | `wemeet/ai/geometry/__init__.py`의 실제 추론 연결 |
-| `scripts/train_geometry.py` — Stage 2 후보 학습 루프 | `rectify.py` / `decoding.py` / `pipeline.py` / `server.py` |
+| `wemeet/schemas.py` — 파트 간 계약 | `server.py` / 실촬영 end-to-end 평가 |
+| `wemeet/ai/geometry/model.py` — ResNet18-C3 모델 | MobileNetV3/EfficientNet 백본 비교 |
+| `wemeet/ai/geometry/__init__.py` — HF/local 가중치 로더와 추론 | — |
+| `wemeet/sw/rectify`, `decoding`, `pipeline` — Stage 3·4 연결 | `server.py` / 실촬영 end-to-end 평가 |
 | [ResNet18-C3 v1 실험 보고서](docs/experiments/2026-09-21-stage2-resnet18-c3/README.md) | 실촬영·end-to-end 평가 |
 | `tests/` — 계약 검증 22개 + 바코드 픽스처 | `web/` React 화면 |
 | CI 3검사 (ruff · import-linter · pytest) | `download.py` / `synthesis.py` / `ground_truth.py` |
