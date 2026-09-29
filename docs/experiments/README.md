@@ -12,6 +12,12 @@
 | [2026-09-09-control-points](2026-09-09-control-points/README.md) | 제어점 격자 개수 확정 — `6×3` → **`16×3`**. 표본 정의를 `n_x` 에서 떼어내 순환을 끊고, 좌표 오차 σ 를 축으로 넣어 상한 곡선을 처음 쟀다. 최적 격자가 σ 의 함수임을 보이고 최대 후회로 확정. `n_y` 도 σ 에 대해 뒤집힌다 (`16×7` 은 σ=0 에서 1위, σ=4 에서 14.3%). 확정값은 3단계 20ms 예산을 17% 넘는다 |
 | [2026-09-15-stage2-backbone](2026-09-15-stage2-backbone/README.md) | Stage 2 v1 기준 백본 `ResNet18-C3`와 `MobileNetV3-Small`·`EfficientNet-B0` 3-way 비교 설계. 같은 spatial Geometry Head·`16×3` 제어점·TPS 경로에서 구제율, pixel error, latency, model cost를 비교한다 |
 
+## 최신 기준선 재평가
+
+| 실험 | 평가 범위 |
+|---|---|
+| [2026-09-29 Stage 2 v1 재평가](2026-09-29-stage2-eval-v1/README.md) | 고정 ResNet18-C3 epoch 48, synthetic benchmark 1,500장·기존 validation 2,976장. EPE, C/W/U, RR_H/RR_U, oracle/crop 경로 분리 및 지연 3회 반복 측정 |
+
 ## 규칙
 
 - 폴더 이름은 `YYYY-MM-DD-주제`
