@@ -20,13 +20,14 @@ from PIL import Image  # 파이썬에서 이미지를 다루는 라이브러리
 
 from wemeet.schemas import DecodeResult, RectifiedBarcode
 
-# pyzbar 는 OS 레벨 공유 라이브러리(zbar)가 있어야 동작한다. Windows 휠은
-# 그 라이브러리를 번들해서 문제없지만, Linux(CI)는 시스템에 libzbar0 가
-# 따로 설치돼 있지 않으면 import 자체가 ImportError 로 죽는다. zxingcpp 와
-# 같은 방식으로 방어해서, 없는 환경에서는 그 백엔드만 조용히 빠지게 한다.
+# pyzbar 는 OS 레벨 공유 라이브러리(zbar)가 있어야 동작하고, import 하는 순간
+# 그 DLL 을 불러온다. 없는 환경에서는 그 백엔드만 조용히 빠지게 한다.
+#   · Linux(CI): 시스템에 libzbar0 가 없으면 ImportError
+#   · Windows: 휠에 DLL 은 번들돼 있지만 VC++ 2013 런타임(msvcr120.dll)이 없으면
+#     FileNotFoundError, 32/64비트가 섞이면 OSError. 둘 다 OSError 계열이다.
 try:
     from pyzbar.pyzbar import decode as _pyzbar_decode
-except ImportError:
+except (ImportError, OSError):
     _pyzbar_decode = None
 
 try:

@@ -5,6 +5,9 @@ pyzbar 우선 -> zxing-cpp 폴백 흐름 자체는 구현 세부다. 여기서�
 실패하면 반드시 채워진다 (schemas.py 의 __post_init__ 이 강제하는 규칙).
 """
 
+import ctypes
+import importlib
+import sys
 from collections.abc import Callable
 
 import cv2
@@ -60,3 +63,26 @@ def test_failure_reason_presence_matches_text(clean_barcode_bgr: np.ndarray) -> 
 
     assert failure.text is None
     assert failure.failure_reason is not None
+
+
+def test_pyzbar_dll_load_failure_falls_back_to_zxing(
+    monkeypatch: pytest.MonkeyPatch, clean_barcode_bgr: np.ndarray
+) -> None:
+    """VC++ 2013 런타임이 없는 Windows 처럼 zbar DLL 로드가 실패해도 zxing-cpp 로 읽는다."""
+    import wemeet.sw.decoding as decoding
+
+    def _missing_dll(name: str):
+        raise FileNotFoundError(f"Could not find module '{name}' (or one of its dependencies)")
+
+    for name in [m for m in sys.modules if m == "pyzbar" or m.startswith("pyzbar.")]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setattr(ctypes.cdll, "LoadLibrary", _missing_dll)
+    try:
+        importlib.reload(decoding)
+        assert decoding._pyzbar_decode is None
+
+        gray = cv2.cvtColor(clean_barcode_bgr, cv2.COLOR_BGR2GRAY)
+        assert decoding.decode(_rectified_from_gray(gray)).text == "WEMEET0001"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(decoding)
