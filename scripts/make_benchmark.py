@@ -13,8 +13,12 @@
     target    사진 전체로는 안 되고, 크롭을 정답 제어점으로 펴면 정답
     hard      둘 다 안 됨 (포화 소실 `burned` 은 뽑지 않는다)
 
-판정 디코더는 v1 과 같은 zxing-cpp 단독(`label_recipes.decode`)이다. SW `decode()`
-는 pyzbar 를 먼저 쓰므로 조건 A 가 first_ok 보다 조금 더 읽을 수 있다.
+판정 디코더는 **SW `decode()` 의 zxing-cpp 경로 그대로**(`_decode_with_zxingcpp`)다.
+v1 의 `label_recipes.decode` 는 `read_barcode`(한 개)를 쓰는데, 이 장면에서는
+`read_barcodes` 와 결과가 달랐다 — 목표 80장 중 13장을 `read_barcodes` 만 읽었고,
+1장은 `read_barcode` 가 틀린 번호를 냈다. 판정이 조건 A 와 같은 경로여야 구성이 성립한다.
+pyzbar 는 판정에 쓰지 않는다 (PC 마다 깔렸는지가 달라서). pyzbar 가 있는 PC 에서는
+조건 A 가 first_ok 보다 조금 더 읽을 수 있다.
 
 학습(seed 42)·평가(seed 7)와 겹치지 않게 seed 2026 으로 뽑는다. 장면은 컨베이어 벨트 위
 택배 상자·비닐 봉투의 송장 라벨이다 (`scripts/benchmark_scene.py`). 크롭은 리사이즈·
@@ -33,10 +37,12 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from PIL import Image
 
 from scripts.benchmark_scene import compose
-from scripts.label_recipes import code_commit, decode, rectify
+from scripts.label_recipes import code_commit, rectify
 from wemeet.data.synthesis import build, draw_recipe, recipe_to_dict
+from wemeet.sw.decoding import _decode_with_zxingcpp
 
 PER_BAND = {  # bucket -> target / hard / first_ok
     "low": {"target": 27, "hard": 2, "first_ok": 5},
@@ -53,6 +59,10 @@ def _scene_gen():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def decode(gray: np.ndarray) -> str | None:
+    return _decode_with_zxingcpp(Image.fromarray(gray))
 
 
 def _band(scene: np.ndarray, sample, text: str) -> str:
@@ -126,7 +136,7 @@ def main() -> None:
         "render_cap": args.n,
         "tau": TAU,
         "per_band": PER_BAND,
-        "band_rule": "scene-level, zxing-cpp only",
+        "band_rule": "scene-level, sw zxing-cpp path (read_barcodes)",
         "scene": "conveyor belt / box|vinyl / shipping label",
         "code": code_commit(),
         "buckets": stats,
