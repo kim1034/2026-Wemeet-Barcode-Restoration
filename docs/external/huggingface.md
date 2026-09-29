@@ -166,13 +166,31 @@ barcode-weights/
 │   └── v2-yolo-obb/
 │       ├── best.pt
 │       └── config.yaml          학습에 쓴 설정 (재현용)
-└── restoration/
-    └── v1-unet/
-        ├── best.pt
-        └── config.yaml
+└── geometry/
+    └── resnet18-c3/
+        ├── README.md
+        ├── config.json
+        ├── model_state_dict.pt
+        └── best.pt
 ```
 
 가중치와 함께 **학습 설정을 반드시 같이 올린다.** 설정 없는 가중치는 재현이 불가능해서 반년 뒤에 쓸 수 없다.
+
+현재 Stage 2 ResNet18-C3 모델은 다음 경로에 게시한다.
+
+```text
+123metro/barcode-weights/geometry/resnet18-c3/
+```
+
+`wemeet.ai.geometry`는 먼저 `downloads/geometry/resnet18-c3/model_state_dict.pt`와
+`WEMEET_GEOMETRY_WEIGHTS`를 찾고, 없으면 이 HF 경로를 자동으로 다운로드한다.
+실행 환경에서 모델을 바꾸려면 다음 환경변수를 사용한다.
+
+```bash
+export WEMEET_GEOMETRY_HF_REPO=123metro/barcode-weights
+export WEMEET_GEOMETRY_HF_FILE=geometry/resnet18-c3/model_state_dict.pt
+export WEMEET_GEOMETRY_DEVICE=cuda       # 없으면 자동으로 CPU fallback
+```
 
 ---
 
