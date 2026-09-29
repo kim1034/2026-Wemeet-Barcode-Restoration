@@ -8,7 +8,8 @@ monkeypatch 로 가짜 값으로 바꿔치기해서 4단계 연결 자체를 검
 import numpy as np
 import pytest
 
-from wemeet.schemas import DetectedBarcode, GeometryField
+import wemeet.sw.pipeline as pipeline
+from wemeet.schemas import DecodeResult, DetectedBarcode, GeometryField
 from wemeet.sw.pipeline import run
 
 
@@ -22,6 +23,16 @@ def _fake_estimate_geometry(target: DetectedBarcode) -> GeometryField:
     return GeometryField(
         control_points_dst_norm=dst,
         control_points_src_norm=src,
+        method="tps",
+        confidence=0.9,
+    )
+
+
+def _identity_geometry(target: DetectedBarcode) -> GeometryField:
+    dst = np.array([[x, y] for y in (0.0, 0.5, 1.0) for x in (0.0, 0.33, 0.66, 1.0)])
+    return GeometryField(
+        control_points_dst_norm=dst,
+        control_points_src_norm=dst.copy(),
         method="tps",
         confidence=0.9,
     )
@@ -98,3 +109,116 @@ def test_pipeline_survives_exception_from_estimate_geometry(
 
     assert not result.ok
     assert result.decode.degraded
+
+
+# ---------------------------------------------------------------- 단계별 시간 기록
+
+
+def test_stage_ms_records_the_early_exit_path(
+    monkeypatch: pytest.MonkeyPatch, clean_barcode_bgr: np.ndarray
+) -> None:
+    """1차 디코딩에서 끝나면 detect 와 decode_first 만 기록된다."""
+    monkeypatch.setattr("wemeet.sw.pipeline.detect", _fake_detect)
+
+    result = run(clean_barcode_bgr)
+
+    assert result.ok
+    assert set(result.decode.stage_ms) == {"detect", "decode_first"}
+    assert all(v >= 0.0 for v in result.decode.stage_ms.values())
+    assert result.decode.total_ms == pytest.approx(sum(result.decode.stage_ms.values()))
+
+
+def test_stage_ms_records_detect_even_when_nothing_is_found(
+    monkeypatch: pytest.MonkeyPatch, clean_barcode_bgr: np.ndarray
+) -> None:
+    monkeypatch.setattr("wemeet.sw.pipeline.detect", lambda image_bgr: None)
+
+    result = run(clean_barcode_bgr)
+
+    assert result.decode.failure_reason == "not_detected"
+    assert set(result.decode.stage_ms) == {"detect"}
+
+
+def test_stage_ms_records_every_stage_when_rectification_runs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """1차에서 실패하면 estimate·warp·decode 까지 기록되고, 재시도는 retry 에 쌓인다."""
+    rng = np.random.default_rng(2)
+    noise_gray = rng.integers(0, 256, size=(120, 300), dtype=np.uint8)
+    noise_bgr = np.repeat(noise_gray[:, :, None], 3, axis=2)
+
+    monkeypatch.setattr("wemeet.sw.pipeline.detect", _fake_detect)
+    monkeypatch.setattr("wemeet.sw.pipeline.estimate_geometry", _fake_estimate_geometry)
+
+    result = run(noise_bgr)
+
+    assert not result.ok
+    assert set(result.decode.stage_ms) == {
+        "detect",
+        "decode_first",
+        "estimate",
+        "warp",
+        "decode",
+        "retry",
+    }
+
+
+# ---------------------------------------------------------------- 재시도 축은 출력 배율
+
+
+def test_retry_changes_the_output_scale(monkeypatch: pytest.MonkeyPatch) -> None:
+    """재시도마다 apply_field 에 다른 out_scale 이 넘어간다 (보간법이 아니다)."""
+    rng = np.random.default_rng(3)
+    noise_gray = rng.integers(0, 256, size=(120, 300), dtype=np.uint8)
+    noise_bgr = np.repeat(noise_gray[:, :, None], 3, axis=2)
+
+    seen: list[float] = []
+    real_apply_field = pipeline.apply_field
+
+    def _spy(target, field, **kwargs):
+        seen.append(kwargs.get("out_scale"))
+        return real_apply_field(target, field, **kwargs)
+
+    monkeypatch.setattr("wemeet.sw.pipeline.detect", _fake_detect)
+    monkeypatch.setattr("wemeet.sw.pipeline.estimate_geometry", _fake_estimate_geometry)
+    monkeypatch.setattr("wemeet.sw.pipeline.apply_field", _spy)
+
+    result = run(noise_bgr)
+
+    assert seen == [1.0, 1.5, 3.0]
+    assert result.decode.retry_count == 2  # 0, 1, 2 — 세 번째 시도까지 갔다
+
+
+def test_retry_stops_at_the_first_success(
+    monkeypatch: pytest.MonkeyPatch, clean_barcode_bgr: np.ndarray
+) -> None:
+    """첫 배율에서 읽히면 더 펴지 않는다."""
+    seen: list[float] = []
+    real_apply_field = pipeline.apply_field
+
+    def _spy(target, field, **kwargs):
+        seen.append(kwargs.get("out_scale"))
+        return real_apply_field(target, field, **kwargs)
+
+    # 1차 디코딩만 실패시키고(보정 전), 보정 후에는 읽히게 둔다
+    calls = {"n": 0}
+    real_decode = pipeline.decode
+
+    def _decode_failing_first(image):
+        calls["n"] += 1
+        return (
+            real_decode(image)
+            if calls["n"] > 1
+            else DecodeResult(text=None, retry_count=0, failure_reason="decode_failed")
+        )
+
+    monkeypatch.setattr("wemeet.sw.pipeline.detect", _fake_detect)
+    monkeypatch.setattr("wemeet.sw.pipeline.estimate_geometry", _identity_geometry)
+    monkeypatch.setattr("wemeet.sw.pipeline.apply_field", _spy)
+    monkeypatch.setattr("wemeet.sw.pipeline.decode", _decode_failing_first)
+
+    result = run(clean_barcode_bgr)
+
+    assert result.ok
+    assert seen == [1.0]
+    assert result.decode.retry_count == 0

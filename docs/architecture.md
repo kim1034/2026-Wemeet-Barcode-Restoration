@@ -180,7 +180,7 @@ def run(image_bgr: np.ndarray) -> PipelineResult: ...
 
 사진 한 장이 들어와서 번호가 나오기까지, **어느 파일의 어느 줄이 언제 실행되는지**를 따라갑니다.
 
-> `wemeet/sw/pipeline/`는 이미 구현돼 있습니다. 아래는 그 실제 연결 로직을 그대로 옮긴 것이고, `_timed`/`ms`(단계별 시간 기록)만 아직 실제 코드에는 없는 부분이라 예시로 남겨뒀습니다. `wemeet/ai/geometry/`에는 ResNet18-C3 추론 어댑터가, `wemeet/ai/detection/`에는 HF 탐지 가중치를 읽는 어댑터가 구현되어 있습니다. 두 단계 모두 실제 실행에는 각 모델 가중치와 해당 런타임 의존성이 필요합니다.
+> `wemeet/sw/pipeline/`는 이미 구현돼 있습니다. 아래는 그 실제 연결 로직을 그대로 옮긴 것입니다. `wemeet/ai/geometry/`에는 ResNet18-C3 추론 어댑터가, `wemeet/ai/detection/`에는 HF 탐지 가중치를 읽는 어댑터가 구현되어 있습니다. 두 단계 모두 실제 실행에는 각 모델 가중치와 해당 런타임 의존성이 필요합니다.
 
 ### 호출 스택
 
@@ -233,8 +233,8 @@ def run(image_bgr):
         return _fail_with(image_bgr, detected, plain, result, ms)
 
     # ⑥ 보정 + 디코딩. 실패하면 보정 파라미터를 바꿔 최대 3회
-    for i, opts in enumerate(_RETRIES):
-        rectified = _timed(ms, "warp", apply_field, detected, field, **opts)
+    for i, out_scale in enumerate(_RETRY_OUT_SCALES):
+        rectified = _timed(ms, "warp", apply_field, detected, field, out_scale=out_scale)
         result = _timed(ms, "decode" if i == 0 else "retry", decode, rectified)
         result.retry_count = i
         if result.text is not None:
@@ -244,7 +244,7 @@ def run(image_bgr):
     return _fail_with(image_bgr, detected, rectified, result, ms)
 ```
 
-> `stage_ms` 계측(`_timed`)은 아직 실제 `pipeline/__init__.py`에 들어있지 않습니다. 현재 구현은 연결 로직만 있고, 단계별 시간 기록은 이후 작업입니다.
+> `stage_ms` 계측(`_timed`)은 2026-09-29 에 실제 `pipeline/__init__.py` 에 들어갔습니다. `warp` 처럼 여러 번 불리는 단계는 **합으로 누적**됩니다.
 
 ### 각 번호가 중요한 이유
 
@@ -255,17 +255,21 @@ def run(image_bgr):
 | ③ | "못 찾았으면?" 같은 판단이 **파이프라인에 모여 있습니다.** AI 안으로 새면 두 파트가 같은 결정을 서로 다르게 구현합니다. 이 프로젝트는 사진 한 장에 바코드가 하나뿐이라고 가정하므로 "여러 개면 뭘 고를지" 판단 자체가 없습니다 |
 | ④ | **1차 디코딩을 AI가 하지 않습니다.** AI가 디코더를 부르면 `wemeet.sw` import가 되어 규칙 위반입니다. "먼저 읽어보고 안 되면 보정한다"는 조율 판단이므로 지휘자의 일입니다 |
 | ⑤ | AI가 돌려주는 것은 **제어점 좌표 몇십 개**입니다. 이미지가 아니므로 없는 바코드를 만들어낼 수 없습니다 |
-| ⑥ | 재시도가 **보정을 다시 하는 것**입니다. 보간법이나 제어점 스케일을 바꿔 다시 펴고 다시 읽습니다 |
+| ⑥ | 재시도가 **보정을 다시 하는 것**입니다. 출력 배율(`out_scale`)을 바꿔 다시 펴고 다시 읽습니다 |
 
 ### 재시도에서 무엇을 바꾸나
 
-| 회차 | 바꾸는 것 | 근거 |
-|---|---|---|
-| 1 | `INTER_CUBIC` | 기본. 대부분 여기서 끝납니다 |
-| 2 | `INTER_LANCZOS4` | 경계가 더 선명해집니다. 얇은 바에 유리 |
-| 3 | `INTER_LINEAR` | 부드럽습니다. 노이즈가 심할 때 유리 |
+**바꾸는 것은 출력 캔버스 배율입니다** (2026-09-29 적용). 보간법은 `INTER_CUBIC` 고정입니다.
 
-제어점 스케일 조정(변위를 0.9배·1.1배)도 후보입니다. 실측 후 `docs/decisions/0006`에 순서를 확정합니다.
+| 회차 | `out_scale` | 근거 |
+|---|---|---|
+| 1 | `1.0` (크롭과 같은 크기) | 가장 싸고, 이것만으로 약 75% |
+| 2 | `1.5` | |
+| 3 | `3.0` | 세 배율 합집합이 약 95% |
+
+TPS 커널은 스케일 불변이 아니라서 **출력 크기가 보간 결과 자체를 바꿉니다.** 추론 시점에는 펴진 폭을 알 수 없으므로 배율을 바꿔 가며 시도합니다. 평가 세트 실측은 [3단계 구현 가이드 3절](stage3-rectify-guide.md#3-출력-캔버스-크기-out_shape--여기가-제일-중요합니다)에 있습니다.
+
+보간법 3종(`CUBIC` → `LANCZOS4` → `LINEAR`)을 돌리던 것이 이전 초안이었습니다. 측정해 보니 배율이 훨씬 크게 작용해서 교체했습니다. 최종 순서는 `docs/decisions/0006`에서 확정합니다.
 
 ### 예외를 던지지 않으면 실패는 어떻게 전달되나
 
