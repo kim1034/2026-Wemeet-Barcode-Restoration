@@ -42,18 +42,33 @@ seed 2026 — 학습(42)·평가(7)와 다른 시드다. 판정 디코더는 SW 
 > 수치이고, 목표 구간이 80% 라 A 가 낮게 나오는 것은 구성 탓이 크다. 보고서에 구성을
 > 같이 적는다 (`docs/decisions/0005` 문제 2).
 
-이미지는 HF `123metro/barcode-datasets` 의 `benchmark/v1/` 에 있다. **다시 만들지 않는다**
-— 세트가 바뀌면 이전 기록과 비교할 수 없다.
+## 세트 — `benchmark-v2` (보고서 주 세트)
+
+v1 과 같은 규칙(장면 기준 구간, 15/80/5, 해상도 고르게)에 두 가지를 더했다. seed 2027.
+
+| 추가 | 왜 |
+|---|---|
+| **막대 비율 반반** — `2.0-2.3` 50장 / `5:3\|6:4` 50장 (`aspect_family`) | 1단계는 5:3·6:4, 2단계 합성은 2.0~2.3 을 가정했고 어느 쪽도 실물로 확인되지 않았다. 실물이 확정되면 맞는 절반을 본다 |
+| **포장 ±15° 기울기** (`tilt_deg`) | v1 은 기울기가 없어 1단계의 기울기 보정이 평가되지 않았다. 벨트는 두고 포장·라벨·크롭을 함께 돌린다 |
+| **크롭 네 꼭짓점** (`crop_quad`) | 검출을 정답 위치로 채점할 수 있게 |
+
+기울기 때문에 크롭은 한 번 보간된다 (LANCZOS4). 구간 판정의 「펴면 읽힘」은 여전히
+돌리기 전 크롭 원본에서 한다. 조명·노이즈는 v1 처럼 크롭 위에는 얹지 않는다.
+**v1 과 v2 의 수치는 섞어 비교하지 않는다** — 다른 세트다.
+
+이미지는 HF `123metro/barcode-datasets` 의 `benchmark/v1/`, `benchmark/v2/` 에 있다.
+**다시 만들지 않는다** — 세트가 바뀌면 이전 기록과 비교할 수 없다. (같은 명령으로 다시
+만들면 같은 세트가 나오는 것은 확인했다: v1 100장 sha256 일치.)
 
 ```bash
-hf download 123metro/barcode-datasets --repo-type dataset --include "benchmark/v1/*" --local-dir downloads/hf
-# downloads/hf/benchmark/v1 을 --data-root 로 준다
+hf download 123metro/barcode-datasets --repo-type dataset --include "benchmark/v2/*" --local-dir downloads/hf
+# downloads/hf/benchmark/v2 를 --data-root 로 준다
 ```
 
 ## 돌리는 법
 
 ```bash
-uv run python -m scripts.run_benchmark --data-root downloads/hf/benchmark/v1 --note "무엇을 바꿨나"
+uv run python -m scripts.run_benchmark --data-root downloads/hf/benchmark/v2 --note "무엇을 바꿨나"
 ```
 
 - `--note` 는 필수다. 나중에 "이 줄에서 왜 올랐나"를 알 수 있는 건 이것뿐이다
@@ -61,4 +76,6 @@ uv run python -m scripts.run_benchmark --data-root downloads/hf/benchmark/v1 --n
   보고서에 쓸 실행은 커밋한 뒤에 돌린다
 - 시험 삼아 돌릴 때는 `--no-log`
 - 샘플별 결과는 `runs/benchmark/` 에 남는다 (git 제외)
-- `latency_ms_D` 는 돌린 PC 의 시간이다. 줄마다 다른 PC 면 비교하지 않는다
+- `latency_ms_D` 는 돌린 PC 의 시간이다. 줄마다 다른 PC 면 비교하지 않는다. **`cuda: false` 인
+  줄의 시간은 예산(500 ms)과 비교하지 않는다** — 검출·기하 추정이 CPU 로 돈 것이다
+- 기록 한 줄의 `dataset` 으로 v1 / v2 를 구분한다. 보고서 그래프는 한 세트 안에서만 그린다
