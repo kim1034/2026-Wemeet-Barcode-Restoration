@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>노리드존 판독기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+  :root {
+    /* Nexdash tokens: dembrandt extraction of nexdash.com */
+    --bg: #f3f5f4;
+    --surface: #ffffff;
+    --line: #565c59;
+    --ink: #07110b;
+    --ink2: #565c59;
+    --ink3: #565c59;
+    --muted: #f3f5f4;
+    --accent: #6265a3;
+    --accent-soft: #eef0f9;
+    --primary: #041c15;
+    --on-primary: #ffffff;
+    --surface-inverse: #041c15;
+    --surface-inverse-raised: #0a2a20;
+    --ink-inverse: #ffffff;
+    --ink-inverse-muted: #bcc2c0;
+    --btn: #041c15;
+    --btn-ink: #ffffff;
+    --stage: #041c15;
+    --radius-md: 6px;
+    --radius-full: 8px;
+    color-scheme: light;
+  }
+  :root, :root[data-theme="dark"] { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "DM Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+  }
+  button, input, label { font-family: inherit; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; }
+  .num { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .gutter { padding-inline: clamp(16px, 3vw, 32px); }
+  .wrap { max-width: 1440px; margin-inline: auto; }
+
+  /* ---------- top bar ---------- */
+  .topbar { background: var(--surface); }
+  .topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-block: 14px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .mark { width: 32px; height: 32px; border-radius: var(--radius-md); background: var(--ink); display: flex; align-items: center; justify-content: center; gap: 2px; flex: none; }
+  .mark i { display: block; height: 14px; background: var(--surface); }
+  .mark i:nth-child(1) { width: 2px; }
+  .mark i:nth-child(2) { width: 4px; }
+  .mark i:nth-child(3) { width: 1.5px; }
+  .mark i:nth-child(4) { width: 3px; }
+  .mark i:nth-child(5) { width: 2px; }
+  .brand h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .brand p { margin: 1px 0 0; font-size: 12px; color: var(--ink2); }
+  .top-right { display: flex; align-items: center; gap: 14px; }
+  .model { font-size: 12px; color: var(--ink2); }
+  .conn { display: inline-flex; align-items: center; gap: 7px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: var(--radius-full); }
+  .conn .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .conn.off { background: var(--bg); color: var(--ink2); }
+  @media (max-width: 560px) { .model { display: none; } }
+
+  /* ---------- layout ---------- */
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 24px; padding-block: 24px 28px; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  @media (max-width: 1040px) {
+    .body { grid-template-columns: minmax(0, 1fr); }
+    .col-right { order: -1; }
+  }
+  .card { background: var(--surface); border-radius: var(--radius-md); }
+
+  /* ---------- viewer ---------- */
+  .viewer { overflow: hidden; }
+  .viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 20px; }
+  .viewer-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .viewer-head p { margin: 2px 0 0; font-size: 12px; color: var(--ink2); }
+  .seg { display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-full); background: var(--bg); }
+  .seg button { font-size: 12px; font-weight: 500; color: var(--ink2); background: transparent; border: none; border-radius: var(--radius-full); padding: 6px 12px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; }
+
+  .stage { background: var(--stage); padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .stage[data-mode="orig"], .stage[data-mode="rect"] { grid-template-columns: 1fr; }
+  .stage[data-mode="orig"] .pane-rect, .stage[data-mode="rect"] .pane-orig { display: none; }
+  @media (max-width: 640px) { .stage { grid-template-columns: 1fr; padding: 12px; } }
+  .pane { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .pane-label { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--ink-inverse-muted); }
+  .pane-label .mono { color: var(--ink-inverse-muted); }
+  .pane-box { position: relative; aspect-ratio: 438 / 360; max-width: 100%; border-radius: var(--radius-md); overflow: hidden; background: #0a2a20; }
+  .pane-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .pane-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px; text-align: center; }
+  .pane-overlay strong { font-size: 13px; font-weight: 500; color: var(--ink-inverse); }
+  .pane-overlay span { font-size: 12px; color: var(--ink-inverse-muted); max-width: 32ch; line-height: 1.5; }
+  .ring { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #1a3b30; border-top-color: var(--accent); margin-bottom: 4px; }
+  .pane-tag { position: absolute; top: 12px; left: 12px; font-size: 11px; font-weight: 600; color: var(--ink-inverse); background: var(--primary); border-radius: var(--radius-md); padding: 3px 8px; }
+  .pane-tag.neutral { background: #1a3b30; color: var(--ink-inverse-muted); }
+  .pane-caption { position: absolute; left: 14px; right: 14px; bottom: 12px; font-size: 11px; color: var(--ink-inverse-muted); }
+  .viewer-foot { display: flex; gap: 8px 20px; flex-wrap: wrap; padding: 12px 20px; font-size: 11.5px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+
+  /* ---------- timing ---------- */
+  .timing { padding: 20px; }
+  .timing-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .eyebrow-strong { font-size: 13px; font-weight: 600; color: var(--ink2); }
+  .t-big { display: flex; align-items: baseline; gap: 4px; margin-top: 2px; }
+  .t-big b { font-size: 34px; font-weight: 600; line-height: 1.1; }
+  .t-big span { font-size: 14px; color: var(--ink2); }
+  .t-note { font-size: 12px; color: var(--ink2); }
+  .tbar { position: relative; display: flex; gap: 2px; height: 12px; border-radius: var(--radius-md); overflow: hidden; background: var(--muted); margin-top: 14px; }
+  .tmark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); z-index: 1; }
+  .tseg { height: 100%; width: 0; flex: none; transition: width 0.5s ease; }
+  .seg-detect { background: var(--accent); }
+  .seg-decode_first { background: var(--ink2); }
+  .seg-estimate { background: color-mix(in srgb, var(--accent) 55%, white); }
+  .seg-warp { background: var(--ink); }
+  .seg-decode { background: var(--ink2); }
+  .seg-retry { background: color-mix(in srgb, var(--ink2) 45%, white); }
+  .tscale { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; color: var(--ink2); }
+  .tlegend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; }
+  .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2); transition: opacity 0.2s; }
+  .lg.faded { opacity: 0.4; }
+  .lg i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .lg .tag { font-size: 10px; color: var(--ink2); }
+  .lg .ms { font-size: 12px; font-weight: 600; color: var(--ink); }
+
+  /* ---------- result ---------- */
+  .result { padding: 24px; }
+  .result-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: var(--radius-full); }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pill.idle, .pill.neutral { background: var(--bg); color: var(--ink2); }
+  .pill.busy { background: var(--bg); color: var(--ink); }
+  .pill.good { background: var(--primary); color: var(--on-primary); }
+  .pill.bad { background: var(--bg); color: var(--ink); }
+  .pill.warn { background: var(--bg); color: var(--ink); }
+  .http { font-size: 11px; color: var(--ink2); }
+  .num-block { margin-top: 18px; }
+  .eyebrow { font-size: 12px; font-weight: 500; color: var(--ink2); }
+  .big-num { margin-top: 8px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 32px; font-weight: 600; letter-spacing: 0.01em; line-height: 1.2; word-break: break-all; color: var(--ink); }
+  .big-num.is-text { font-family: "DM Sans", "IBM Plex Sans KR", sans-serif; font-size: 27px; font-weight: 600; letter-spacing: -0.01em; word-break: keep-all; }
+  .big-num.t-muted { color: var(--ink2); }
+  .big-num.t-bad { color: var(--ink); }
+  .big-num.t-warn { color: var(--ink); }
+  .big-num.t-ink2 { color: var(--ink2); }
+  .num-expl { margin: 8px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink2); max-width: 46ch; }
+  .num-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  .tag-box { font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-md); padding: 3px 8px; }
+  .chip-btn { font-size: 13px; font-weight: 500; color: var(--ink); background: none; border: none; padding: 2px 0; cursor: pointer; transition: opacity 0.2s ease; }
+  .chip-btn:hover { opacity: 0.55; }
+  .manual { display: flex; align-items: flex-end; gap: 12px; margin-top: 10px; }
+  .manual input { flex: 1; min-width: 0; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--ink); background: transparent; border: none; border-bottom: 1px solid var(--line); border-radius: 0; padding: 6px 0 10px; }
+  .manual button { font-size: 13px; font-weight: 600; color: var(--btn-ink); background: var(--btn); border: none; border-radius: var(--radius-full); padding: 8px 18px; cursor: pointer; }
+  .divider { height: 1px; background: color-mix(in srgb, var(--ink) 8%, transparent); margin-block: 18px; }
+  .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .meta span { font-size: 11px; color: var(--ink2); }
+  .meta b { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; }
+  .meta b.hl { color: var(--accent); }
+
+  /* ---------- pipeline ---------- */
+  .pipeline { padding: 20px 24px; }
+  .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .card-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .card-head .mono { font-size: 11px; color: var(--ink2); }
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .step { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; column-gap: 12px; }
+  .ind { display: flex; flex-direction: column; align-items: center; }
+  .step:not(:last-child) .ind::after { content: ""; flex: 1; width: 2px; min-height: 22px; margin-block: 4px; background: color-mix(in srgb, var(--ink) 12%, transparent); }
+  .circ { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--ink2); flex: none; transition: background 0.2s; }
+  .circ svg { width: 24px; height: 24px; }
+  .stx { padding-top: 2px; padding-bottom: 14px; min-width: 0; }
+  .step:last-child .stx { padding-bottom: 0; }
+  .stx b { display: block; font-size: 14px; font-weight: 600; }
+  .stx .sub { display: block; margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--ink2); }
+  .step .ms { padding-top: 4px; font-size: 12px; font-weight: 600; color: var(--ink2); }
+  .step[data-state="pending"] b { color: var(--ink2); }
+  .step[data-state="active"] .circ { background: var(--accent); color: var(--on-primary); }
+  .step[data-state="active"] b { color: var(--accent); }
+  .adot { width: 8px; height: 8px; border-radius: 50%; background: var(--on-primary); }
+  .step[data-state="done"] .circ { background: var(--primary); color: var(--on-primary); }
+  .step[data-state="fail"] .circ { background: var(--ink); color: var(--on-primary); }
+  .step[data-state="fail"] b { color: var(--ink); }
+  .step[data-state="skip"] .circ { background: var(--bg); opacity: 0.4; }
+  .step[data-state="skip"] b, .step[data-state="skip"] .sub { opacity: 0.4; }
+
+  /* ---------- actions ---------- */
+  .actions { display: flex; flex-direction: column; gap: 8px; }
+  .btn-primary { height: 48px; border-radius: var(--radius-full); border: none; background: var(--btn); color: var(--btn-ink); font-size: 15px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn-primary:disabled { opacity: 0.4; cursor: default; }
+  .btn-primary .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--btn-ink) 35%, transparent); border-top-color: var(--btn-ink); display: none; }
+  .btn-primary.loading .spin { display: inline-block; }
+  .btn-secondary { height: 44px; border-radius: var(--radius-full); border: none; background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; display: grid; place-items: center; }
+  .btn-secondary:hover { opacity: 0.75; }
+  .btn-secondary.busy { opacity: 0.4; pointer-events: none; }
+  .link-btn { align-self: center; font-size: 12px; color: var(--ink2); background: none; border: none; text-decoration: underline; cursor: pointer; padding: 2px; transition: opacity 0.2s ease; }
+  .link-btn:hover { opacity: 0.6; }
+  .hint { margin: 2px 0 0; text-align: center; font-size: 11px; color: var(--ink2); }
+
+  .footnote { text-align: center; font-size: 11.5px; color: var(--ink2); padding-bottom: 32px; margin: 0; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ring, .btn-primary.loading .spin { animation: spin 0.8s linear infinite; }
+    .pill.busy .dot { animation: blink 1s ease-in-out infinite; }
+  }
+  @media (prefers-reduced-motion: reduce) { .tseg { transition: none; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes blink { 50% { opacity: 0.3; } }
+</style>
+
+</head>
+<body>
+<header class="topbar gutter">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div>
+        <h1>노리드존 판독기</h1>
+        <p>인천세관 통합검사장 · METRO</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="model mono" id="modelLine">yolo11n-obb v2 · resnet18-c3</span>
+      <span class="conn off" id="conn"><span class="dot"></span><span id="connText">서버 확인 중</span></span>
+    </div>
+  </div>
+</header>
+
+<div class="gutter">
+  <div class="wrap">
+    <main class="body">
+      <div class="col col-left">
+        <section class="card viewer">
+          <div class="viewer-head">
+            <div>
+              <h2>이미지 대조</h2>
+              <p>카메라 원본에서 찾은 바코드와, AI 예측으로 펴낸 결과</p>
+            </div>
+            <div class="seg" id="viewMode" role="group" aria-label="보기 방식">
+              <button type="button" data-mode="orig" aria-pressed="false">원본</button>
+              <button type="button" data-mode="rect" aria-pressed="false">펴진 결과</button>
+              <button type="button" data-mode="both" aria-pressed="true">나란히</button>
+            </div>
+          </div>
+          <div class="stage" id="stage" data-mode="both">
+            <div class="pane pane-orig">
+              <div class="pane-label"><span id="origLabel">원본 사진</span><span class="mono" id="origDim">—</span></div>
+              <div class="pane-box">
+                <canvas id="origCanvas" width="876" height="720"></canvas>
+                <div class="pane-tag neutral" id="origTag" hidden></div>
+                <div class="pane-overlay" id="origOverlay">
+                  <strong>원본 사진</strong>
+                  <span>오른쪽 아래 이미지 올리기로 송장 사진을 고르세요</span>
+                </div>
+              </div>
+            </div>
+            <div class="pane pane-rect">
+              <div class="pane-label"><span>펴진 결과 · 흑백 크롭</span><span class="mono" id="rectDim">—</span></div>
+              <div class="pane-box">
+                <canvas id="rectCanvas" width="876" height="720" hidden></canvas>
+                <div class="pane-tag" id="rectTag" hidden></div>
+                <div class="pane-caption" id="rectCaption" hidden></div>
+                <div class="pane-overlay" id="rectOverlay">
+                  <div class="ring" id="rectRing" hidden></div>
+                  <strong id="rectOvTitle"></strong>
+                  <span id="rectOvText"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="viewer-foot">
+            <span id="footCand">—</span>
+            <span id="footCrop">—</span>
+            <span id="footConf">—</span>
+          </div>
+        </section>
+
+        <section class="card timing">
+          <div class="timing-head">
+            <div>
+              <div class="eyebrow-strong">처리 시간</div>
+              <div class="t-big"><b class="mono num" id="tTotal">0</b><span class="mono">ms</span></div>
+            </div>
+            <span class="t-note" id="tNote">예산 500ms</span>
+          </div>
+          <div class="tbar" id="tbar"></div>
+          <div class="tscale"><span class="mono">0</span><span id="tScaleEnd">500ms 예산</span></div>
+          <div class="tlegend" id="tlegend"></div>
+        </section>
+      </div>
+
+      <aside class="col col-right">
+        <section class="card result">
+          <div class="result-top">
+            <span class="pill idle" id="pill" aria-live="polite"><span class="dot"></span><span id="pillText">대기</span></span>
+            <span class="http mono" id="httpLine">POST /api/decode 대기</span>
+          </div>
+          <div class="num-block">
+            <div class="eyebrow">바코드 번호</div>
+            <div class="big-num" id="bigNum">—</div>
+            <p class="num-expl" id="numExpl"></p>
+            <div class="num-row" id="numRow" hidden>
+              <span class="tag-box mono" id="symTag"></span>
+              <button type="button" class="chip-btn" id="copyBtn">번호 복사</button>
+              <button type="button" class="chip-btn" id="manualBtn">번호 직접 입력</button>
+            </div>
+            <form class="manual" id="manualForm" hidden>
+              <input id="manualInput" type="text" inputmode="text" autocomplete="off" placeholder="송장 번호 입력" aria-label="바코드 번호 직접 입력">
+              <button type="submit">저장</button>
+            </form>
+          </div>
+          <div class="divider"></div>
+          <div class="meta">
+            <div><span>재시도</span><b id="mRetry">—</b></div>
+            <div><span>검출 신뢰도</span><b id="mConf">—</b></div>
+            <div><span>기하 보정</span><b id="mWarp">—</b></div>
+          </div>
+        </section>
+
+        <section class="card pipeline">
+          <div class="card-head"><h2>처리 과정</h2><span class="mono">pipeline.py</span></div>
+          <ol class="steps" id="steps">
+            <li class="step" data-state="pending"><div class="ind"><span class="circ"></span></div><div class="stx"><b>검출</b><span class="sub"></span></div><span class="ms mono num"></span></li>
+            <li class="step" data-state="pending"><div class="ind"><span class="circ"></span></div><div class="stx"><b>1차 판독</b><span class="sub"></span></div><span class="ms mono num"></span></li>
+            <li class="step" data-state="pending"><div class="ind"><span class="circ"></span></div><div class="stx"><b>기하 추정·보정</b><span class="sub"></span></div><span class="ms mono num"></span></li>
+            <li class="step" data-state="pending"><div class="ind"><span class="circ"></span></div><div class="stx"><b>디코딩</b><span class="sub"></span></div><span class="ms mono num"></span></li>
+          </ol>
+        </section>
+
+        <div class="actions">
+          <button type="button" class="btn-primary" id="runBtn" disabled><span class="spin"></span><span id="runText">판독 요청 보내기</span></button>
+          <label class="btn-secondary" id="uploadLabel" for="photoInput">이미지 올리기</label>
+          <input type="file" id="photoInput" accept="image/*" hidden>
+          <p class="hint">이미지와 바코드 번호는 서버에 저장되지 않습니다</p>
+        </div>
+      </aside>
+    </main>
+
+    <p class="footnote">실제 서버 응답을 표시합니다 · 진행 과정은 눈으로 따라갈 수 있게 늦춰서 재생하고, 시간은 서버에서 잰 값입니다</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+
+  const AI_COLOR = "#6265a3";
+  const STAGE_BG = "#0a2a20";
+  const MONO = '"IBM Plex Mono", ui-monospace, monospace';
+  const BUDGET = 500;
+  const SCALES = [1.0, 1.5, 3.0];
+  const A = { detect: 1600, decode_first: 1200, estimate: 1800, warp: 1300, attempt: 1300, count: 600, slowHint: 3000 };
+  const STAGES = [
+    { key: "detect", label: "검출", part: "AI" },
+    { key: "decode_first", label: "1차 판독", part: "SW" },
+    { key: "estimate", label: "기하 추정", part: "AI" },
+    { key: "warp", label: "기하 보정", part: "SW" },
+    { key: "decode", label: "디코딩", part: "SW" },
+    { key: "retry", label: "재시도", part: "SW" },
+  ];
+  const ICON = {
+    done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.5l3.5 3.5L17 9.5"/></svg>',
+    pass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v10M8 13l4 4 4-4"/></svg>',
+    fail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 8l8 8M16 8l-8 8"/></svg>',
+    active: '<span class="adot"></span>',
+    pending: "", skip: "",
+  };
+  const PILL_ICON = {
+    idle: '<span class="dot"></span>',
+    neutral: '<span class="dot"></span>',
+    busy: '<span class="dot"></span>',
+    good: '<svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>',
+    bad: '<svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>',
+    warn: '<svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6.5v5M10 14.2h.01"/></svg>',
+  };
+
+  let file = null;
+  let originalImg = null;
+  let running = false;
+  let shownTotal = 0;
+  let scaleMax = BUDGET;
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const now = () => new Date().toTimeString().slice(0, 8);
+  const ms0 = (v) => Math.round(v);
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  // ---------- canvas ----------
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
+  }
+  function fit(iw, ih, W, H, pad) {
+    const s = Math.min((W - 2 * pad) / iw, (H - 2 * pad) / ih);
+    const w = iw * s, h = ih * s;
+    return { x: (W - w) / 2, y: (H - h) / 2, w, h };
+  }
+  function clear(canvas) {
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = STAGE_BG;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return ctx;
+  }
+  function drawPoints(ctx, pts, grid, r) {
+    const P = pts.map(([x, y]) => [r.x + x * r.w, r.y + y * r.h]);
+    if (grid && grid[0] * grid[1] === P.length) {
+      const [nx, ny] = grid;
+      ctx.strokeStyle = "rgba(98,101,163,0.7)";
+      ctx.lineWidth = 2;
+      for (let j = 0; j < ny; j++) {
+        ctx.beginPath();
+        for (let i = 0; i < nx; i++) { const [x, y] = P[j * nx + i]; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke();
+      }
+      for (let i = 0; i < nx; i++) {
+        ctx.beginPath();
+        for (let j = 0; j < ny; j++) { const [x, y] = P[j * nx + i]; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke();
+      }
+    }
+    for (const [x, y] of P) {
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = AI_COLOR; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffffff"; ctx.stroke();
+    }
+  }
+
+  function drawOriginal() {
+    const c = $("origCanvas"), ctx = clear(c);
+    if (!originalImg) return;
+    const r = fit(originalImg.naturalWidth, originalImg.naturalHeight, c.width, c.height, 24);
+    ctx.drawImage(originalImg, r.x, r.y, r.w, r.h);
+  }
+
+  function drawCrop(cropImg, conf, rectify) {
+    const c = $("origCanvas"), ctx = clear(c), W = c.width, H = c.height;
+    const r = fit(cropImg.naturalWidth, cropImg.naturalHeight, W, H, 60);
+    ctx.drawImage(cropImg, r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = AI_COLOR; ctx.lineWidth = 4;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    if (rectify) drawPoints(ctx, rectify.control_points_src_norm, rectify.grid, r);
+
+    const label = "barcode · " + conf.toFixed(2);
+    ctx.font = "500 22px " + MONO;
+    const lw = ctx.measureText(label).width + 26;
+    ctx.fillStyle = AI_COLOR;
+    rr(ctx, r.x - 2, r.y - 44, lw, 36, 6); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, r.x + 11, r.y - 19);
+
+    if (originalImg) {
+      const iw = originalImg.naturalWidth, ih = originalImg.naturalHeight;
+      let th = 104, tw = th * iw / ih;
+      if (tw > W * 0.28) { tw = W * 0.28; th = tw * ih / iw; }
+      const tx = W - tw - 14, ty = 14;
+      ctx.globalAlpha = 0.9;
+      ctx.drawImage(originalImg, tx, ty, tw, th);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2;
+      ctx.strokeRect(tx, ty, tw, th);
+    }
+  }
+
+  function drawRectified(img, rectify) {
+    const c = $("rectCanvas"), ctx = clear(c);
+    const r = fit(img.naturalWidth, img.naturalHeight, c.width, c.height, 40);
+    ctx.drawImage(img, r.x, r.y, r.w, r.h);
+    drawPoints(ctx, rectify.control_points_dst_norm, rectify.grid, r);
+  }
+
+  // ---------- UI helpers ----------
+  function setStep(i, state, sub, ms) {
+    const li = $("steps").children[i];
+    li.dataset.state = state;
+    li.querySelector(".circ").innerHTML = ICON[state];
+    li.querySelector(".sub").textContent = sub || "";
+    li.querySelector(".ms").textContent = ms === undefined ? (state === "active" ? "…" : "") : (typeof ms === "number" ? ms0(ms) + "ms" : ms);
+  }
+  function setPill(tone, text) {
+    $("pill").className = "pill " + tone;
+    $("pill").innerHTML = (PILL_ICON[tone] || PILL_ICON.idle) + '<span id="pillText"></span>';
+    $("pillText").textContent = text;
+  }
+  function setBig(text, cls) {
+    const el = $("bigNum");
+    el.textContent = text;
+    el.className = "big-num" + (cls ? " " + cls : "");
+  }
+  function setRectOverlay(o) {
+    const ov = $("rectOverlay");
+    if (!o) { ov.hidden = true; return; }
+    ov.hidden = false;
+    $("rectRing").hidden = !o.ring;
+    $("rectOvTitle").textContent = o.title || "";
+    $("rectOvText").textContent = o.text || "";
+  }
+  function setWarp(text, hl) {
+    $("mWarp").textContent = text;
+    $("mWarp").className = hl ? "hl" : "";
+  }
+  function countTo(to) {
+    const el = $("tTotal"), from = shownTotal;
+    shownTotal = to;
+    // 화면이 안 보이면 requestAnimationFrame 이 멈춘다. 타이머로 돌려서 재생이 멈추지 않게 한다
+    return new Promise((resolve) => {
+      const t0 = performance.now();
+      const timer = setInterval(() => {
+        const p = Math.min(1, (performance.now() - t0) / A.count);
+        el.textContent = ms0(from + (to - from) * (1 - Math.pow(1 - p, 3)));
+        if (p >= 1) { clearInterval(timer); resolve(); }
+      }, 16);
+    });
+  }
+  function buildLegend() {
+    const wrap = $("tlegend");
+    wrap.innerHTML = "";
+    STAGES.forEach((st) => {
+      const it = document.createElement("span");
+      it.className = "lg";
+      it.dataset.key = st.key;
+      it.innerHTML = '<i class="seg-' + st.key + '"></i><span></span><span class="tag mono"></span><span class="ms mono num">—</span>';
+      it.children[1].textContent = st.label;
+      it.children[2].textContent = st.part;
+      wrap.appendChild(it);
+    });
+  }
+  // 예산을 넘으면 막대 끝을 총 시간으로 늘리고, 500ms 자리에 표시선을 둔다
+  function setScale(total) {
+    scaleMax = Math.max(BUDGET, total);
+    const bar = $("tbar");
+    bar.innerHTML = "";
+    if (scaleMax > BUDGET) {
+      const mark = document.createElement("div");
+      mark.className = "tmark";
+      mark.style.left = (BUDGET / scaleMax * 100) + "%";
+      mark.title = "예산 500ms";
+      bar.appendChild(mark);
+      $("tScaleEnd").textContent = ms0(scaleMax) + "ms · 표시선이 500ms 예산";
+    } else {
+      $("tScaleEnd").textContent = "500ms 예산";
+    }
+  }
+  function addSeg(key, ms) {
+    const seg = document.createElement("div");
+    seg.className = "tseg seg-" + key;
+    seg.title = STAGES.find((x) => x.key === key).label + " " + ms0(ms) + "ms";
+    $("tbar").appendChild(seg);
+    void seg.offsetWidth;
+    seg.style.width = (ms / scaleMax * 100) + "%";
+    const lg = $("tlegend").querySelector('[data-key="' + key + '"]');
+    lg.classList.remove("faded");
+    lg.querySelector(".ms").textContent = ms0(ms) + "ms";
+  }
+  function setBusy(b) {
+    running = b;
+    $("uploadLabel").classList.toggle("busy", b);
+    $("runBtn").disabled = b || !file;
+    $("runBtn").classList.toggle("loading", b);
+    $("runText").textContent = b ? "처리 중…" : (shownTotal ? "같은 이미지 다시 판독" : "판독 요청 보내기");
+  }
+
+  function resetUI() {
+    $("origTag").hidden = true;
+    $("origLabel").textContent = "원본 사진";
+    $("origDim").textContent = originalImg ? originalImg.naturalWidth + "×" + originalImg.naturalHeight : "—";
+    $("origOverlay").hidden = !!originalImg;
+    drawOriginal();
+    $("rectCanvas").hidden = true;
+    $("rectTag").hidden = true;
+    $("rectCaption").hidden = true;
+    $("rectDim").textContent = "—";
+    setRectOverlay({ title: "펴진 결과", text: "판독 요청을 보내면 여기에 표시됩니다" });
+    $("footCand").textContent = originalImg ? "입력 " + originalImg.naturalWidth + "×" + originalImg.naturalHeight : "입력 대기";
+    $("footCrop").textContent = "크롭 —";
+    $("footConf").textContent = "제어점 —";
+
+    shownTotal = 0;
+    $("tTotal").textContent = "0";
+    $("tNote").textContent = "예산 500ms";
+    setScale(BUDGET);
+    buildLegend();
+
+    setPill("idle", "대기");
+    $("httpLine").textContent = "POST /api/decode 대기";
+    setBig("—", "t-muted");
+    $("numExpl").textContent = file ? "판독 요청을 보내면 번호가 여기 표시됩니다." : "먼저 송장 사진을 올려 주세요.";
+    $("numRow").hidden = true;
+    $("manualForm").hidden = true;
+    $("mRetry").textContent = "—";
+    $("mConf").textContent = "—";
+    setWarp("—");
+    for (let i = 0; i < 4; i++) setStep(i, "pending", "", "");
+  }
+
+  function failRequest(title, detail, http) {
+    setStep(0, "fail", title, "");
+    for (let i = 1; i < 4; i++) setStep(i, "skip", "건너뜀", "");
+    setPill("neutral", "요청 실패");
+    setBig("요청 실패", "is-text t-ink2");
+    $("numExpl").textContent = detail;
+    $("httpLine").textContent = http;
+    $("footCand").textContent = "—";
+    setRectOverlay({ title: "결과 없음", text: title });
+    setBusy(false);
+    $("runText").textContent = "다시 요청";
+  }
+
+  // ---------- run ----------
+  async function run() {
+    if (running || !file) return;
+    resetUI();
+    setBusy(true);
+    setPill("busy", "처리 중");
+    $("httpLine").textContent = "POST /api/decode · 전송 중";
+    setBig("판독 중…", "is-text t-muted");
+    $("numExpl").textContent = "검출 → 1차 판독 → 필요할 때만 기하 추정·보정 → 디코딩 순서로 진행합니다.";
+    setRectOverlay({ title: "대기 중", text: "1차 판독에 실패할 때만 폅니다" });
+    setStep(0, "active", "YOLO OBB로 바코드 찾는 중…");
+    $("footCand").textContent = "검출 중…";
+
+    const sent = performance.now();
+    const slow = setTimeout(() => setStep(0, "active", "모델을 불러오는 중 · 첫 요청은 오래 걸릴 수 있습니다"), A.slowHint);
+    let resp;
+    try {
+      resp = await fetch("/api/decode", {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+    } catch (err) {
+      clearTimeout(slow);
+      failRequest("서버에 연결하지 못함", "서버가 켜져 있는지 확인하세요. 저장소 폴더에서 uv run uvicorn wemeet.sw.server:app 으로 켭니다.", "연결 실패");
+      return;
+    }
+    clearTimeout(slow);
+    let body = null;
+    try { body = await resp.json(); } catch (err) { body = null; }
+    if (!resp.ok || !body) {
+      failRequest("요청을 처리하지 못함", (body && body.error) || "서버 로그를 확인하세요.", "HTTP " + resp.status);
+      return;
+    }
+    const roundTrip = ms0(performance.now() - sent);
+    const elapsed = performance.now() - sent;
+    if (elapsed < A.detect) await wait(A.detect - elapsed);
+    await replay(body, roundTrip);
+  }
+
+  async function replay(b, roundTrip) {
+    const ms = b.stage_ms || {};
+    setScale(b.total_ms);
+    let total = 0;
+    async function tick(key) {
+      if (ms[key] == null) return;
+      total += ms[key];
+      addSeg(key, ms[key]);
+      await countTo(total);
+      $("httpLine").textContent = "POST /api/decode · " + ms0(total) + "ms";
+    }
+
+    // 1. 검출
+    await tick("detect");
+    if (!b.detection) {
+      setStep(0, "fail", "바코드 영역을 찾지 못함", ms.detect);
+      $("origTag").textContent = "바코드 영역 없음";
+      $("origTag").hidden = false;
+      $("footCand").textContent = "검출 0건";
+      for (let i = 1; i < 4; i++) setStep(i, "skip", "건너뜀", "");
+      setRectOverlay({ title: "보정하지 않았습니다", text: "펼 바코드 영역이 없습니다" });
+      return finish(b, total, roundTrip);
+    }
+    const det = b.detection;
+    const cropImg = await loadImage(b.images.crop);
+    drawCrop(cropImg, det.confidence, null);
+    $("origLabel").textContent = "검출 크롭 · 회전 보정";
+    $("origDim").textContent = det.crop_size[0] + "×" + det.crop_size[1];
+    const angle = Math.abs(det.angle_deg_ccw) >= 0.5 ? " · " + det.angle_deg_ccw + "° 회전 보정" : "";
+    setStep(0, "done", "YOLO OBB · confidence " + det.confidence.toFixed(2) + angle, ms.detect);
+    $("mConf").textContent = det.confidence.toFixed(2);
+    $("footCand").textContent = "검출 confidence " + det.confidence.toFixed(2);
+    $("footCrop").textContent = "크롭 " + det.crop_size[0] + "×" + det.crop_size[1];
+
+    // 2. 1차 판독
+    setStep(1, "active", "보정 없이 먼저 읽어보는 중…");
+    await wait(A.decode_first);
+    await tick("decode_first");
+    const rectPath = ms.estimate != null;
+    if (!rectPath) {
+      setStep(1, "done", "보정 없이 바로 읽힘", ms.decode_first);
+      setStep(2, "skip", "필요 없음", "");
+      setStep(3, "skip", "1차 판독에서 완료", "");
+      setRectOverlay({ title: "보정하지 않았습니다", text: "1차 판독에서 바로 읽혀 펼 필요가 없었습니다 (field = null)" });
+      setWarp("생략");
+      return finish(b, total, roundTrip);
+    }
+    setStep(1, "pass", "보정 없이 시도 — 읽히지 않아 다음 단계로", ms.decode_first);
+
+    // 3. 기하 추정·보정
+    setStep(2, "active", "ResNet18-C3로 휘어짐 추정 중…");
+    setWarp("추정 중", true);
+    $("footConf").textContent = "제어점 계산 중";
+    setRectOverlay({ ring: true, title: "AI가 휘어짐을 추정하고 있습니다", text: "끝나면 이 자리에 펴진 결과가 표시됩니다" });
+    await wait(A.estimate);
+    await tick("estimate");
+
+    if (ms.warp == null) {
+      setStep(2, "fail", "기하 추정 결과를 쓸 수 없어 펴지 않음", ms.estimate);
+      setStep(3, "skip", "건너뜀", "");
+      setRectOverlay({ title: "보정하지 않았습니다", text: "기하 추정에서 오류가 나서 펴지 않은 크롭으로 끝냈습니다" });
+      setWarp("실패");
+      $("footConf").textContent = "제어점 —";
+      return finish(b, total, roundTrip);
+    }
+
+    const rect = b.rectify;
+    if (rect) {
+      drawCrop(cropImg, det.confidence, rect);
+      $("footConf").textContent = rect.grid ? "제어점 " + rect.grid[0] + "×" + rect.grid[1] : "제어점 " + rect.control_points_src_norm.length + "개";
+    }
+    setStep(2, "active", "TPS로 펴는 중…");
+    setWarp("펴는 중", true);
+    setRectOverlay({ ring: true, title: "TPS로 펴는 중", text: "제어점을 기준으로 있는 픽셀만 옮깁니다. 새 픽셀은 만들지 않습니다" });
+    await wait(A.warp);
+    await tick("warp");
+
+    if (rect) {
+      setStep(2, "done", "ResNet18-C3 추정 → TPS로 펴기", ms.estimate + ms.warp);
+      const rimg = await loadImage(b.images.rectified);
+      setRectOverlay(null);
+      drawRectified(rimg, rect);
+      $("rectCanvas").hidden = false;
+      $("rectDim").textContent = rect.size[0] + "×" + rect.size[1];
+      $("rectCaption").hidden = false;
+      setWarp("적용");
+    } else {
+      setStep(2, "fail", "제어점이 비정상이라 펴지 못함 — 원본 크롭으로 판독", ms.estimate + ms.warp);
+      setRectOverlay({ title: "펴지 못했습니다", text: "제어점이 비정상이라 원본 크롭 그대로 판독했습니다" });
+      setWarp("실패");
+    }
+
+    // 4. 디코딩 (+ 배율 재시도)
+    const attempts = b.retry_count + 1;
+    for (let i = 0; i < attempts; i++) {
+      const scale = SCALES[i].toFixed(1) + "×";
+      setStep(3, "active", i === 0 ? "배율 " + scale + " 판독 중…" : "재시도 " + i + "회차 · 배율 " + scale);
+      $("rectCaption").textContent = "TPS remap · 배율 " + scale;
+      $("mRetry").textContent = i + "회";
+      await wait(A.attempt);
+      if (i === 0) await tick("decode");
+    }
+    await tick("retry");
+    const decodeMs = (ms.decode || 0) + (ms.retry || 0);
+    const finalScale = SCALES[b.retry_count].toFixed(1) + "×";
+    if (b.ok) {
+      setStep(3, "done", b.retry_count ? "재시도 " + b.retry_count + "회차 · 배율 " + finalScale + "에서 성공" : "배율 1.0×에서 바로 성공", decodeMs);
+    } else {
+      setStep(3, "fail", "배율 1.0 · 1.5 · 3.0 모두 실패", decodeMs);
+    }
+    if (rect) {
+      const grid = rect.grid ? " · 제어점 " + rect.grid[0] + "×" + rect.grid[1] : "";
+      $("rectCaption").textContent = "TPS remap" + grid + " · 배율 " + finalScale;
+    }
+    finish(b, total, roundTrip);
+  }
+
+  function finish(b, total, roundTrip) {
+    const t = ms0(total);
+    const pct = Math.round(total / BUDGET * 100);
+    $("tNote").textContent = "예산 500ms 중 " + pct + "% 사용 · " + (t <= BUDGET ? "여유 " + (BUDGET - t) + "ms" : (t - BUDGET) + "ms 초과");
+    STAGES.forEach((st) => {
+      if (b.stage_ms[st.key] == null) {
+        const lg = $("tlegend").querySelector('[data-key="' + st.key + '"]');
+        lg.classList.add("faded");
+        lg.querySelector(".ms").textContent = "미사용";
+      }
+    });
+    $("httpLine").textContent = "HTTP 200 · 왕복 " + roundTrip + "ms · " + now();
+    $("mRetry").textContent = b.detection ? (b.stage_ms.estimate != null ? b.retry_count : 0) + "회" : "—";
+    $("numRow").hidden = false;
+
+    if (b.ok) {
+      setPill("good", "판독 성공");
+      setBig(b.text, "");
+      $("symTag").hidden = !b.symbology;
+      $("symTag").textContent = b.symbology || "";
+      $("copyBtn").hidden = false;
+      $("manualBtn").hidden = true;
+      $("numExpl").textContent = b.rectify
+        ? "AI가 휘어짐을 추정해 편 뒤 배율 " + SCALES[b.retry_count].toFixed(1) + "×에서 읽었습니다."
+        : "보정 없이 1차 판독에서 바로 읽혔습니다.";
+    } else {
+      $("symTag").hidden = false;
+      $("copyBtn").hidden = true;
+      if (b.failure_reason === "not_detected") {
+        setPill("neutral", "바코드 없음");
+        setBig("찾지 못했습니다", "is-text t-ink2");
+        $("symTag").textContent = "not_detected";
+        $("manualBtn").hidden = true;
+        $("numExpl").textContent = "사진에서 바코드 영역을 찾지 못했습니다. 송장이 가려졌거나 접혔는지 확인하고 다시 촬영하세요.";
+      } else if (b.degraded) {
+        setPill("warn", "보정 불가");
+        setBig("읽지 못했습니다", "is-text t-warn");
+        $("symTag").textContent = "degraded · " + b.failure_reason;
+        $("manualBtn").hidden = false;
+        $("manualBtn").textContent = "번호 직접 입력";
+        $("numExpl").textContent = "기하 추정 결과를 쓸 수 없어 펴지 않은 크롭으로만 시도했습니다. 크롭을 보고 번호를 직접 입력하거나 다시 촬영하세요.";
+      } else {
+        setPill("bad", "판독 실패");
+        setBig("읽지 못했습니다", "is-text t-bad");
+        $("symTag").textContent = b.failure_reason || "decode_failed";
+        $("manualBtn").hidden = false;
+        $("manualBtn").textContent = "번호 직접 입력";
+        $("numExpl").textContent = b.rectify
+          ? "펴낸 뒤 배율을 1.0 · 1.5 · 3.0으로 바꿔 3번 시도했지만 읽지 못했습니다. 펴진 이미지를 보고 번호를 직접 입력하거나 다시 촬영하세요."
+          : "펴지 못한 크롭으로 3번 시도했지만 읽지 못했습니다. 크롭을 보고 번호를 직접 입력하거나 다시 촬영하세요.";
+      }
+    }
+    setBusy(false);
+  }
+
+  // ---------- input ----------
+  async function onFile(f) {
+    if (running || !f) return;
+    const url = URL.createObjectURL(f);
+    try {
+      originalImg = await loadImage(url);
+    } catch (err) {
+      URL.revokeObjectURL(url);
+      $("numExpl").textContent = "이미지를 열지 못했습니다. JPG나 PNG 파일을 골라 주세요.";
+      return;
+    }
+    file = f;
+    resetUI();
+    setBusy(false);
+  }
+
+  $("photoInput").addEventListener("change", (e) => {
+    onFile(e.target.files && e.target.files[0]);
+    e.target.value = "";
+  });
+  $("stage").addEventListener("dragover", (e) => { e.preventDefault(); });
+  $("stage").addEventListener("drop", (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && f.type.startsWith("image/")) onFile(f);
+  });
+  $("runBtn").addEventListener("click", run);
+
+  $("viewMode").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-mode]");
+    if (!btn) return;
+    $("stage").dataset.mode = btn.dataset.mode;
+    $("viewMode").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === btn)));
+  });
+
+  $("copyBtn").addEventListener("click", () => {
+    const btn = $("copyBtn"), text = $("bigNum").textContent;
+    const flash = (msg) => { btn.textContent = msg; setTimeout(() => { btn.textContent = "번호 복사"; }, 1600); };
+    const fallback = () => {
+      const range = document.createRange();
+      range.selectNodeContents($("bigNum"));
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      flash("선택됨 · Ctrl+C로 복사");
+    };
+    try {
+      navigator.clipboard.writeText(text).then(() => flash("복사됨"), fallback);
+    } catch (err) { fallback(); }
+  });
+  $("manualBtn").addEventListener("click", () => {
+    const f = $("manualForm");
+    f.hidden = !f.hidden;
+    if (!f.hidden) $("manualInput").focus();
+  });
+  $("manualForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = $("manualInput").value.trim();
+    if (!v) return;
+    setBig(v, "");
+    $("numExpl").textContent = "작업자가 직접 입력한 번호입니다. 판독 결과가 아니므로 기록에는 수동 입력으로 남깁니다.";
+    $("manualForm").hidden = true;
+    $("manualInput").value = "";
+    $("manualBtn").textContent = "다시 입력";
+  });
+
+  // ---------- boot ----------
+  resetUI();
+  fetch("/api/health")
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+    .then((h) => {
+      $("conn").classList.remove("off");
+      $("connText").textContent = "서버 연결됨";
+      const name = (p) => (p || "").split("/")[1] || p;
+      $("modelLine").textContent = name(h.models.detection) + " · " + name(h.models.geometry);
+    })
+    .catch(() => {
+      $("conn").classList.add("off");
+      $("connText").textContent = "서버 연결 안 됨";
+    });
+})();
+</script>
+</body>
+</html>

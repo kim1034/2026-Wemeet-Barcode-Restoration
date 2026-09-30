@@ -378,33 +378,51 @@ def decode(image: RectifiedBarcode) -> DecodeResult:
 
 ## `wemeet/sw/server.py` — FastAPI
 
-### 엔드포인트 2개
+### 엔드포인트
 
 | 메서드 | 경로 | 용도 |
 |---|---|---|
-| `POST` | `/api/decode` | 이미지 한 장 처리 |
-| `GET` | `/api/health` | 서버 상태, 모델 버전 |
+| `GET` | `/` | 작업자 화면 (`web/index.html`) |
+| `POST` | `/api/decode` | 이미지 한 장 처리. **본문은 이미지 바이트 그대로** (multipart 아님) |
+| `GET` | `/api/health` | 서버 상태, 모델 가중치 경로 |
+
+실행은 저장소 폴더에서 `uv run uvicorn wemeet.sw.server:app --port 8000` 입니다.
 
 ### 응답 형식
+
+구현: `wemeet/sw/server/__init__.py` 의 `to_response()`. 화면(`web/index.html`)이 이 형식을 읽습니다.
 
 ```json
 {
   "ok": true,
   "text": "8801234567890",
-  "symbology": "CODE128",
-  "retry_count": 1,
+  "symbology": null,
   "failure_reason": null,
-  "candidate_count": 1,
+  "retry_count": 1,
   "degraded": false,
-  "stage_ms": { "detect": 95.0, "decode_first": 22.0, "estimate": 140.0, "warp": 18.0, "decode": 26.0 },
-  "total_ms": 302.1,
+  "stage_ms": { "detect": 95.0, "decode_first": 22.0, "estimate": 140.0, "warp": 18.0, "decode": 26.0, "retry": 25.0 },
+  "total_ms": 326.0,
+  "original_size": [1920, 1080],
+  "detection": { "confidence": 0.93, "angle_deg_ccw": 3.1, "crop_size": [612, 188] },
+  "rectify": {
+    "method": "tps", "confidence": 1.0, "out_scale": 1.5, "size": [918, 282], "grid": [16, 3],
+    "control_points_src_norm": [[0.01, 0.02], "..."],
+    "control_points_dst_norm": [[0.0, 0.0], "..."]
+  },
   "images": {
-    "original": "data:image/png;base64,...",
-    "detected_box": [[120, 340], [520, 350], [518, 430], [118, 420]],
+    "original": "data:image/jpeg;base64,...",
+    "detected_box": null,
+    "crop": "data:image/png;base64,...",
     "rectified": "data:image/png;base64,..."
   }
 }
 ```
+
+- `detection` 은 검출 실패 시 `null`, `rectify`·`images.rectified` 는 실제로 폈을 때만 채워집니다 (1차 판독 성공·`degraded` 이면 `null`)
+- `retry_count` 는 몇 번째 배율에서 끝났는지다 (0=1.0×, 1=1.5×, 2=3.0×)
+- `symbology` 는 `DecodeResult` 에 아직 없어서 항상 `null` 입니다
+- `detected_box` 는 `DetectedBarcode` 에 원본 좌표가 없어서 아직 `null` 입니다. 그리려면 `schemas.py` 변경이 필요합니다 (AI·SW 합의)
+- `candidate_count` 는 뺐습니다. `detect()` 가 한 개만 돌려주도록 확정됐기 때문입니다
 
 ### 판독 실패에도 HTTP 200을 씁니다
 
@@ -429,7 +447,7 @@ def decode(image: RectifiedBarcode) -> DecodeResult:
 
 원본은 클 수 있으니 **긴 변 1280px로 줄여서** 보냅니다. 화면 대조용이라 원해상도가 필요 없습니다.
 
-`detected_box`는 원본 좌표계의 네 점입니다. React가 원본 위에 그대로 그립니다. 회전된 사각형이므로 네 점입니다.
+`detected_box`는 원본 좌표계의 네 점으로 보낼 예정입니다(회전된 사각형이라 네 점). 지금은 `null` 이고, 화면은 대신 크롭 위에 confidence 를 표시합니다.
 
 ### 로그에 남기지 말아야 하는 것
 
