@@ -26,6 +26,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import torch
 
 import wemeet.sw.decoding as decoding
 from scripts.label_recipes import code_commit
@@ -59,21 +60,30 @@ def _grade(read: str | None, truth: str) -> str:
     return "correct" if read == truth else "misread"
 
 
+# 조건별 정답을 이 열로도 나눠 적는다. 세트에 없는 열(v1 의 aspect_family)은 건너뛴다
+GROUPS = {"by_band": "band", "by_bucket": "bucket", "by_aspect": "aspect_family"}
+
+
 def _summary(graded: list[dict]) -> dict:
     n = len(graded)
     out = {}
     for cond in CONDITIONS:
         cnt = Counter(g[cond] for g in graded)
-        by_band = defaultdict(Counter)
-        for g in graded:
-            by_band[g["band"]][g[cond]] += 1
         out[cond] = {
             "correct": cnt["correct"],
             "misread": cnt["misread"],
             "failed": cnt["failed"],
             "rate": round(cnt["correct"] / n, 4),
-            "by_band": {b: f"{c['correct']}/{sum(c.values())}" for b, c in sorted(by_band.items())},
         }
+        for name, col in GROUPS.items():
+            if graded[0].get(col) is None:
+                continue
+            groups = defaultdict(Counter)
+            for g in graded:
+                groups[g[col]][g[cond]] += 1
+            out[cond][name] = {
+                k: f"{c['correct']}/{sum(c.values())}" for k, c in sorted(groups.items())
+            }
     return out
 
 
@@ -85,7 +95,8 @@ def main() -> None:
     args = ap.parse_args()
 
     lines = (args.data_root / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
-    rows = [json.loads(line) for line in lines[1:]]  # 첫 줄은 _stats
+    header = json.loads(lines[0])["_stats"]
+    rows = [json.loads(line) for line in lines[1:]]
     run(cv2.imread(str(args.data_root / rows[0]["file"])))  # 모델 로드는 시간에서 뺀다
 
     graded, total_ms, per_sample = [], [], []
@@ -97,12 +108,13 @@ def main() -> None:
         total_ms.append((time.perf_counter() - start) * 1000.0)
         read |= ladder(result)
         g = {cond: _grade(read[cond], row["text"]) for cond in CONDITIONS}
-        graded.append({"band": row["band"], **g})
+        graded.append({col: row.get(col) for col in GROUPS.values()} | g)
         per_sample.append(
             {
                 "id": row["id"],
                 "band": row["band"],
                 "bucket": row["bucket"],
+                "aspect_family": row.get("aspect_family"),
                 **g,
                 "failure_reason": result.decode.failure_reason,
                 "retry_count": result.decode.retry_count,
@@ -115,7 +127,8 @@ def main() -> None:
         "date": now.isoformat(timespec="seconds"),
         "note": args.note,
         "code": code_commit(),
-        "dataset": "benchmark-v1",
+        "dataset": header.get("dataset", "benchmark-v1"),
+        "cuda": torch.cuda.is_available(),  # 시간은 GPU 유무에 따라 전혀 다르다
         "n": len(rows),
         "decoders": {
             "pyzbar": decoding._pyzbar_decode is not None,
@@ -145,7 +158,10 @@ def main() -> None:
         counts = f"정답 {c['correct']:3d}  오독 {c['misread']:2d}  실패 {c['failed']:3d}"
         print(f"{cond}  {counts}  {c['by_band']}")
     print(f"검출 {record['detected']}/{record['n']}  D 지연 {record['latency_ms_D']}")
-    print(f"decoders {record['decoders']}")
+    for name in ("by_bucket", "by_aspect"):
+        if name in record["conditions"]["D"]:
+            print(f"D {name} {record['conditions']['D'][name]}")
+    print(f"decoders {record['decoders']}  cuda {record['cuda']}")
 
 
 if __name__ == "__main__":
