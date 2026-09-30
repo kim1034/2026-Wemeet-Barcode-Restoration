@@ -3,7 +3,7 @@
 **고정된 사진 100장**으로 파이프라인을 돌릴 때마다 결과를 `runs.jsonl` 에 한 줄씩 쌓는다.
 마지막 결과보고서는 이 기록으로 만든다.
 
-세트를 왜 이렇게 만들었나와 기준선 분석은 [실험 기록](../experiments/2026-09-29-e2e-benchmark-v1/README.md)에 있다.
+세트를 왜 이렇게 만들었나와 기준선 분석은 [실험 기록](../experiments/2026-09-29-e2e-benchmark-v1/README.md)에 있다. v2 와 단계별 수정사항은 [v2 기록](../experiments/2026-09-30-e2e-benchmark-v2/README.md).
 
 ## 보고서가 답할 두 질문
 
