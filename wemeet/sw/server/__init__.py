@@ -130,7 +130,7 @@ def index() -> FileResponse:
 
 @app.get("/assets/{filename}", include_in_schema=False)
 def javascript(filename: str):
-    if filename not in {"capture.mjs", "activity.mjs", "continuous.mjs"}:
+    if filename not in {"capture.mjs", "activity.mjs", "continuous.mjs", "result-state.mjs"}:
         return _error(404, "파일을 찾지 못했습니다.")
     # Avoid Windows MIME registry overrides and stale cached modules during experiments.
     return FileResponse(

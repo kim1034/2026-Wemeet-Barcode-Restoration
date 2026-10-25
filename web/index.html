@@ -223,7 +223,7 @@
 <nav class="tabs" id="tabs" role="tablist" aria-label="화면 전환">
   <button type="button" class="tab" data-view="live" role="tab" aria-current="page">실시간 판독</button>
   <button type="button" class="tab" data-view="history" role="tab" aria-current="false">판독 이력</button>
-  <button type="button" class="tab" data-view="review" role="tab" aria-current="false">미판독 확인 <span class="badge" id="reviewBadge">0</span></button>
+  <button type="button" class="tab" data-view="review" role="tab" aria-current="false">추가 확인 <span class="badge" id="reviewBadge">0</span></button>
   <button type="button" class="tab" data-view="settings" role="tab" aria-current="false">장비 설정</button>
 </nav>
 
@@ -350,7 +350,7 @@
   <section class="page" id="view-review" hidden>
     <div class="review-layout">
       <div class="panel">
-        <div class="review-list-head"><h2>확인 대기 / 최근 이력</h2><span class="cnt" id="reviewCnt">확인 필요 0건</span></div>
+        <div class="review-list-head"><h2>확인 대기 / 최근 이력</h2><span class="cnt" id="reviewCnt">추가 확인 0건</span></div>
         <div id="reviewList"></div>
       </div>
       <div class="col-stack">
@@ -379,6 +379,7 @@
 
 <script type="module">
 import { createContinuousCapture } from "/assets/continuous.mjs";
+import { resultPresentation } from "/assets/result-state.mjs";
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -505,7 +506,33 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
   let autoEnabled = false;
   let captureError = "";
   let resumeAfterVisibility = false;
-  const decisionLabels = { confirmed: "2개 프레임 교차 확인", provisional: "단일 프레임 판독 · 확인 부족", conflict: "번호 충돌 · 확인 필요", unread: "미판독" };
+  const failureLabels = { not_detected: "바코드 미검출", decode_failed: "검출 후 디코딩 실패", invalid_input: "입력 오류", pipeline_error: "처리 오류" };
+  const completionLabels = { consensus: "2개 프레임의 번호 일치", conflicting_texts: "서로 다른 번호가 읽혀 확정 중단", max_attempts: "최대 3장 시도 완료", candidates_exhausted: "후보 프레임 소진", insufficient_distinct_frames: "시간 간격을 확보한 다른 프레임 부족", budget_exhausted: "다음 시도의 시간 예산 부족", no_candidates: "사용 가능한 프레임 없음", selection_error: "프레임 선택 오류" };
+  function attemptDescription(attempt) {
+    const result = attempt.text != null ? `판독값 ${attempt.text}` : (failureLabels[attempt.failure_reason] || attempt.failure_reason || "원인 미확인");
+    return `${attempt.frame_index + 1}번째 · +${Math.round(attempt.offset_ms)}ms · 후보 ${attempt.candidate_count}장 중 점수 ${attempt.quality_score.toFixed(3)} · ${result}`;
+  }
+  function burstSummary(body) {
+    const verification = body.status === "conflict" ? "서로 다른 번호" : `동일 번호 확인 ${body.matching_frame_ids.length}/2장`;
+    return `${body.frame_count}장 수집 · ${body.frame_attempt_count}장 판독 · ${verification}`;
+  }
+  function burstFailureSummary(body) {
+    const counts = new Map();
+    for (const attempt of body.attempts) {
+      const label = attempt.text != null ? "번호 판독" : (failureLabels[attempt.failure_reason] || "원인 미확인");
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+    return [...counts].map(([label, count]) => `${label} ${count}장`).join(" · ");
+  }
+  function burstAttemptList(body) {
+    const list = document.createElement("ol");
+    for (const attempt of body.attempts) {
+      const li = document.createElement("li");
+      li.textContent = attemptDescription(attempt);
+      list.appendChild(li);
+    }
+    return list;
+  }
   const autoCapture = createContinuousCapture({
     video: $("camVideo"),
     onError(error) { captureError = error.message; $("captureStatus").textContent = captureError; },
@@ -527,15 +554,15 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
       ev.ms = Math.round(body.timing_ms.server);
       recordEvent(ev);
       $("burstPanel").hidden = false;
-      $("burstSummary").textContent = `${body.frame_count}장 수집 · ${body.frame_attempt_count}장 판독`;
+      $("burstSummary").textContent = burstSummary(body);
       $("representativeCaption").textContent = "최종 대표 · " + body.representative_frame_id;
       $("primaryCaption").textContent = "최초 선택 · " + body.primary_frame_id;
       $("selectedFrame").src = real.images.original;
       $("firstFrame").src = body.primary_image;
-      $("burstTiming").textContent = `수집 1초 · 선택 ${Math.round(body.timing_ms.selection)}ms · 판독 ${Math.round(body.timing_ms.pipeline)}ms · 최초 수집부터 응답 ${Math.round(performance.now() - batch.capturedAt)}ms`;
+      $("burstTiming").textContent = `수집 1초 · 선택 ${Math.round(body.timing_ms.selection)}ms · 판독 ${Math.round(body.timing_ms.pipeline)}ms · 최초 수집부터 응답 ${Math.round(performance.now() - batch.capturedAt)}ms · ${completionLabels[body.completion_reason] || body.completion_reason}`;
       $("attemptList").replaceChildren(...body.attempts.map((attempt) => {
         const li = document.createElement("li");
-        li.textContent = `${attempt.frame_index + 1}번째 · +${Math.round(attempt.offset_ms)}ms · 후보 ${attempt.candidate_count}장 중 점수 ${attempt.quality_score.toFixed(3)} · ${attempt.text ?? attempt.failure_reason}`;
+        li.textContent = attemptDescription(attempt);
         return li;
       }));
       $("camFootRight").textContent = "마지막 수신 " + ev.time;
@@ -607,14 +634,14 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
     const n = EVENTS.filter((e) => e.outcome === "review").length;
     $("reviewBadge").textContent = n;
     $("reviewBadge").style.display = n > 0 ? "inline-flex" : "none";
-    $("reviewCnt").textContent = "확인 필요 " + n + "건";
+    $("reviewCnt").textContent = "추가 확인 " + n + "건";
   }
-  function statusTag(outcome) {
-    if (outcome === "success") return '<span class="tag good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>판독 성공</span>';
-    return '<span class="tag warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.2h.01"/><circle cx="12" cy="12" r="9"/></svg>확인 필요</span>';
+  function statusTag(e) {
+    const state = resultPresentation(e);
+    return '<span class="tag ' + state.tone + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON[state.confirmed ? "success" : "review"] + '</svg>' + esc(state.label) + '</span>';
   }
   function pathLabel(e) {
-    if (e.burst) return decisionLabels[e.burst.status];
+    if (e.burst) return resultPresentation(e).label;
     if (e.outcome === "success") return e.path === "즉시 판독" ? "즉시 판독" : "보정 후 판독";
     return e.path;
   }
@@ -623,7 +650,7 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
       "<td class=\"mono\">" + e.time + "</td>" +
       '<td class="r-id">' + e.id + "</td>" +
       '<td class="r-barcode mono">' + esc(e.barcode || "—") + "</td>" +
-      "<td>" + statusTag(e.outcome) + "</td>" +
+      "<td>" + statusTag(e) + (e.burst ? '<small style="display:block;margin-top:6px">' + esc(burstSummary(e.burst)) + '<br>' + esc(burstFailureSummary(e.burst)) + '</small>' : '') + "</td>" +
       '<td class="mono num">' + e.ms + "ms</td>" +
       "</tr>";
   }
@@ -659,30 +686,20 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
       return;
     }
     $("resultSrcId").textContent = latest.id;
-    if (latest.outcome === "success") {
-      $("statusPill").className = "status-pill good";
-      $("statusIcon").innerHTML = STATUS_ICON.success;
-      $("statusText").textContent = "판독 성공";
-      $("bigValue").textContent = latest.barcode;
-      $("bigValue").className = "v";
-      $("copyBtn").hidden = false;
-    } else {
-      $("statusPill").className = "status-pill warn";
-      $("statusIcon").innerHTML = STATUS_ICON.review;
-      $("statusText").textContent = "확인 필요";
-      $("bigValue").textContent = "미판독 · 원인 미확인";
-      $("bigValue").className = "v muted";
-      $("copyBtn").hidden = true;
-    }
+    const state = resultPresentation(latest);
+    $("statusPill").className = "status-pill " + state.tone;
+    $("statusIcon").innerHTML = STATUS_ICON[state.confirmed ? "success" : "review"];
+    $("statusText").textContent = state.label;
+    $("bigValue").textContent = state.value ?? (latest.burst?.status === "conflict" ? "서로 다른 번호가 읽혔습니다" : "읽지 못했습니다");
+    $("bigValue").className = state.hasValue ? "v" : "v muted";
+    $("copyBtn").hidden = !state.confirmed;
     $("resultPath").textContent = "판독 경로 · " + pathLabel(latest);
     $("mSym").textContent = latest.sym || "—";
     $("mTime").textContent = latest.time;
     $("mMs").textContent = latest.ms + "ms";
-    $("candNote").hidden = !latest.burst || latest.burst.status === "confirmed";
+    $("candNote").hidden = !latest.burst;
+    $("candNote").textContent = state.note;
     if (latest.burst) {
-      $("statusText").textContent = decisionLabels[latest.burst.status];
-      $("bigValue").textContent = latest.barcode || (latest.burst.status === "conflict" ? "서로 다른 번호가 읽혔습니다" : "읽지 못했습니다");
-      $("candNote").textContent = latest.burst.status === "provisional" ? "읽힌 번호를 표시합니다. 다른 프레임의 일치 확인이 부족합니다." : "자동 확정하지 않았습니다. 바코드를 다시 보여 주세요.";
       $("mSend").textContent = "촬영 구간 응답 수신";
     }
     closeDetail();
@@ -716,6 +733,7 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
     const det = body.detection, rect = body.rectify;
     const wrap = document.createElement("div");
     wrap.innerHTML =
+      (ev?.burst ? '<p class="cand-note">아래는 대표 프레임 1장의 처리 결과입니다. 묶음의 교차 확인 결과는 위의 상태와 프레임별 시도에서 확인하세요.</p>' : '') +
       '<div class="compare">' +
         '<div class="cmp-pane"><div class="cmp-label"><span>원본 이미지</span><span class="mono">' + body.original_size[0] + "×" + body.original_size[1] + "</span></div>" +
           '<div class="cmp-box"><canvas class="dOrig" width="480" height="360"></canvas>' +
@@ -730,8 +748,8 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
       '<div class="tech-grid">' +
         "<div><span>검출 모델</span><b>" + esc(modelNames.detection) + "</b></div>" +
         "<div><span>기하 모델</span><b>" + esc(modelNames.geometry) + "</b></div>" +
-        "<div><span>API</span><b>POST /api/decode</b></div>" +
-        "<div><span>왕복 시간</span><b>" + Math.round(body.total_ms) + "ms</b></div>" +
+        "<div><span>API</span><b>" + (ev?.burst ? "POST /api/decode-burst" : "POST /api/decode") + "</b></div>" +
+        "<div><span>" + (ev?.burst ? "대표 프레임 처리 시간" : "처리 시간") + "</span><b>" + Math.round(body.total_ms) + "ms</b></div>" +
       "</div>" +
       (ev && ev.blob ? '<div style="margin-top:12px"><button type="button" class="btn-ghost dlOrig">캡처 원본 저장 (' + Math.round(ev.blob.size / 1024) + 'KB)</button></div>' : "");
     const dl = wrap.querySelector(".dlOrig");
@@ -770,10 +788,10 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
     await wait(90);
     const rect = body.rectify;
     if (ms.estimate == null) {
-      setStep(byKey.decode_first, "done", "보정 없이 바로 읽힘", ms.decode_first);
-      setStep(byKey.estimate, "skip", "필요 없음", "");
-      setStep(byKey.warp, "skip", "필요 없음", "");
-      setStep(byKey.decode, "skip", "1차 판독에서 완료", "");
+      setStep(byKey.decode_first, body.ok ? "done" : "fail", body.ok ? "보정 없이 바로 읽힘" : "번호를 읽지 못함", ms.decode_first);
+      setStep(byKey.estimate, "skip", body.ok ? "필요 없음" : "실행되지 않음", "");
+      setStep(byKey.warp, "skip", body.ok ? "필요 없음" : "실행되지 않음", "");
+      setStep(byKey.decode, "skip", body.ok ? "1차 판독에서 완료" : "실행되지 않음", "");
       return;
     }
     setStep(byKey.decode_first, "pass", "읽히지 않아 다음 단계로", ms.decode_first);
@@ -1076,7 +1094,7 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
     wrap.innerHTML = EVENTS.map((e) => (
       '<button type="button" class="review-row' + (e.id === reviewSelectedId ? " active" : "") + '" data-id="' + e.id + '">' +
         '<span><span class="rid mono">' + e.id + '</span><span class="rtime mono">' + e.time + "</span></span>" +
-        "<span>" + statusTag(e.outcome) + "</span>" +
+        "<span>" + statusTag(e) + "</span>" +
       "</button>"
     )).join("");
     wrap.querySelectorAll(".review-row").forEach((btn) => {
@@ -1102,15 +1120,14 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
     }
 
     const card = $("reviewDetailCard");
-    const statusHtml = e.outcome === "success"
-      ? '<div class="status-pill good"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON.success + '</svg><span>판독 성공</span></div>'
-      : '<div class="status-pill warn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON.review + '</svg><span>확인 필요</span></div>';
+    const state = resultPresentation(e);
+    const statusHtml = '<div class="status-pill ' + state.tone + '"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON[state.confirmed ? "success" : "review"] + '</svg><span>' + esc(state.label) + '</span></div>';
     card.innerHTML =
       '<div class="result-src">선택한 결과 · <span class="mono">' + e.id + "</span></div>" +
       statusHtml +
-      (e.burst ? '<p class="cand-note">' + decisionLabels[e.burst.status] + " · " + e.burst.frame_attempt_count + "장 시도</p>" : "") +
-      '<div class="result-value"><div class="v' + (e.outcome === "success" ? "" : " muted") + '">' + esc(e.barcode || "미판독 · 원인 미확인") + "</div></div>" +
-      (e.outcome !== "success" ? '<p class="cand-note">보정 후에도 판독값이 확정되지 않았습니다. 재촬영 또는 수동 확인이 필요합니다.</p>' : "") +
+      '<div class="result-value"><div class="v' + (state.hasValue ? "" : " muted") + '">' + esc(state.value ?? (e.burst?.status === "conflict" ? "서로 다른 번호가 읽혔습니다" : "읽지 못했습니다")) + "</div></div>" +
+      '<p class="cand-note">' + esc(state.note) + '</p>' +
+      (e.burst ? '<p class="cand-note">' + esc(burstSummary(e.burst)) + " · " + esc(completionLabels[e.burst.completion_reason] || e.burst.completion_reason) + '</p><div id="reviewBurstDetails"></div>' : "") +
       '<div class="result-path">판독 경로 · ' + pathLabel(e) + "</div>" +
       '<div class="r-divider"></div>' +
       '<div class="meta-grid">' +
@@ -1119,6 +1136,8 @@ import { createContinuousCapture } from "/assets/continuous.mjs";
       "</div>" +
       '<button type="button" class="detail-link" id="reviewDetailToggle" aria-expanded="false"><svg class="ic car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>처리 상세</button>' +
       '<div class="detail-body" id="reviewDetailBody" hidden></div>';
+
+    if (e.burst) $("reviewBurstDetails").appendChild(burstAttemptList(e.burst));
 
     let open = false;
     $("reviewDetailToggle").addEventListener("click", () => {

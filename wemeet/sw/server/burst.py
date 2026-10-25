@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import logging
 import time
 from typing import Literal
 
@@ -17,10 +18,12 @@ from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException
 
 from wemeet.sw.frame_batch import Frame, FrameBatch, process_batch
+from wemeet.sw.server.diagnostics import batch_diagnostics
 from wemeet.sw.server.runtime import RuntimeUnavailable
 
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 MAX_PIXELS = 1920 * 1080
+log = logging.getLogger(__name__)
 
 
 class InputError(Exception):
@@ -136,7 +139,7 @@ async def decode_burst(request: Request, runtime, to_response, data_uri) -> JSON
             batch = FrameBatch(manifest.session_id, manifest.batch_id, frames)
             result = process_batch(batch)
             representative = to_response(result.representative) if result.representative else None
-            return {
+            body = {
                 "ok": result.status == "confirmed",
                 "status": result.status,
                 "text": result.text,
@@ -164,6 +167,8 @@ async def decode_burst(request: Request, runtime, to_response, data_uri) -> JSON
                     "server": (time.perf_counter() - received) * 1000,
                 },
             }
+            log.info("decode_burst %s", json.dumps(batch_diagnostics(body)))
+            return body
 
         body = await run_in_threadpool(
             runtime.execute,

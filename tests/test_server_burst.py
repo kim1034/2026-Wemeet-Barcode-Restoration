@@ -1,4 +1,5 @@
 import json
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 
@@ -119,6 +120,10 @@ def test_runtime_not_ready_and_static_assets(client):
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/javascript")
     assert "LatestBatchQueue" in response.text
+    response = client.get("/assets/result-state.mjs")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert "resultPresentation" in response.text
 
 
 def test_single_and_burst_routes_share_the_inference_slot(client, monkeypatch):
@@ -142,3 +147,57 @@ def test_single_and_burst_routes_share_the_inference_slot(client, monkeypatch):
             release.set()
         assert request.result().status_code == 200
     assert post(client, *payload()).status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("texts", "status", "groups"),
+    [
+        ([None, None, None], "unread", [None, None, None]),
+        (["0012345678905", None, None], "provisional", [1, None, None]),
+        (["0012345678905", "0012345678905"], "confirmed", [1, 1]),
+        (["0012345678905", "0098765432105"], "conflict", [1, 2]),
+    ],
+)
+def test_live_diagnostics_distinguish_failures_without_logging_values(
+    client, monkeypatch, caplog, texts, status, groups
+):
+    answers = iter(texts)
+
+    def run(image):
+        text = next(answers)
+        return PipelineResult(
+            image,
+            None,
+            None,
+            DecodeResult(
+                text,
+                0,
+                failure_reason="not_detected" if text is None else None,
+                stage_ms={"detect": 123.45},
+            ),
+        )
+
+    monkeypatch.setattr(service, "run", run)
+    manifest, files = payload()
+    manifest.update(session_id="private-session", batch_id="private-batch")
+    with caplog.at_level(logging.INFO, logger=burst.__name__):
+        response = post(client, manifest, files)
+        assert post(client, manifest, files).json() == response.json()
+    records = [r.message for r in caplog.records if r.name == burst.__name__]
+    assert len(records) == 1  # A cached retry does not count as a new observation.
+    summary = json.loads(records[0].removeprefix("decode_burst "))
+    assert summary["status"] == status
+    assert summary["frame_count"] == 8
+    assert summary["frame_attempt_count"] == len(groups)
+    assert [a["text_group"] for a in summary["attempts"]] == groups
+    assert summary["attempts"][0]["stage_ms"]["detect"] == 123.5
+    for attempt, text in zip(summary["attempts"], texts):
+        assert attempt["failure_reason"] == ("not_detected" if text is None else None)
+    for private in [
+        "0012345678905",
+        "0098765432105",
+        "private-session",
+        "private-batch",
+        "data:image",
+    ]:
+        assert private not in records[0]
