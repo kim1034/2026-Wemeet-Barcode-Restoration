@@ -43,7 +43,7 @@ def test_index_serves_the_operator_screen() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "노리드존 판독기" in response.text
+    assert "/api/decode" in response.text
 
 
 def test_health_reports_model_weights() -> None:
