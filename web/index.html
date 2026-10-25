@@ -237,11 +237,11 @@
             <h2>CAM-01 · 실시간 영상</h2>
             <div class="cam-ctrl">
               <select id="camSelect" class="cam-select" aria-label="카메라 선택" hidden></select>
-              <button type="button" class="btn-ghost" id="camStartBtn">카메라 시작</button>
+              <button type="button" class="btn-ghost" id="camStartBtn">카메라 · 자동 판독 시작</button>
               <button type="button" class="btn-ghost" id="camStopBtn" hidden>카메라 중지</button>
               <button type="button" class="btn-ghost" id="pauseBtn" hidden>
                 <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="5" width="3" height="14"/><rect x="14" y="5" width="3" height="14"/></svg>
-                <span id="pauseLabel">화면 표시 일시정지</span>
+                <span id="pauseLabel">빈 배경 다시 등록</span>
               </button>
             </div>
           </div>
@@ -254,7 +254,7 @@
               <div class="frame">
                 <svg class="ic" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a1 1 0 0 1 1-1h2M4 16v2a1 1 0 0 0 1 1h2M20 8V6a1 1 0 0 0-1-1h-2M20 16v2a1 1 0 0 1-1 1h-2"/></svg>
                 <strong>카메라 영상 영역</strong>
-                <span>사진을 올리거나 이 영역에 끌어다 놓으면 판독을 시작합니다</span>
+                <span>카메라 시작 후 바코드를 움직이면 자동으로 판독합니다</span>
               </div>
             </div>
           </div>
@@ -263,18 +263,31 @@
             <input type="file" id="photoInput" accept="image/*" hidden>
             <span class="fname mono" id="pickedFileName">선택된 사진 없음</span>
             <button type="button" class="btn-run" id="uploadRunBtn" disabled><span class="spin"></span><span id="uploadRunText">판독 요청 보내기</span></button>
-            <button type="button" class="btn-run" id="camCaptureBtn" disabled><span class="spin"></span><span id="camCaptureText">현재 화면 캡처 · 판독</span></button>
+            <button type="button" class="btn-run" id="camCaptureBtn" disabled><span id="camCaptureText">자동 판독 시작</span></button>
           </div>
+          <div class="cam-upload">
+            <label><input type="checkbox" id="activityFilter" checked> 장면 변화가 있는 구간만 판독</label>
+            <span id="captureStatus" role="status" aria-live="polite">시작할 때 빈 화면을 보여 주세요 · 1초에 최대 8장</span>
+          </div>
+          <div class="cam-foot"><span id="captureStats">처리 0 · 대기 0 · 건너뜀 0 (물품 수가 아닌 촬영 구간 수)</span></div>
           <div class="cam-foot">
             <span id="camFootLeft">연결된 카메라 없음 · 사진 업로드로 판독</span>
             <span id="camFootRight" class="mono">마지막 수신 —</span>
           </div>
         </div>
+        <section class="panel" id="burstPanel" hidden>
+          <div class="cam-head"><h2>선택한 프레임</h2><span id="burstSummary"></span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px">
+            <figure style="margin:0"><figcaption id="representativeCaption">최종 대표 프레임</figcaption><img id="selectedFrame" alt="최종 판독에 사용한 원본 프레임" style="width:100%;max-height:240px;object-fit:contain"></figure>
+            <figure style="margin:0"><figcaption id="primaryCaption">최초 선택 프레임</figcaption><img id="firstFrame" alt="처음 선택한 원본 프레임" style="width:100%;max-height:240px;object-fit:contain"></figure>
+          </div>
+          <div style="padding:0 16px 16px"><p id="burstTiming"></p><ol id="attemptList"></ol><small>점수는 해당 후보 안의 상대값입니다. 교차 확인도 정답을 보장하지 않습니다.</small></div>
+        </section>
       </div>
 
       <div class="col-stack">
         <section class="panel result-card">
-          <div class="result-src">최근 확정 결과 · <span class="mono" id="resultSrcId">#—</span></div>
+          <div class="result-src">최근 판독 결과 · <span class="mono" id="resultSrcId">#—</span></div>
           <div class="proc-row" id="procRow"><span class="pdot"></span><span>새 캡처 처리 중 · <span id="procMs">0</span>ms 경과</span></div>
 
           <div class="status-pill idle" id="statusPill">
@@ -364,7 +377,8 @@
   </section>
 </main>
 
-<script>
+<script type="module">
+import { createContinuousCapture } from "/assets/continuous.mjs";
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -488,6 +502,66 @@
   let pickedFile = null;
   let originalImg = null;
   const modelNames = { detection: "—", geometry: "—" };
+  let autoEnabled = false;
+  let captureError = "";
+  let resumeAfterVisibility = false;
+  const decisionLabels = { confirmed: "2개 프레임 교차 확인", provisional: "단일 프레임 판독 · 확인 부족", conflict: "번호 충돌 · 확인 필요", unread: "미판독" };
+  const autoCapture = createContinuousCapture({
+    video: $("camVideo"),
+    onError(error) { captureError = error.message; $("captureStatus").textContent = captureError; },
+    onState(state) {
+      $("captureStats").textContent = `처리 ${state.completed} · 대기 ${Number(state.pending)} · 건너뜀 ${state.skipped} (촬영 구간 수)`;
+      $("captureStatus").textContent = captureError || (state.enabled
+        ? (state.busy ? "판독 중 · 카메라 수집은 계속됩니다" : "자동 수집 중 · 바코드를 움직여 주세요")
+        : "자동 판독 중지 · 카메라 미리보기는 유지됩니다");
+    },
+    onResult(body, batch) {
+      captureError = "";
+      setSvcStatus(true);
+      const real = body.result;
+      if (!real) { $("captureStatus").textContent = "선택 결과 없음 · " + body.completion_reason; return; }
+      const ev = eventFromReal(real, null);
+      ev.burst = body;
+      ev.outcome = body.status === "confirmed" ? "success" : "review";
+      ev.barcode = body.text;
+      ev.ms = Math.round(body.timing_ms.server);
+      recordEvent(ev);
+      $("burstPanel").hidden = false;
+      $("burstSummary").textContent = `${body.frame_count}장 수집 · ${body.frame_attempt_count}장 판독`;
+      $("representativeCaption").textContent = "최종 대표 · " + body.representative_frame_id;
+      $("primaryCaption").textContent = "최초 선택 · " + body.primary_frame_id;
+      $("selectedFrame").src = real.images.original;
+      $("firstFrame").src = body.primary_image;
+      $("burstTiming").textContent = `수집 1초 · 선택 ${Math.round(body.timing_ms.selection)}ms · 판독 ${Math.round(body.timing_ms.pipeline)}ms · 최초 수집부터 응답 ${Math.round(performance.now() - batch.capturedAt)}ms`;
+      $("attemptList").replaceChildren(...body.attempts.map((attempt) => {
+        const li = document.createElement("li");
+        li.textContent = `${attempt.frame_index + 1}번째 · +${Math.round(attempt.offset_ms)}ms · 후보 ${attempt.candidate_count}장 중 점수 ${attempt.quality_score.toFixed(3)} · ${attempt.text ?? attempt.failure_reason}`;
+        return li;
+      }));
+      $("camFootRight").textContent = "마지막 수신 " + ev.time;
+    },
+  });
+  function recordEvent(ev) {
+    EVENTS.unshift(ev);
+    EVENTS.splice(10); // Images and barcode values stay in bounded browser memory only.
+    if (reviewSelectedId && !EVENTS.some((item) => item.id === reviewSelectedId)) reviewSelectedId = null;
+    renderHistories();
+    renderConfirmed();
+  }
+  function startAutomatic() {
+    if (!mediaStream) return;
+    captureError = "";
+    autoEnabled = true;
+    autoCapture.start();
+    syncButtons();
+  }
+  function stopAutomatic() {
+    autoEnabled = false;
+    resumeAfterVisibility = false;
+    captureError = "";
+    autoCapture.stop();
+    syncButtons();
+  }
 
   // ================================================================
   // 상단 상태 / 서버 헬스체크
@@ -506,7 +580,7 @@
       const shortName = (p) => (p || "").split("/")[1] || p || "—";
       modelNames.detection = shortName(h.models && h.models.detection);
       modelNames.geometry = shortName(h.models && h.models.geometry);
-      setSvcStatus(true);
+      setSvcStatus(h.ready, h.ready ? "판독 서비스 정상" : h.preparing ? "모델 준비 중" : "모델 준비 실패 · 서버 설정 확인");
     } catch (e) {
       setSvcStatus(false);
     }
@@ -540,6 +614,7 @@
     return '<span class="tag warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.2h.01"/><circle cx="12" cy="12" r="9"/></svg>확인 필요</span>';
   }
   function pathLabel(e) {
+    if (e.burst) return decisionLabels[e.burst.status];
     if (e.outcome === "success") return e.path === "즉시 판독" ? "즉시 판독" : "보정 후 판독";
     return e.path;
   }
@@ -547,7 +622,7 @@
     return "<tr>" +
       "<td class=\"mono\">" + e.time + "</td>" +
       '<td class="r-id">' + e.id + "</td>" +
-      '<td class="r-barcode mono">' + (e.barcode || "—") + "</td>" +
+      '<td class="r-barcode mono">' + esc(e.barcode || "—") + "</td>" +
       "<td>" + statusTag(e.outcome) + "</td>" +
       '<td class="mono num">' + e.ms + "ms</td>" +
       "</tr>";
@@ -603,6 +678,13 @@
     $("mSym").textContent = latest.sym || "—";
     $("mTime").textContent = latest.time;
     $("mMs").textContent = latest.ms + "ms";
+    $("candNote").hidden = !latest.burst || latest.burst.status === "confirmed";
+    if (latest.burst) {
+      $("statusText").textContent = decisionLabels[latest.burst.status];
+      $("bigValue").textContent = latest.barcode || (latest.burst.status === "conflict" ? "서로 다른 번호가 읽혔습니다" : "읽지 못했습니다");
+      $("candNote").textContent = latest.burst.status === "provisional" ? "읽힌 번호를 표시합니다. 다른 프레임의 일치 확인이 부족합니다." : "자동 확정하지 않았습니다. 바코드를 다시 보여 주세요.";
+      $("mSend").textContent = "촬영 구간 응답 수신";
+    }
     closeDetail();
   }
 
@@ -746,6 +828,8 @@
   // ================================================================
   let mediaStream = null;
   let camPaused = false;
+  let cameraStarting = false;
+  let cameraGeneration = 0;
 
   function setCamStatus(state, text) {
     const el = $("camStatus");
@@ -753,7 +837,7 @@
     el.querySelector("span:last-child").textContent = text;
   }
   function footIdleText() {
-    return mediaStream ? "카메라 연결됨 · 화면은 실시간, 판독은 캡처할 때만 실행" : "연결된 카메라 없음 · 사진 업로드로 판독";
+    return mediaStream ? "실시간 카메라 · 자동 판독은 1초 단위로 최대 8장 수집" : "연결된 카메라 없음 · 사진 업로드로 판독";
   }
   function showOnly(which) {
     $("videoGhost").hidden = which !== "ghost";
@@ -769,11 +853,14 @@
   function syncButtons() {
     const live = !!mediaStream;
     $("camStartBtn").hidden = live;
-    $("camStopBtn").hidden = !live;
+    $("camStartBtn").disabled = cameraStarting || running;
+    $("camSelect").disabled = cameraStarting || running;
+    $("camStopBtn").hidden = !live && !cameraStarting;
     $("pauseBtn").hidden = !live;
-    $("camCaptureBtn").disabled = running || !live || camPaused;
-    $("uploadRunBtn").disabled = running || !pickedFile;
-    $("photoInput").disabled = running;
+    $("camCaptureBtn").disabled = !live;
+    $("camCaptureText").textContent = autoEnabled ? "자동 판독 중지" : "자동 판독 시작";
+    $("uploadRunBtn").disabled = running || autoEnabled || !pickedFile;
+    $("photoInput").disabled = running || autoEnabled;
   }
 
   async function listCameras() {
@@ -787,21 +874,27 @@
     } catch (e) { /* 목록을 못 읽어도 시작은 가능 */ }
   }
   async function startCamera(deviceId) {
-    if (running) return;
+    if (running || cameraStarting) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCamStatus("err", "카메라 사용 불가 · localhost 또는 HTTPS에서만 동작");
       return;
     }
     stopCamera(true);
+    const generation = cameraGeneration;
+    cameraStarting = true;
+    syncButtons();
     setCamStatus("", "카메라 연결 중…");
     $("videoBadgeText").textContent = "카메라 연결 중";
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: deviceId ? { deviceId: { exact: deviceId } } : { width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 }, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) },
         audio: false,
       });
     } catch (err) {
+      if (generation !== cameraGeneration) return;
+      cameraStarting = false;
+      syncButtons();
       const denied = err && (err.name === "NotAllowedError" || err.name === "SecurityError");
       const none = err && (err.name === "NotFoundError" || err.name === "OverconstrainedError");
       setCamStatus("err", denied ? "카메라 권한 거부됨" : none ? "카메라를 찾지 못함" : "카메라 연결 실패");
@@ -809,11 +902,14 @@
       $("camFootLeft").textContent = denied ? "브라우저에서 카메라 권한을 허용한 뒤 다시 시작하세요." : footIdleText();
       return;
     }
+    if (generation !== cameraGeneration) { stream.getTracks().forEach((track) => track.stop()); return; }
+    cameraStarting = false;
     mediaStream = stream;
     camPaused = false;
     const video = $("camVideo");
     video.srcObject = stream;
     try { await video.play(); } catch (e) { /* 사용자 클릭으로 시작했으므로 보통 통과 */ }
+    if (generation !== cameraGeneration) return;
     showOnly("live");
     const track = stream.getVideoTracks()[0];
     track.addEventListener("ended", () => {
@@ -830,12 +926,16 @@
     $("videoBadge").className = "video-badge live";
     $("videoBadgeText").textContent = "LIVE";
     setCamStatus("ok", "카메라 연결됨 · LIVE");
-    $("pauseLabel").textContent = "화면 표시 일시정지";
+    $("pauseLabel").textContent = "빈 배경 다시 등록";
     $("camFootLeft").textContent = footIdleText();
     syncButtons();
     listCameras();
+    startAutomatic();
   }
   function stopCamera(silent) {
+    cameraGeneration++;
+    cameraStarting = false;
+    stopAutomatic();
     if (mediaStream) { mediaStream.getTracks().forEach((t) => t.stop()); mediaStream = null; }
     $("camVideo").srcObject = null;
     camPaused = false;
@@ -851,18 +951,23 @@
   $("camSelect").addEventListener("change", (e) => startCamera(e.target.value));
   $("pauseBtn").addEventListener("click", () => {
     if (!mediaStream) return;
-    camPaused = !camPaused;
-    const video = $("camVideo");
-    if (camPaused) video.pause(); else video.play();
-    $("pauseLabel").textContent = camPaused ? "화면 표시 재개" : "화면 표시 일시정지";
-    $("videoBadge").className = "video-badge" + (camPaused ? "" : " live");
-    $("videoBadgeText").textContent = camPaused ? "화면 정지 (수신은 계속)" : "LIVE";
-    $("camFootLeft").textContent = camPaused ? "화면 표시만 정지됨 · 정지한 상태에서는 캡처할 수 없습니다" : footIdleText();
-    syncButtons();
+    autoCapture.recalibrate();
+    $("captureStatus").textContent = "빈 배경을 다시 등록했습니다. 바코드를 화면 안으로 움직여 주세요.";
   });
+  $("activityFilter").addEventListener("change", (event) => autoCapture.setFiltering(event.target.checked));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && autoEnabled) {
+      autoCapture.stop();
+      resumeAfterVisibility = true;
+    } else if (!document.hidden && resumeAfterVisibility && mediaStream) {
+      resumeAfterVisibility = false;
+      startAutomatic();
+    }
+  });
+  window.addEventListener("pagehide", () => stopCamera(true));
 
   function onFile(f) {
-    if (running) return;
+    if (running || autoEnabled) return;
     stopCamera(true);
     setCamStatus("", "카메라 미연결 · 사진 업로드로 판독");
     pickedFile = f;
@@ -897,7 +1002,6 @@
     running = b;
     ["uploadRunBtn", "camCaptureBtn"].forEach((id) => $(id).classList.toggle("loading", b && id === spinBtn));
     $("uploadRunText").textContent = b && spinBtn === "uploadRunBtn" ? "처리 중…" : "판독 요청 보내기";
-    $("camCaptureText").textContent = b && spinBtn === "camCaptureBtn" ? "처리 중…" : "현재 화면 캡처 · 판독";
     syncButtons();
   }
   function failReal(message) {
@@ -939,9 +1043,7 @@
     $("procMs").textContent = Math.round(body.total_ms);
 
     const ev = eventFromReal(body, blob);
-    EVENTS.unshift(ev);
-    renderHistories();
-    renderConfirmed();
+    recordEvent(ev);
 
     $("camFootLeft").textContent = footIdleText();
     $("camFootRight").textContent = "마지막 수신 " + ev.time;
@@ -952,17 +1054,7 @@
   // 사진 업로드 경로
   $("uploadRunBtn").addEventListener("click", () => { if (pickedFile) submitForDecode(pickedFile, "uploadRunBtn"); });
 
-  // 실시간 카메라 경로 — 지금 보이는 프레임 한 장만 잘라 보낸다 (스트림 자체는 서버로 보내지 않는다)
-  $("camCaptureBtn").addEventListener("click", async () => {
-    const video = $("camVideo");
-    if (running || !mediaStream || camPaused || !video.videoWidth) return;
-    const c = document.createElement("canvas");
-    c.width = video.videoWidth; c.height = video.videoHeight;
-    c.getContext("2d").drawImage(video, 0, 0);
-    const blob = await new Promise((resolve) => c.toBlob(resolve, "image/jpeg", 0.92));
-    if (!blob) { failReal("프레임을 캡처하지 못했습니다."); return; }
-    submitForDecode(blob, "camCaptureBtn");
-  });
+  $("camCaptureBtn").addEventListener("click", () => autoEnabled ? stopAutomatic() : startAutomatic());
 
   $("copyBtn").addEventListener("click", () => {
     const text = $("bigValue").textContent;
@@ -1016,7 +1108,8 @@
     card.innerHTML =
       '<div class="result-src">선택한 결과 · <span class="mono">' + e.id + "</span></div>" +
       statusHtml +
-      '<div class="result-value"><div class="v' + (e.outcome === "success" ? "" : " muted") + '">' + (e.barcode || "미판독 · 원인 미확인") + "</div></div>" +
+      (e.burst ? '<p class="cand-note">' + decisionLabels[e.burst.status] + " · " + e.burst.frame_attempt_count + "장 시도</p>" : "") +
+      '<div class="result-value"><div class="v' + (e.outcome === "success" ? "" : " muted") + '">' + esc(e.barcode || "미판독 · 원인 미확인") + "</div></div>" +
       (e.outcome !== "success" ? '<p class="cand-note">보정 후에도 판독값이 확정되지 않았습니다. 재촬영 또는 수동 확인이 필요합니다.</p>' : "") +
       '<div class="result-path">판독 경로 · ' + pathLabel(e) + "</div>" +
       '<div class="r-divider"></div>' +
@@ -1067,6 +1160,7 @@
   renderHistories();
   renderConfirmed();
   checkHealth();
+  setInterval(checkHealth, 5000);
 })();
 </script>
 </body>
