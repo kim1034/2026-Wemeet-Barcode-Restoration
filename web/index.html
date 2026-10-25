@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>노리드 판독기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+  :root {
+    --bg: #f3f5f7;
+    --panel: #ffffff;
+    --video-bg: #171b20;
+    --ink: #20262d;
+    --ink2: #59636e;
+    --line: #d9dee4;
+    --primary: #2458a0;
+    --primary-bg: #eaf1f9;
+    --good: #166534;
+    --good-bg: #edf7f0;
+    --warn: #8a5708;
+    --warn-bg: #fff5e4;
+    --bad: #b42318;
+    --bad-bg: #fef0ee;
+    --radius: 4px;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    font-size: 14px;
+  }
+  button, input, label, select { font-family: inherit; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; }
+  .num { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  svg.ic { width: 16px; height: 16px; display: block; flex: none; }
+
+  /* ---------- top bar ---------- */
+  .topbar { background: var(--panel); border-bottom: 1px solid var(--line); min-height: 56px; display: flex; align-items: center; }
+  .topbar-inner { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-inline: 20px; padding-block: 8px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-shrink: 1; overflow: hidden; }
+  .brand .mark { width: 22px; height: 22px; border-radius: var(--radius); background: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 2px; flex: none; }
+  .brand .mark i { display: block; width: 2px; height: 10px; background: var(--panel); }
+  .brand h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; flex: none; }
+  .brand .loc { font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top-status { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; flex: none; }
+  .status-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--ink2); white-space: nowrap; }
+  .status-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink2); flex: none; }
+  .status-chip.ok .dot { background: var(--good); }
+  .status-chip.ok { color: var(--good); }
+  .status-chip.err .dot { background: var(--bad); }
+  .status-chip.err { color: var(--bad); }
+  @media (max-width: 720px) { .brand .loc { display: none; } }
+
+  /* ---------- nav tabs ---------- */
+  .tabs { background: var(--panel); border-bottom: 1px solid var(--line); height: 44px; display: flex; align-items: stretch; padding-inline: 20px; gap: 4px; overflow-x: auto; }
+  .tab { appearance: none; border: none; background: none; cursor: pointer; padding: 0 6px; height: 100%; display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 500; color: var(--ink2); border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-current="page"] { color: var(--primary); font-weight: 600; border-bottom-color: var(--primary); }
+  .tab .badge { font-size: 11px; font-weight: 700; color: #fff; background: var(--bad); border-radius: 999px; min-width: 17px; height: 17px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* ---------- page shell ---------- */
+  .page { padding: 20px; max-width: 1760px; margin-inline: auto; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+
+  /* ---------- live view layout (68:32) ---------- */
+  .live-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 400px); gap: 16px; align-items: stretch; }
+  @media (max-width: 1080px) { .live-layout { grid-template-columns: minmax(0, 1fr); } }
+  .col-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .live-layout > .col-stack { display: flex; flex-direction: column; }
+  .live-layout > .col-stack > .panel { display: flex; flex-direction: column; flex: 1; }
+  .live-layout > .col-stack > .panel .video-box { flex: 1; aspect-ratio: auto; min-height: 320px; }
+
+  .cam-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .cam-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .btn-ghost { appearance: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-ghost:hover { background: var(--bg); }
+
+  .video-box { position: relative; aspect-ratio: 16 / 9; background: var(--video-bg); overflow: hidden; }
+  .video-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .video-box video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--video-bg); display: block; }
+  .cam-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cam-select { font-size: 12.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; max-width: 200px; }
+  .video-badge { position: absolute; top: 12px; left: 14px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #cdd3da; }
+  .video-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #8a95a1; }
+  .video-badge.live .dot { background: #3bb273; }
+  .video-dim { position: absolute; top: 12px; right: 14px; font-size: 12px; color: #9aa3ac; }
+  .video-ghost { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #7d8793; }
+  .video-ghost .frame { width: min(70%, 420px); aspect-ratio: 16/9; border: 1.5px dashed #3a434c; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .video-ghost strong { font-size: 13px; font-weight: 500; color: #c3cad1; }
+  .video-ghost span { font-size: 12px; color: #7d8793; }
+  .cam-foot { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; font-size: 12px; color: var(--ink2); }
+
+  /* real capture upload row */
+  .cam-upload { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); }
+  .cam-upload .fname { font-size: 12px; color: var(--ink2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn-run { appearance: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #fff; background: var(--primary); border: none; border-radius: var(--radius); padding: 9px 16px; display: inline-flex; align-items: center; gap: 8px; flex: none; }
+  .btn-run:disabled { opacity: 0.5; cursor: default; }
+  .spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; display: none; }
+  .btn-run.loading .spin { display: inline-block; }
+
+  /* ---------- result card ---------- */
+  .result-card { padding: 18px 20px; }
+  .result-src { font-size: 12px; color: var(--ink2); }
+  .proc-row { display: none; align-items: center; gap: 7px; margin-top: 8px; font-size: 12.5px; color: var(--primary); }
+  .proc-row.show { display: inline-flex; }
+  .proc-row .pdot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
+  .status-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 600; margin-top: 12px; }
+  .status-pill.good { color: var(--good); }
+  .status-pill.warn { color: var(--warn); }
+  .status-pill.idle { color: var(--ink2); }
+  .result-value { margin-top: 10px; display: flex; align-items: flex-start; gap: 10px; }
+  .result-value .v { font-family: "IBM Plex Mono", monospace; font-size: 30px; font-weight: 600; line-height: 1.25; word-break: break-all; color: var(--ink); }
+  .result-value .v.muted { color: var(--ink2); font-family: "IBM Plex Sans KR", sans-serif; font-size: 20px; font-weight: 500; }
+  .copy-btn { flex: none; margin-top: 4px; font-size: 12px; font-weight: 500; color: var(--primary); background: var(--primary-bg); border: none; border-radius: var(--radius); padding: 5px 9px; cursor: pointer; }
+  .result-path { margin-top: 6px; font-size: 12.5px; color: var(--ink2); }
+  .cand-note { margin-top: 6px; font-size: 12px; color: var(--ink2); }
+  .r-divider { height: 1px; background: var(--line); margin-block: 16px; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .meta-grid div span { display: block; font-size: 11.5px; color: var(--ink2); }
+  .meta-grid div b { display: block; margin-top: 3px; font-size: 14px; font-weight: 600; }
+  .detail-link { margin-top: 16px; background: none; border: none; padding: 0; font-size: 13px; font-weight: 500; color: var(--primary); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .detail-link .car { transition: transform 0.15s; }
+  .detail-link.is-open .car { transform: rotate(90deg); }
+
+  /* ---------- processing detail (collapsed) ---------- */
+  .detail-body { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 480px) { .compare { grid-template-columns: 1fr; } }
+  .cmp-pane { display: flex; flex-direction: column; gap: 6px; }
+  .cmp-label { font-size: 11px; color: var(--ink2); display: flex; justify-content: space-between; }
+  .cmp-box { position: relative; aspect-ratio: 4/3; background: var(--video-bg); border-radius: var(--radius); overflow: hidden; }
+  .cmp-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cmp-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 10px; text-align: center; font-size: 11.5px; color: #9aa3ac; }
+  .steps { list-style: none; margin: 0 0 14px; padding: 0; }
+  .step { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 10px; }
+  .ind { display: flex; flex-direction: column; align-items: center; }
+  .step:not(:last-child) .ind::after { content: ""; flex: 1; width: 2px; min-height: 18px; margin-block: 3px; background: var(--line); }
+  .circ { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--ink2); flex: none; }
+  .circ svg { width: 20px; height: 20px; }
+  .stx { padding-top: 1px; padding-bottom: 10px; min-width: 0; }
+  .step:last-child .stx { padding-bottom: 0; }
+  .stx b { display: block; font-size: 13px; font-weight: 600; }
+  .stx .sub { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.4; color: var(--ink2); }
+  .step .ms { padding-top: 3px; font-size: 11.5px; font-weight: 500; color: var(--ink2); }
+  .step[data-state="pending"] b { color: var(--ink2); }
+  .step[data-state="active"] .circ { background: var(--primary-bg); color: var(--primary); box-shadow: inset 0 0 0 2px var(--primary); }
+  .step[data-state="active"] b { color: var(--primary); }
+  .adot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
+  .step[data-state="done"] .circ { background: var(--good); color: #fff; }
+  .step[data-state="fail"] .circ { background: var(--bad); color: #fff; }
+  .step[data-state="fail"] b { color: var(--bad); }
+  .step[data-state="skip"] .circ { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+  .step[data-state="skip"] b, .step[data-state="skip"] .sub { opacity: 0.55; }
+  .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 11.5px; }
+  .tech-grid div { display: flex; justify-content: space-between; gap: 8px; color: var(--ink2); }
+  .tech-grid div b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- history table ---------- */
+  .hist-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  .hist-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .link-more { font-size: 13px; font-weight: 500; color: var(--primary); text-decoration: none; cursor: pointer; background: none; border: none; }
+  table.hist { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.hist th { text-align: left; font-weight: 500; font-size: 12px; color: var(--ink2); padding: 9px 20px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.hist td { padding: 11px 20px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.hist tbody tr:last-child td { border-bottom: none; }
+  .r-id { font-family: "IBM Plex Mono", monospace; color: var(--primary); }
+  .r-barcode { font-family: "IBM Plex Mono", monospace; }
+  .r-empty { padding: 60px 20px; text-align: center; color: var(--ink2); font-size: 13.5px; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; }
+  .tag.good { color: var(--good); }
+  .tag.warn { color: var(--warn); }
+  .tag svg { width: 14px; height: 14px; }
+
+  /* ---------- review view ---------- */
+  .review-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .review-layout { grid-template-columns: minmax(0, 1fr); } }
+  .review-list-head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .review-list-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .review-list-head .cnt { font-size: 12px; color: var(--bad); font-weight: 600; }
+  .review-row { width: 100%; text-align: left; appearance: none; background: none; border: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 11px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .review-row:last-child { border-bottom: none; }
+  .review-row:hover { background: var(--bg); }
+  .review-row.active { background: var(--primary-bg); }
+  .review-row .rid { font-family: "IBM Plex Mono", monospace; color: var(--ink); display: block; }
+  .review-row .rtime { font-size: 11px; color: var(--ink2); }
+
+  /* ---------- settings stub ---------- */
+  .stub { padding: 48px 24px; text-align: center; color: var(--ink2); font-size: 14px; }
+  .empty-hint { padding: 16px; font-size: 12.5px; color: var(--ink2); text-align: center; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .spin { animation: spin 0.8s linear infinite; }
+    .proc-row .pdot { animation: blink 1s ease-in-out infinite; }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes blink { 50% { opacity: 0.3; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <h1>노리드 판독기</h1>
+      <span class="loc">물류검사장 · LINE 03</span>
+    </div>
+    <div class="top-status">
+      <span class="status-chip" id="camStatus"><span class="dot"></span><span>카메라 미연결 · 사진 업로드로 판독</span></span>
+      <span class="status-chip ok" id="svcStatus"><span class="dot"></span><span>서버 연결 확인 중…</span></span>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="화면 전환">
+  <button type="button" class="tab" data-view="live" role="tab" aria-current="page">실시간 판독</button>
+  <button type="button" class="tab" data-view="history" role="tab" aria-current="false">판독 이력</button>
+  <button type="button" class="tab" data-view="review" role="tab" aria-current="false">미판독 확인 <span class="badge" id="reviewBadge">0</span></button>
+  <button type="button" class="tab" data-view="settings" role="tab" aria-current="false">장비 설정</button>
+</nav>
+
+<main>
+  <!-- ======================= 실시간 판독 ======================= -->
+  <section class="page" id="view-live">
+    <div class="live-layout">
+      <div class="col-stack">
+        <div class="panel">
+          <div class="cam-head">
+            <h2>CAM-01 · 실시간 영상</h2>
+            <div class="cam-ctrl">
+              <select id="camSelect" class="cam-select" aria-label="카메라 선택" hidden></select>
+              <button type="button" class="btn-ghost" id="camStartBtn">카메라 시작</button>
+              <button type="button" class="btn-ghost" id="camStopBtn" hidden>카메라 중지</button>
+              <button type="button" class="btn-ghost" id="pauseBtn" hidden>
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="5" width="3" height="14"/><rect x="14" y="5" width="3" height="14"/></svg>
+                <span id="pauseLabel">화면 표시 일시정지</span>
+              </button>
+            </div>
+          </div>
+          <div class="video-box" id="videoBox">
+            <video id="camVideo" autoplay playsinline muted hidden></video>
+            <canvas id="origCanvas" width="960" height="540" hidden></canvas>
+            <div class="video-badge" id="videoBadge"><span class="dot"></span><span id="videoBadgeText">카메라 미연결</span></div>
+            <div class="video-dim mono" id="videoDim"></div>
+            <div class="video-ghost" id="videoGhost">
+              <div class="frame">
+                <svg class="ic" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a1 1 0 0 1 1-1h2M4 16v2a1 1 0 0 0 1 1h2M20 8V6a1 1 0 0 0-1-1h-2M20 16v2a1 1 0 0 1-1 1h-2"/></svg>
+                <strong>카메라 영상 영역</strong>
+                <span>사진을 올리거나 이 영역에 끌어다 놓으면 판독을 시작합니다</span>
+              </div>
+            </div>
+          </div>
+          <div class="cam-upload">
+            <label class="btn-ghost" for="photoInput">사진 선택</label>
+            <input type="file" id="photoInput" accept="image/*" hidden>
+            <span class="fname mono" id="pickedFileName">선택된 사진 없음</span>
+            <button type="button" class="btn-run" id="uploadRunBtn" disabled><span class="spin"></span><span id="uploadRunText">판독 요청 보내기</span></button>
+            <button type="button" class="btn-run" id="camCaptureBtn" disabled><span class="spin"></span><span id="camCaptureText">현재 화면 캡처 · 판독</span></button>
+          </div>
+          <div class="cam-foot">
+            <span id="camFootLeft">연결된 카메라 없음 · 사진 업로드로 판독</span>
+            <span id="camFootRight" class="mono">마지막 수신 —</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-stack">
+        <section class="panel result-card">
+          <div class="result-src">최근 확정 결과 · <span class="mono" id="resultSrcId">#—</span></div>
+          <div class="proc-row" id="procRow"><span class="pdot"></span><span>새 캡처 처리 중 · <span id="procMs">0</span>ms 경과</span></div>
+
+          <div class="status-pill idle" id="statusPill">
+            <svg class="ic" id="statusIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></svg>
+            <span id="statusText">판독 대기</span>
+          </div>
+
+          <div class="result-value">
+            <div class="v muted" id="bigValue">아직 확정된 결과가 없습니다</div>
+            <button type="button" class="copy-btn" id="copyBtn" hidden>복사</button>
+          </div>
+          <p class="cand-note" id="candNote" hidden></p>
+          <div class="result-path" id="resultPath"></div>
+
+          <div class="r-divider"></div>
+          <div class="meta-grid">
+            <div><span>바코드 종류</span><b class="mono" id="mSym">—</b></div>
+            <div><span>촬영 시각</span><b class="mono" id="mTime">—</b></div>
+            <div><span>처리 시간</span><b class="mono num" id="mMs">—</b></div>
+            <div><span>전송 상태</span><b id="mSend">연동 필요</b></div>
+          </div>
+
+          <button type="button" class="detail-link" id="detailToggle" aria-expanded="false">
+            <svg class="ic car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            원본·보정 결과 / 처리 상세
+          </button>
+          <div class="detail-body" id="detailBody" hidden></div>
+        </section>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="hist-head">
+        <h2>최근 판독 이력</h2>
+        <button type="button" class="link-more" data-goto="history">전체 이력 →</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="hist" id="liveHistTable">
+          <thead><tr><th>촬영 시각</th><th>촬영 ID</th><th>바코드</th><th>판독 결과</th><th>처리 시간</th></tr></thead>
+          <tbody id="liveHistBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 판독 이력 ======================= -->
+  <section class="page" id="view-history" hidden>
+    <div class="panel">
+      <div class="hist-head"><h2>판독 이력 · 전체</h2><span class="mono" style="font-size:12px;color:var(--ink2)" id="histCount">0건</span></div>
+      <div style="overflow-x:auto">
+        <table class="hist" id="fullHistTable">
+          <thead><tr><th>촬영 시각</th><th>촬영 ID</th><th>바코드</th><th>판독 결과</th><th>처리 시간</th></tr></thead>
+          <tbody id="fullHistBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 미판독 확인 ======================= -->
+  <section class="page" id="view-review" hidden>
+    <div class="review-layout">
+      <div class="panel">
+        <div class="review-list-head"><h2>확인 대기 / 최근 이력</h2><span class="cnt" id="reviewCnt">확인 필요 0건</span></div>
+        <div id="reviewList"></div>
+      </div>
+      <div class="col-stack">
+        <div class="panel">
+          <div class="cam-head"><h2 id="reviewFrameTitle">선택 프레임 · CAM-01</h2></div>
+          <div class="video-box">
+            <canvas id="reviewCanvas" width="960" height="540"></canvas>
+            <div class="video-badge"><span class="dot"></span><span id="reviewBadgeText">촬영 프레임</span></div>
+          </div>
+          <div class="cam-foot"><span id="reviewFootLeft">이력에서 촬영 ID를 선택하면 해당 프레임과 결과를 함께 확인</span><span></span></div>
+        </div>
+        <section class="panel result-card" id="reviewDetailCard">
+          <div class="empty-hint">왼쪽 목록에서 확인할 건을 선택하세요.</div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 장비 설정 ======================= -->
+  <section class="page" id="view-settings" hidden>
+    <div class="panel stub">
+      이 데모에는 장비 설정 연동이 없습니다.<br>실제 연동 시 카메라·조명·트리거 파라미터를 이 화면에서 설정합니다.
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // ================================================================
+  // 공용 캔버스 유틸
+  // ================================================================
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
+  }
+  const MONO = '"IBM Plex Mono", ui-monospace, monospace';
+  const SANS = '"IBM Plex Sans KR", sans-serif';
+  const AI_COLOR = "#2458a0";
+
+  // ---------- 실제 서버 이미지 렌더링 ----------
+  function fit(iw, ih, W, H, pad) {
+    const s = Math.min((W - 2 * pad) / iw, (H - 2 * pad) / ih);
+    const w = iw * s, h = ih * s;
+    return { x: (W - w) / 2, y: (H - h) / 2, w, h };
+  }
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+  function clearCanvas(canvas, bg) {
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = bg || "#171b20";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return ctx;
+  }
+  function drawPointsReal(ctx, pts, grid, r) {
+    const P = pts.map(([x, y]) => [r.x + x * r.w, r.y + y * r.h]);
+    if (grid && grid[0] * grid[1] === P.length) {
+      const [nx, ny] = grid;
+      ctx.strokeStyle = "rgba(36,88,160,0.55)";
+      ctx.lineWidth = 2;
+      for (let j = 0; j < ny; j++) {
+        ctx.beginPath();
+        for (let i = 0; i < nx; i++) { const [x, y] = P[j * nx + i]; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke();
+      }
+      for (let i = 0; i < nx; i++) {
+        ctx.beginPath();
+        for (let j = 0; j < ny; j++) { const [x, y] = P[j * nx + i]; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke();
+      }
+    }
+    for (const [x, y] of P) {
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = AI_COLOR; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#ffffff"; ctx.stroke();
+    }
+  }
+  function drawOriginalReal(canvas, img) {
+    const ctx = clearCanvas(canvas);
+    if (!img) return;
+    const r = fit(img.naturalWidth, img.naturalHeight, canvas.width, canvas.height, 16);
+    ctx.drawImage(img, r.x, r.y, r.w, r.h);
+  }
+  function drawCropReal(canvas, cropImg, conf) {
+    const ctx = clearCanvas(canvas), W = canvas.width, H = canvas.height;
+    const r = fit(cropImg.naturalWidth, cropImg.naturalHeight, W, H, 36);
+    ctx.drawImage(cropImg, r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = AI_COLOR; ctx.lineWidth = 3;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    const label = "barcode · " + conf.toFixed(2);
+    ctx.font = "600 16px " + MONO;
+    const lw = ctx.measureText(label).width + 20;
+    ctx.fillStyle = AI_COLOR;
+    rr(ctx, r.x - 1, r.y - 28, lw, 24, 4); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, r.x + 9, r.y - 10);
+  }
+  function drawRectifiedReal(canvas, img, rectify) {
+    const ctx = clearCanvas(canvas);
+    const r = fit(img.naturalWidth, img.naturalHeight, canvas.width, canvas.height, 24);
+    ctx.drawImage(img, r.x, r.y, r.w, r.h);
+    if (rectify) drawPointsReal(ctx, rectify.control_points_dst_norm, rectify.grid, r);
+  }
+
+  const STAGES = [
+    { key: "detect", label: "검출", part: "YOLO OBB" },
+    { key: "decode_first", label: "1차 판독", part: "보정 없음" },
+    { key: "estimate", label: "기하 추정", part: "ResNet18-C3" },
+    { key: "warp", label: "기하 보정", part: "TPS" },
+    { key: "decode", label: "디코딩", part: "재시도 포함" },
+  ];
+  const ICON = {
+    done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.5l3.5 3.5L17 9.5"/></svg>',
+    pass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v10M8 13l4 4 4-4"/></svg>',
+    fail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 8l8 8M16 8l-8 8"/></svg>',
+    active: '<span class="adot"></span>', pending: "", skip: "",
+  };
+  const STATUS_ICON = {
+    success: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+    review: '<path d="M12 8v5M12 16.2h.01"/><circle cx="12" cy="12" r="9"/>',
+    idle: '<circle cx="12" cy="12" r="9"/>',
+  };
+  function now() {
+    const d = new Date();
+    return d.toTimeString().slice(0, 8) + "." + String(d.getMilliseconds()).padStart(3, "0");
+  }
+  function pad4(n) { return String(n).padStart(4, "0"); }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // ================================================================
+  // 상태
+  // ================================================================
+  let seq = 4182;
+  const EVENTS = [];
+  let running = false;
+  let reviewSelectedId = null;
+  let serverOnline = false;
+  let pickedFile = null;
+  let originalImg = null;
+  const modelNames = { detection: "—", geometry: "—" };
+
+  // ================================================================
+  // 상단 상태 / 서버 헬스체크
+  // ================================================================
+  function setSvcStatus(ok, text) {
+    serverOnline = ok;
+    const el = $("svcStatus");
+    el.className = "status-chip " + (ok ? "ok" : "err");
+    el.querySelector("span:last-child").textContent = text || (ok ? "판독 서비스 정상" : "판독 서비스 연결 안 됨");
+  }
+  async function checkHealth() {
+    try {
+      const r = await fetch("/api/health");
+      if (!r.ok) throw new Error("http " + r.status);
+      const h = await r.json();
+      const shortName = (p) => (p || "").split("/")[1] || p || "—";
+      modelNames.detection = shortName(h.models && h.models.detection);
+      modelNames.geometry = shortName(h.models && h.models.geometry);
+      setSvcStatus(true);
+    } catch (e) {
+      setSvcStatus(false);
+    }
+  }
+
+  // ================================================================
+  // 이벤트 → 상태 분류 (실서버 응답 / 샘플 시나리오 공용)
+  // ================================================================
+  function classifyReal(body) {
+    const hasDetect = !!body.detection, hasRect = !!body.rectify;
+    if (body.ok) return { outcome: "success", path: hasRect ? "보정 후 판독" : "즉시 판독" };
+    return { outcome: "review", path: !hasDetect ? "검출 안 됨" : (!hasRect ? "보정 보류" : "재시도 종료") };
+  }
+  function eventFromReal(body, blob) {
+    seq += 1;
+    const { outcome, path } = classifyReal(body);
+    return { id: "#" + pad4(seq), time: now(), real: body, blob: blob || null, outcome, path, sym: body.symbology || null, barcode: body.text, ms: Math.round(body.total_ms), cand: body.detection ? 1 : 0, retry: body.retry_count };
+  }
+
+  // ================================================================
+  // 렌더: 미판독 확인 배지 / 이력 테이블
+  // ================================================================
+  function renderReviewBadge() {
+    const n = EVENTS.filter((e) => e.outcome === "review").length;
+    $("reviewBadge").textContent = n;
+    $("reviewBadge").style.display = n > 0 ? "inline-flex" : "none";
+    $("reviewCnt").textContent = "확인 필요 " + n + "건";
+  }
+  function statusTag(outcome) {
+    if (outcome === "success") return '<span class="tag good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>판독 성공</span>';
+    return '<span class="tag warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.2h.01"/><circle cx="12" cy="12" r="9"/></svg>확인 필요</span>';
+  }
+  function pathLabel(e) {
+    if (e.outcome === "success") return e.path === "즉시 판독" ? "즉시 판독" : "보정 후 판독";
+    return e.path;
+  }
+  function rowHtml(e) {
+    return "<tr>" +
+      "<td class=\"mono\">" + e.time + "</td>" +
+      '<td class="r-id">' + e.id + "</td>" +
+      '<td class="r-barcode mono">' + (e.barcode || "—") + "</td>" +
+      "<td>" + statusTag(e.outcome) + "</td>" +
+      '<td class="mono num">' + e.ms + "ms</td>" +
+      "</tr>";
+  }
+  function renderHistories() {
+    const liveBody = $("liveHistBody"), fullBody = $("fullHistBody");
+    if (EVENTS.length === 0) {
+      liveBody.innerHTML = '<tr><td colspan="5" class="r-empty">아직 판독 이력이 없습니다</td></tr>';
+      fullBody.innerHTML = '<tr><td colspan="5" class="r-empty">아직 판독 이력이 없습니다</td></tr>';
+    } else {
+      liveBody.innerHTML = EVENTS.slice(0, 6).map(rowHtml).join("");
+      fullBody.innerHTML = EVENTS.map(rowHtml).join("");
+    }
+    $("histCount").textContent = EVENTS.length + "건";
+    renderReviewBadge();
+    renderReviewList();
+  }
+
+  // ================================================================
+  // 렌더: 확정 결과 패널 (실시간 판독 탭)
+  // ================================================================
+  function renderConfirmed() {
+    const latest = EVENTS[0];
+    if (!latest) {
+      $("resultSrcId").textContent = "#—";
+      $("statusPill").className = "status-pill idle";
+      $("statusIcon").innerHTML = STATUS_ICON.idle;
+      $("statusText").textContent = "판독 대기";
+      $("bigValue").textContent = "아직 확정된 결과가 없습니다";
+      $("bigValue").className = "v muted";
+      $("copyBtn").hidden = true;
+      $("resultPath").textContent = "";
+      $("mSym").textContent = "—"; $("mTime").textContent = "—"; $("mMs").textContent = "—";
+      return;
+    }
+    $("resultSrcId").textContent = latest.id;
+    if (latest.outcome === "success") {
+      $("statusPill").className = "status-pill good";
+      $("statusIcon").innerHTML = STATUS_ICON.success;
+      $("statusText").textContent = "판독 성공";
+      $("bigValue").textContent = latest.barcode;
+      $("bigValue").className = "v";
+      $("copyBtn").hidden = false;
+    } else {
+      $("statusPill").className = "status-pill warn";
+      $("statusIcon").innerHTML = STATUS_ICON.review;
+      $("statusText").textContent = "확인 필요";
+      $("bigValue").textContent = "미판독 · 원인 미확인";
+      $("bigValue").className = "v muted";
+      $("copyBtn").hidden = true;
+    }
+    $("resultPath").textContent = "판독 경로 · " + pathLabel(latest);
+    $("mSym").textContent = latest.sym || "—";
+    $("mTime").textContent = latest.time;
+    $("mMs").textContent = latest.ms + "ms";
+    closeDetail();
+  }
+
+  // ================================================================
+  // 처리 상세 (접힘 기본값): 실서버 응답 / 샘플 시나리오 분기
+  // ================================================================
+  let detailOpen = false;
+  function closeDetail() {
+    detailOpen = false;
+    $("detailBody").hidden = true;
+    $("detailToggle").setAttribute("aria-expanded", "false");
+    $("detailToggle").classList.remove("is-open");
+  }
+  function stepsSkeleton() {
+    return '<ol class="steps">' +
+      STAGES.map((st) => '<li class="step" data-state="pending" data-key="' + st.key + '"><div class="ind"><span class="circ"></span></div><div class="stx"><b>' + st.label + "</b><span class=\"sub\"></span></div><span class=\"ms mono num\"></span></li>").join("") +
+      "</ol>";
+  }
+  function setStep(li, state, sub, ms) {
+    if (!li) return;
+    li.dataset.state = state;
+    li.querySelector(".circ").innerHTML = ICON[state];
+    li.querySelector(".sub").textContent = sub || "";
+    li.querySelector(".ms").textContent = ms === undefined ? (state === "active" ? "…" : "") : (typeof ms === "number" ? Math.round(ms) + "ms" : ms);
+  }
+
+  // ---- 실서버 응답 처리 상세 ----
+  function buildDetailBodyReal(body, ev) {
+    const det = body.detection, rect = body.rectify;
+    const wrap = document.createElement("div");
+    wrap.innerHTML =
+      '<div class="compare">' +
+        '<div class="cmp-pane"><div class="cmp-label"><span>원본 이미지</span><span class="mono">' + body.original_size[0] + "×" + body.original_size[1] + "</span></div>" +
+          '<div class="cmp-box"><canvas class="dOrig" width="480" height="360"></canvas>' +
+          (det ? "" : '<div class="cmp-note">바코드 영역을 찾지 못했습니다.</div>') +
+          "</div></div>" +
+        '<div class="cmp-pane"><div class="cmp-label"><span>보정 이미지</span><span class="mono">' + (rect ? rect.size[0] + "×" + rect.size[1] : "—") + "</span></div>" +
+          '<div class="cmp-box"><canvas class="dRect" width="480" height="360" ' + (rect ? "" : "hidden") + "></canvas>" +
+          (rect ? "" : '<div class="cmp-note">' + (!det ? "검출된 영역이 없어 보정하지 않았습니다." : (body.ok && (body.stage_ms || {}).estimate == null ? "보정 없이 1차 판독에서 바로 읽혀 펴지 않았습니다." : "보정 결과를 신뢰할 수 없어 펴지 않았습니다.")) + "</div>") +
+          "</div></div>" +
+      "</div>" +
+      stepsSkeleton() +
+      '<div class="tech-grid">' +
+        "<div><span>검출 모델</span><b>" + esc(modelNames.detection) + "</b></div>" +
+        "<div><span>기하 모델</span><b>" + esc(modelNames.geometry) + "</b></div>" +
+        "<div><span>API</span><b>POST /api/decode</b></div>" +
+        "<div><span>왕복 시간</span><b>" + Math.round(body.total_ms) + "ms</b></div>" +
+      "</div>" +
+      (ev && ev.blob ? '<div style="margin-top:12px"><button type="button" class="btn-ghost dlOrig">캡처 원본 저장 (' + Math.round(ev.blob.size / 1024) + 'KB)</button></div>' : "");
+    const dl = wrap.querySelector(".dlOrig");
+    if (dl) dl.addEventListener("click", () => {
+      const ext = (ev.blob.type || "").includes("png") ? "png" : "jpg";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(ev.blob);
+      a.download = "capture_" + ev.id.replace("#", "") + "." + ext;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    });
+    return wrap;
+  }
+  async function playDetailReal(container, body) {
+    const steps = container.querySelectorAll(".step");
+    const byKey = {}; steps.forEach((li) => byKey[li.dataset.key] = li);
+    const ms = body.stage_ms || {};
+    const origCanvas = container.querySelector(".dOrig"), rectCanvas = container.querySelector(".dRect");
+    try { drawOriginalReal(origCanvas, await loadImage(body.images.original)); } catch (e) { /* 원본 로드 실패 시 빈 칸 */ }
+
+    setStep(byKey.detect, "active", "바코드 영역 탐색 중…");
+    await wait(100);
+    const det = body.detection;
+    if (!det) {
+      setStep(byKey.detect, "fail", "바코드 영역을 찾지 못함", ms.detect);
+      ["decode_first", "estimate", "warp", "decode"].forEach((k) => setStep(byKey[k], "skip", "건너뜀", ""));
+      return;
+    }
+    let cropImg;
+    try { cropImg = await loadImage(body.images.crop); } catch (e) { cropImg = null; }
+    if (cropImg) drawCropReal(origCanvas, cropImg, det.confidence);
+    const angle = Math.abs(det.angle_deg_ccw) >= 0.5 ? " · " + det.angle_deg_ccw + "° 회전 보정" : "";
+    setStep(byKey.detect, "done", "YOLO OBB · confidence " + det.confidence.toFixed(2) + angle, ms.detect);
+
+    setStep(byKey.decode_first, "active", "보정 없이 먼저 읽는 중…");
+    await wait(90);
+    const rect = body.rectify;
+    if (ms.estimate == null) {
+      setStep(byKey.decode_first, "done", "보정 없이 바로 읽힘", ms.decode_first);
+      setStep(byKey.estimate, "skip", "필요 없음", "");
+      setStep(byKey.warp, "skip", "필요 없음", "");
+      setStep(byKey.decode, "skip", "1차 판독에서 완료", "");
+      return;
+    }
+    setStep(byKey.decode_first, "pass", "읽히지 않아 다음 단계로", ms.decode_first);
+
+    setStep(byKey.estimate, "active", "휘어짐 추정 중…");
+    await wait(110);
+    if (!rect) {
+      setStep(byKey.estimate, "fail", "추정 결과를 신뢰할 수 없어 펴지 않음", ms.estimate);
+      setStep(byKey.warp, "skip", "건너뜀", "");
+      setStep(byKey.decode, "skip", "건너뜀", "");
+      return;
+    }
+    const gridTxt = rect.grid ? rect.grid[0] + "×" + rect.grid[1] : rect.control_points_src_norm.length + "개";
+    setStep(byKey.estimate, "done", "제어점 " + gridTxt, ms.estimate);
+
+    setStep(byKey.warp, "active", "TPS로 펴는 중…");
+    await wait(100);
+    setStep(byKey.warp, "done", "TPS 보정 적용 · 배율 " + rect.out_scale.toFixed(1) + "×", ms.warp);
+    try {
+      const rectImg = await loadImage(body.images.rectified);
+      rectCanvas.hidden = false;
+      drawRectifiedReal(rectCanvas, rectImg, rect);
+    } catch (e) { /* 이미지 로드 실패 시 무시 */ }
+
+    setStep(byKey.decode, "active", "보정 이미지 판독 중…");
+    await wait(100);
+    const decodeMs = (ms.decode || 0) + (ms.retry || 0);
+    if (body.ok) {
+      setStep(byKey.decode, "done", body.retry_count ? "재시도 " + body.retry_count + "회 끝에 성공" : "첫 시도에서 성공", decodeMs);
+    } else {
+      setStep(byKey.decode, "fail", "재시도 " + body.retry_count + "회 모두 실패", decodeMs);
+    }
+  }
+
+  $("detailToggle").addEventListener("click", () => {
+    detailOpen = !detailOpen;
+    $("detailToggle").setAttribute("aria-expanded", String(detailOpen));
+    $("detailToggle").classList.toggle("is-open", detailOpen);
+    const body = $("detailBody");
+    body.hidden = !detailOpen;
+    if (detailOpen) {
+      const latest = EVENTS[0];
+      if (!latest) { body.innerHTML = '<div class="empty-hint">확정된 결과가 없습니다.</div>'; return; }
+      body.innerHTML = "";
+      body.appendChild(buildDetailBodyReal(latest.real, latest));
+      playDetailReal(body, latest.real);
+    }
+  });
+
+  // ================================================================
+  // 카메라 패널 — 실시간 카메라(getUserMedia) + 사진 업로드, 두 입력 모두 /api/decode 로 보낸다
+  // ================================================================
+  let mediaStream = null;
+  let camPaused = false;
+
+  function setCamStatus(state, text) {
+    const el = $("camStatus");
+    el.className = "status-chip " + state;
+    el.querySelector("span:last-child").textContent = text;
+  }
+  function footIdleText() {
+    return mediaStream ? "카메라 연결됨 · 화면은 실시간, 판독은 캡처할 때만 실행" : "연결된 카메라 없음 · 사진 업로드로 판독";
+  }
+  function showOnly(which) {
+    $("videoGhost").hidden = which !== "ghost";
+    $("origCanvas").hidden = which !== "photo";
+    $("camVideo").hidden = which !== "live";
+  }
+  function setVideoIdle() {
+    showOnly("ghost");
+    $("videoBadge").className = "video-badge";
+    $("videoBadgeText").textContent = "카메라 미연결";
+    $("videoDim").textContent = "";
+  }
+  function syncButtons() {
+    const live = !!mediaStream;
+    $("camStartBtn").hidden = live;
+    $("camStopBtn").hidden = !live;
+    $("pauseBtn").hidden = !live;
+    $("camCaptureBtn").disabled = running || !live || camPaused;
+    $("uploadRunBtn").disabled = running || !pickedFile;
+    $("photoInput").disabled = running;
+  }
+
+  async function listCameras() {
+    try {
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+      const sel = $("camSelect");
+      const track = mediaStream && mediaStream.getVideoTracks()[0];
+      const cur = track && track.getSettings().deviceId;
+      sel.innerHTML = devs.map((d, i) => '<option value="' + esc(d.deviceId) + '"' + (d.deviceId === cur ? " selected" : "") + ">" + esc(d.label || "카메라 " + (i + 1)) + "</option>").join("");
+      sel.hidden = devs.length < 2;
+    } catch (e) { /* 목록을 못 읽어도 시작은 가능 */ }
+  }
+  async function startCamera(deviceId) {
+    if (running) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCamStatus("err", "카메라 사용 불가 · localhost 또는 HTTPS에서만 동작");
+      return;
+    }
+    stopCamera(true);
+    setCamStatus("", "카메라 연결 중…");
+    $("videoBadgeText").textContent = "카메라 연결 중";
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: deviceId ? { deviceId: { exact: deviceId } } : { width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+    } catch (err) {
+      const denied = err && (err.name === "NotAllowedError" || err.name === "SecurityError");
+      const none = err && (err.name === "NotFoundError" || err.name === "OverconstrainedError");
+      setCamStatus("err", denied ? "카메라 권한 거부됨" : none ? "카메라를 찾지 못함" : "카메라 연결 실패");
+      setVideoIdle();
+      $("camFootLeft").textContent = denied ? "브라우저에서 카메라 권한을 허용한 뒤 다시 시작하세요." : footIdleText();
+      return;
+    }
+    mediaStream = stream;
+    camPaused = false;
+    const video = $("camVideo");
+    video.srcObject = stream;
+    try { await video.play(); } catch (e) { /* 사용자 클릭으로 시작했으므로 보통 통과 */ }
+    showOnly("live");
+    const track = stream.getVideoTracks()[0];
+    track.addEventListener("ended", () => {
+      if (mediaStream !== stream) return;
+      stopCamera(true);
+      setCamStatus("err", "카메라 연결 끊김");
+      showOnly("ghost");
+      $("videoBadge").className = "video-badge";
+      $("videoBadgeText").textContent = "영상 수신 중단";
+      $("camFootLeft").textContent = "카메라가 분리되었거나 다른 프로그램이 사용 중입니다. 다시 시작해 주세요.";
+    });
+    video.addEventListener("loadedmetadata", () => { $("videoDim").textContent = video.videoWidth + "×" + video.videoHeight; }, { once: true });
+    if (video.videoWidth) $("videoDim").textContent = video.videoWidth + "×" + video.videoHeight;
+    $("videoBadge").className = "video-badge live";
+    $("videoBadgeText").textContent = "LIVE";
+    setCamStatus("ok", "카메라 연결됨 · LIVE");
+    $("pauseLabel").textContent = "화면 표시 일시정지";
+    $("camFootLeft").textContent = footIdleText();
+    syncButtons();
+    listCameras();
+  }
+  function stopCamera(silent) {
+    if (mediaStream) { mediaStream.getTracks().forEach((t) => t.stop()); mediaStream = null; }
+    $("camVideo").srcObject = null;
+    camPaused = false;
+    if (!silent) {
+      setVideoIdle();
+      setCamStatus("", "카메라 미연결 · 사진 업로드로 판독");
+      $("camFootLeft").textContent = footIdleText();
+    }
+    syncButtons();
+  }
+  $("camStartBtn").addEventListener("click", () => startCamera());
+  $("camStopBtn").addEventListener("click", () => stopCamera(false));
+  $("camSelect").addEventListener("change", (e) => startCamera(e.target.value));
+  $("pauseBtn").addEventListener("click", () => {
+    if (!mediaStream) return;
+    camPaused = !camPaused;
+    const video = $("camVideo");
+    if (camPaused) video.pause(); else video.play();
+    $("pauseLabel").textContent = camPaused ? "화면 표시 재개" : "화면 표시 일시정지";
+    $("videoBadge").className = "video-badge" + (camPaused ? "" : " live");
+    $("videoBadgeText").textContent = camPaused ? "화면 정지 (수신은 계속)" : "LIVE";
+    $("camFootLeft").textContent = camPaused ? "화면 표시만 정지됨 · 정지한 상태에서는 캡처할 수 없습니다" : footIdleText();
+    syncButtons();
+  });
+
+  function onFile(f) {
+    if (running) return;
+    stopCamera(true);
+    setCamStatus("", "카메라 미연결 · 사진 업로드로 판독");
+    pickedFile = f;
+    $("pickedFileName").textContent = f.name;
+    if (originalImg) URL.revokeObjectURL(originalImg.src);
+    const img = new Image();
+    img.onload = () => {
+      originalImg = img;
+      showOnly("photo");
+      drawOriginalReal($("origCanvas"), img);
+      $("videoBadge").className = "video-badge";
+      $("videoBadgeText").textContent = "업로드된 사진 · 실시간 아님";
+      $("videoDim").textContent = img.naturalWidth + "×" + img.naturalHeight;
+    };
+    img.src = URL.createObjectURL(f);
+    $("camFootLeft").textContent = footIdleText();
+    syncButtons();
+  }
+  $("photoInput").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) onFile(f);
+    e.target.value = "";
+  });
+  $("videoBox").addEventListener("dragover", (e) => e.preventDefault());
+  $("videoBox").addEventListener("drop", (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && f.type.startsWith("image/")) onFile(f);
+  });
+
+  function setRealBusy(b, spinBtn) {
+    running = b;
+    ["uploadRunBtn", "camCaptureBtn"].forEach((id) => $(id).classList.toggle("loading", b && id === spinBtn));
+    $("uploadRunText").textContent = b && spinBtn === "uploadRunBtn" ? "처리 중…" : "판독 요청 보내기";
+    $("camCaptureText").textContent = b && spinBtn === "camCaptureBtn" ? "처리 중…" : "현재 화면 캡처 · 판독";
+    syncButtons();
+  }
+  function failReal(message) {
+    $("procRow").classList.remove("show");
+    $("camFootLeft").textContent = message;
+    setRealBusy(false);
+  }
+
+  async function submitForDecode(blob, spinBtn) {
+    if (running) return;
+    setRealBusy(true, spinBtn);
+    $("procRow").classList.add("show");
+    $("camFootLeft").textContent = "서버로 전송 중…";
+
+    const t0 = performance.now();
+    const timer = setInterval(() => { $("procMs").textContent = Math.round(performance.now() - t0); }, 80);
+
+    let resp;
+    try {
+      resp = await fetch("/api/decode", {
+        method: "POST",
+        headers: { "Content-Type": blob.type || "application/octet-stream" },
+        body: blob,
+      });
+    } catch (err) {
+      clearInterval(timer);
+      setSvcStatus(false);
+      failReal("서버에 연결하지 못했습니다. 저장소 폴더에서 uv run uvicorn wemeet.sw.server:app 으로 서버를 켰는지 확인하세요.");
+      return;
+    }
+    let body = null;
+    try { body = await resp.json(); } catch (e) { body = null; }
+    clearInterval(timer);
+    if (!resp.ok || !body) {
+      failReal((body && body.error) || ("서버 오류 · HTTP " + resp.status));
+      return;
+    }
+    setSvcStatus(true);
+    $("procMs").textContent = Math.round(body.total_ms);
+
+    const ev = eventFromReal(body, blob);
+    EVENTS.unshift(ev);
+    renderHistories();
+    renderConfirmed();
+
+    $("camFootLeft").textContent = footIdleText();
+    $("camFootRight").textContent = "마지막 수신 " + ev.time;
+    $("procRow").classList.remove("show");
+    setRealBusy(false);
+  }
+
+  // 사진 업로드 경로
+  $("uploadRunBtn").addEventListener("click", () => { if (pickedFile) submitForDecode(pickedFile, "uploadRunBtn"); });
+
+  // 실시간 카메라 경로 — 지금 보이는 프레임 한 장만 잘라 보낸다 (스트림 자체는 서버로 보내지 않는다)
+  $("camCaptureBtn").addEventListener("click", async () => {
+    const video = $("camVideo");
+    if (running || !mediaStream || camPaused || !video.videoWidth) return;
+    const c = document.createElement("canvas");
+    c.width = video.videoWidth; c.height = video.videoHeight;
+    c.getContext("2d").drawImage(video, 0, 0);
+    const blob = await new Promise((resolve) => c.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) { failReal("프레임을 캡처하지 못했습니다."); return; }
+    submitForDecode(blob, "camCaptureBtn");
+  });
+
+  $("copyBtn").addEventListener("click", () => {
+    const text = $("bigValue").textContent;
+    const btn = $("copyBtn");
+    const flash = (msg) => { btn.textContent = msg; setTimeout(() => { btn.textContent = "복사"; }, 1500); };
+    try { navigator.clipboard.writeText(text).then(() => flash("복사됨"), () => flash("복사 실패")); }
+    catch (e) { flash("복사 실패"); }
+  });
+
+  // ================================================================
+  // 미판독 확인
+  // ================================================================
+  function renderReviewList() {
+    const wrap = $("reviewList");
+    if (EVENTS.length === 0) {
+      wrap.innerHTML = '<div class="r-empty">아직 판독 이력이 없습니다</div>';
+      return;
+    }
+    wrap.innerHTML = EVENTS.map((e) => (
+      '<button type="button" class="review-row' + (e.id === reviewSelectedId ? " active" : "") + '" data-id="' + e.id + '">' +
+        '<span><span class="rid mono">' + e.id + '</span><span class="rtime mono">' + e.time + "</span></span>" +
+        "<span>" + statusTag(e.outcome) + "</span>" +
+      "</button>"
+    )).join("");
+    wrap.querySelectorAll(".review-row").forEach((btn) => {
+      btn.addEventListener("click", () => selectReview(btn.dataset.id));
+    });
+    if (reviewSelectedId === null) {
+      const firstReview = EVENTS.find((e) => e.outcome === "review") || EVENTS[0];
+      if (firstReview) selectReview(firstReview.id, true);
+    }
+  }
+  function selectReview(id, skipHighlight) {
+    reviewSelectedId = id;
+    const e = EVENTS.find((x) => x.id === id);
+    if (!skipHighlight) {
+      $("reviewList").querySelectorAll(".review-row").forEach((btn) => btn.classList.toggle("active", btn.dataset.id === id));
+    }
+    if (!e) return;
+    $("reviewFrameTitle").textContent = "선택 프레임 · CAM-01 · " + e.id;
+    $("reviewBadgeText").textContent = "촬영 프레임 · " + e.time;
+    $("reviewFootLeft").textContent = e.time + " · 원본 / 보정 결과 확인 영역";
+    if (e.real && e.real.images && e.real.images.original) {
+      loadImage(e.real.images.original).then((img) => drawOriginalReal($("reviewCanvas"), img)).catch(() => {});
+    }
+
+    const card = $("reviewDetailCard");
+    const statusHtml = e.outcome === "success"
+      ? '<div class="status-pill good"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON.success + '</svg><span>판독 성공</span></div>'
+      : '<div class="status-pill warn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON.review + '</svg><span>확인 필요</span></div>';
+    card.innerHTML =
+      '<div class="result-src">선택한 결과 · <span class="mono">' + e.id + "</span></div>" +
+      statusHtml +
+      '<div class="result-value"><div class="v' + (e.outcome === "success" ? "" : " muted") + '">' + (e.barcode || "미판독 · 원인 미확인") + "</div></div>" +
+      (e.outcome !== "success" ? '<p class="cand-note">보정 후에도 판독값이 확정되지 않았습니다. 재촬영 또는 수동 확인이 필요합니다.</p>' : "") +
+      '<div class="result-path">판독 경로 · ' + pathLabel(e) + "</div>" +
+      '<div class="r-divider"></div>' +
+      '<div class="meta-grid">' +
+        "<div><span>촬영 시각</span><b class=\"mono\">" + e.time + "</b></div>" +
+        "<div><span>처리 시간</span><b class=\"mono num\">" + e.ms + "ms</b></div>" +
+      "</div>" +
+      '<button type="button" class="detail-link" id="reviewDetailToggle" aria-expanded="false"><svg class="ic car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>처리 상세</button>' +
+      '<div class="detail-body" id="reviewDetailBody" hidden></div>';
+
+    let open = false;
+    $("reviewDetailToggle").addEventListener("click", () => {
+      open = !open;
+      $("reviewDetailToggle").setAttribute("aria-expanded", String(open));
+      $("reviewDetailToggle").classList.toggle("is-open", open);
+      const body = $("reviewDetailBody");
+      body.hidden = !open;
+      if (open) {
+        body.innerHTML = "";
+        body.appendChild(buildDetailBodyReal(e.real, e));
+        playDetailReal(body, e.real);
+      }
+    });
+  }
+
+  // ================================================================
+  // 탭 전환
+  // ================================================================
+  $("tabs").addEventListener("click", (e) => {
+    const b = e.target.closest(".tab");
+    if (!b) return;
+    goto(b.dataset.view);
+  });
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest(".link-more[data-goto]");
+    if (b) goto(b.dataset.goto);
+  });
+  function goto(view) {
+    ["live", "history", "review", "settings"].forEach((v) => { $("view-" + v).hidden = v !== view; });
+    $("tabs").querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-current", t.dataset.view === view ? "page" : "false"));
+  }
+
+  // ================================================================
+  // 부팅
+  // ================================================================
+  setVideoIdle();
+  syncButtons();
+  renderHistories();
+  renderConfirmed();
+  checkHealth();
+})();
+</script>
+</body>
+</html>
