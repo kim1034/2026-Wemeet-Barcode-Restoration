@@ -16,6 +16,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException
+from starlette.formparsers import MultiPartException, MultiPartParser
 
 from wemeet.sw.frame_batch import Frame, FrameBatch, process_batch
 from wemeet.sw.server.diagnostics import batch_diagnostics
@@ -81,7 +82,7 @@ def inspect_image(data: bytes, *, jpeg_only=False, max_pixels=MAX_PIXELS) -> tup
         raise InputError(400, "이미지를 읽지 못했습니다.") from exc
 
 
-async def read_batch(request: Request) -> tuple[Manifest, list[bytes], str]:
+async def read_batch(request: Request, manifest_type=Manifest) -> tuple[Manifest, list[bytes], str]:
     data = await read_limited_body(request)
 
     async def receive():
@@ -89,13 +90,19 @@ async def read_batch(request: Request) -> tuple[Manifest, list[bytes], str]:
 
     bounded = Request(request.scope, receive)
     try:
-        async with bounded.form(max_files=8, max_fields=1, max_part_size=64 * 1024) as form:
+        parser = MultiPartParser(
+            bounded.headers, bounded.stream(), max_files=8, max_fields=1, max_part_size=64 * 1024
+        )
+        # The body is already bounded. Prevent >1MiB JPEGs from rolling to disk.
+        parser.spool_max_size = MAX_UPLOAD_BYTES + 1
+        form = await parser.parse()
+        try:
             if set(form) != {"manifest", "frames"}:
                 raise InputError(400, "manifest와 frames가 필요합니다.")
             raw_manifest = form["manifest"]
             if not isinstance(raw_manifest, str):
                 raise InputError(400, "manifest는 JSON 문자열이어야 합니다.")
-            manifest = Manifest.model_validate_json(raw_manifest)
+            manifest = manifest_type.model_validate_json(raw_manifest)
             files = form.getlist("frames")
             if len(files) != len(manifest.frames):
                 raise InputError(400, "프레임 수와 메타데이터 수가 다릅니다.")
@@ -116,7 +123,9 @@ async def read_batch(request: Request) -> tuple[Manifest, list[bytes], str]:
                 encoded.append(content)
             if len(sizes) != 1:
                 raise InputError(400, "한 묶음의 프레임 해상도는 같아야 합니다.")
-    except (ValidationError, HTTPException) as exc:
+        finally:
+            await form.close()
+    except (ValidationError, HTTPException, MultiPartException) as exc:
         raise InputError(400, "올바른 JPEG 묶음과 메타데이터를 보내 주세요.") from exc
     digest = hashlib.sha256(json.dumps(manifest.model_dump(), sort_keys=True).encode())
     for content in encoded:

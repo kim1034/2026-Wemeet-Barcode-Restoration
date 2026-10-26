@@ -49,8 +49,9 @@ export class FrameCollector {
   }
 }
 
-export function startFrameCapture(video, { onBatch, getActivity, onStall = () => {} }) {
-  const collector = new FrameCollector({ onBatch });
+export function startFrameCapture(video, { onBatch, getActivity, onStall = () => {},
+  windowMs = 1000, maxFrames = 8 }) {
+  const collector = new FrameCollector({ onBatch, windowMs, maxFrames });
   let stopped = false, callbackId, lastFrameAt = performance.now(), inflight = 0;
   let stalled = false;
   const canvas = document.createElement("canvas");

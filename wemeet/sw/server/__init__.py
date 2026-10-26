@@ -8,7 +8,7 @@ import asyncio
 import base64
 import logging
 import time
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 import cv2
@@ -23,6 +23,7 @@ from wemeet.schemas import PipelineResult
 from wemeet.sw.pipeline import run
 from wemeet.sw.server.burst import InputError, decode_burst, inspect_image, read_limited_body
 from wemeet.sw.server.runtime import InferenceRuntime, RuntimeUnavailable
+from wemeet.sw.server.tracking import TrackController
 
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 PREVIEW_LONG_SIDE = 1280
@@ -36,11 +37,24 @@ runtime = InferenceRuntime()
 async def lifespan(app):
     runtime.preparing = True
     preparation = asyncio.create_task(run_in_threadpool(runtime.prepare))
+    tracker = tracking_controller()
+    worker = asyncio.create_task(tracker.worker())
     yield
+    worker.cancel()
+    with suppress(asyncio.CancelledError):
+        await worker
     await preparation
 
 
 app = FastAPI(title="노리드존 판독기", lifespan=lifespan)
+tracking = None
+
+
+def tracking_controller():
+    global tracking
+    if tracking is None or tracking.runtime is not runtime:
+        tracking = TrackController(runtime, to_response, _data_uri)
+    return tracking
 
 
 def _data_uri(image: np.ndarray, fmt: str = ".png") -> str:
@@ -87,7 +101,7 @@ def to_response(result: PipelineResult) -> dict:
         "rectify": None,
         "images": {
             "original": _data_uri(result.original_bgr_uint8, ".jpg"),
-            # 원본 좌표계의 박스는 schemas.DetectedBarcode 에 없어서 아직 보낼 수 없다
+            # 기존 단일 사진 응답 형식 유지. 원본 박스는 추적 어댑터에서 사용한다.
             "detected_box": None,
             "crop": None,
             "rectified": None,
@@ -130,7 +144,13 @@ def index() -> FileResponse:
 
 @app.get("/assets/{filename}", include_in_schema=False)
 def javascript(filename: str):
-    if filename not in {"capture.mjs", "activity.mjs", "continuous.mjs", "result-state.mjs"}:
+    if filename not in {
+        "capture.mjs",
+        "activity.mjs",
+        "continuous.mjs",
+        "result-state.mjs",
+        "tracking.mjs",
+    }:
         return _error(404, "파일을 찾지 못했습니다.")
     # Avoid Windows MIME registry overrides and stale cached modules during experiments.
     return FileResponse(
@@ -155,6 +175,25 @@ def health() -> dict:
 @app.post("/api/decode-burst")
 async def decode_frames(request: Request) -> JSONResponse:
     return await decode_burst(request, runtime, to_response, _data_uri)
+
+
+@app.post("/api/track-frames")
+async def track_frames(request: Request):
+    return await tracking_controller().ingest(request)
+
+
+@app.get("/api/tracking/{session_id}")
+async def tracking_status(session_id: str, after: int = 0):
+    controller = tracking_controller()
+    controller.expire()
+    session = controller.sessions.get(session_id)
+    return session.snapshot(after=after) if session else {"expired": True, "results": []}
+
+
+@app.delete("/api/tracking/{session_id}")
+async def tracking_close(session_id: str):
+    tracking_controller().close(session_id)
+    return {"ok": True}
 
 
 @app.post("/api/decode")

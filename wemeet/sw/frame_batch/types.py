@@ -12,6 +12,7 @@ class Frame:
     frame_id: str
     offset_ms: float
     image_bgr: np.ndarray
+    bbox_xywh: tuple[int, int, int, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,7 @@ class FrameBatch:
     batch_id: str
     frames: list[Frame]
     window_ms: float = 1000.0
+    use_roi: bool = False
 
 
 @dataclass

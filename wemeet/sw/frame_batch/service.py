@@ -65,8 +65,12 @@ def process_batch(batch: FrameBatch, *, budget_ms: float = BUDGET_MS) -> BatchOu
             outcome.completion_reason = "budget_exhausted"
             break
         selection_start = time.perf_counter()
+        rois = [frame.bbox_xywh for _, frame in candidates]
+        use_roi = batch.use_roi and all(box is not None for box in rois)
         try:
-            best = select_best_frame([frame.image_bgr for _, frame in candidates], bboxes=None)
+            best = select_best_frame(
+                [frame.image_bgr for _, frame in candidates], bboxes=rois if use_roi else None
+            )
         except Exception:
             outcome.completion_reason = "selection_error"
             break
@@ -86,7 +90,7 @@ def process_batch(batch: FrameBatch, *, budget_ms: float = BUDGET_MS) -> BatchOu
             "sharpness_score": float(best.sharpness_score),
             "glare_ratio": float(best.glare_ratio),
             "low_quality_fallback": bool(best.low_quality_fallback),
-            "score_scope": "remaining_full_frames",
+            "score_scope": "remaining_barcode_rois" if use_roi else "remaining_full_frames",
             "text": None,
             "failure_reason": None,
             "stage_ms": {},
