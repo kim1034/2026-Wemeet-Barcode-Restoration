@@ -7,12 +7,16 @@ pyzbar 우선 -> zxing-cpp 폴백 흐름 자체는 구현 세부다. 여기서�
 
 import ctypes
 import importlib
+import io
 import sys
 from collections.abc import Callable
 
 import cv2
 import numpy as np
 import pytest
+from barcode import Code128
+from barcode.writer import ImageWriter
+from PIL import Image
 
 from wemeet.schemas import DetectedBarcode, RectifiedBarcode
 from wemeet.sw.decoding import decode
@@ -86,3 +90,77 @@ def test_pyzbar_dll_load_failure_falls_back_to_zxing(
     finally:
         monkeypatch.undo()
         importlib.reload(decoding)
+
+
+# ---------------------------------------------------------------- CLAHE 재시도
+
+
+def _veiled_barcode(text: str = "WEMEET0001") -> np.ndarray:
+    """왼쪽 40%를 반투명한 흰 막이 덮고 흐림·노이즈가 낀 Code128.
+
+    비닐 반사막이 막대 일부만 옅게 만든 실제 크롭을 흉내 낸다. 막대 폭 약 4px 에서
+    zxing 은 이 이미지를 원본으로는 못 읽고 CLAHE 후에는 읽는다 (노이즈 시드 20개 전부).
+    """
+    buffer = io.BytesIO()
+    options = {"module_width": 0.4, "module_height": 14.0, "quiet_zone": 4.0, "dpi": 300}
+    Code128(text, writer=ImageWriter()).write(buffer, options={**options, "write_text": False})
+    buffer.seek(0)
+    gray = np.asarray(Image.open(buffer).convert("L")).astype(np.float32)
+
+    height, width = gray.shape
+    _, xx = np.mgrid[0:height, 0:width].astype(np.float32)
+    edge = np.clip(xx / (width * 0.05), 0, 1) * np.clip((width * 0.4 - xx) / (width * 0.05), 0, 1)
+    alpha = 0.9 * edge
+    veiled = gray * (1 - alpha) + 228 * alpha
+    blurred = cv2.GaussianBlur(veiled, (0, 0), 1.5)
+    noisy = blurred + np.random.default_rng(0).normal(0, 4.0, blurred.shape)
+    return np.clip(noisy, 0, 255).astype(np.uint8)
+
+
+def test_decode_rescues_a_barcode_the_raw_image_cannot_read() -> None:
+    veiled = _veiled_barcode()
+
+    # 전제: 원본으로는 안 읽힌다. 디코더 버전이 바뀌어 읽히게 되면 이 테스트가 알려준다.
+    assert decode(_rectified_from_gray(veiled), enhance=False).text is None
+
+    result = decode(_rectified_from_gray(veiled))
+
+    assert result.text == "WEMEET0001"
+    assert result.failure_reason is None
+
+
+def test_decode_does_not_touch_contrast_when_the_raw_image_reads(
+    monkeypatch: pytest.MonkeyPatch, clean_barcode_bgr: np.ndarray
+) -> None:
+    """원본이 읽히면 CLAHE 를 부르지도 않는다 — 읽히던 이미지의 결과가 바뀔 수 없다."""
+    import wemeet.sw.decoding as decoding
+
+    def _must_not_run(gray: np.ndarray) -> np.ndarray:
+        raise AssertionError("원본이 읽혔는데 CLAHE 가 불렸다")
+
+    monkeypatch.setattr(decoding, "_enhance_contrast", _must_not_run)
+    gray = cv2.cvtColor(clean_barcode_bgr, cv2.COLOR_BGR2GRAY)
+
+    assert decode(_rectified_from_gray(gray)).text == "WEMEET0001"
+
+
+def test_decode_enhance_false_never_runs_clahe(monkeypatch: pytest.MonkeyPatch) -> None:
+    import wemeet.sw.decoding as decoding
+
+    def _must_not_run(gray: np.ndarray) -> np.ndarray:
+        raise AssertionError("enhance=False 인데 CLAHE 가 불렸다")
+
+    monkeypatch.setattr(decoding, "_enhance_contrast", _must_not_run)
+    result = decode(_rectified_from_gray(np.zeros((120, 300), dtype=np.uint8)), enhance=False)
+
+    assert result.text is None
+    assert result.failure_reason == "decode_failed"
+
+
+@pytest.mark.parametrize("shape", [(1, 1), (2, 2), (3, 50)], ids=["1x1", "2x2", "3x50"])
+def test_decode_fails_cleanly_on_tiny_images(shape: tuple[int, int]) -> None:
+    """파이프라인은 예외를 던지지 않는다 — CLAHE 가 작은 이미지에서 터지면 안 된다."""
+    result = decode(_rectified_from_gray(np.full(shape, 128, dtype=np.uint8)))
+
+    assert result.text is None
+    assert result.failure_reason == "decode_failed"
