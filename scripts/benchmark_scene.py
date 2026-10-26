@@ -130,13 +130,8 @@ def _label(rng, fonts, words, crop, lh, lw, cx, cy):
     return np.repeat(lab[..., None], 3, axis=2)
 
 
-def compose(crop: np.ndarray, rng: np.random.Generator, fonts, words):
-    """crop(흑백) 을 붙인 장면(BGR uint8), 메타, 크롭 위치 [x, y, w, h]."""
-    ch, cw = crop.shape
-    img, rail = _belt(rng)
-    belt_h = H - 2 * rail
-
-    # 라벨 크기: 크롭 + 좌우 여백 + 위 글자 영역 + 아래 여백
+def _layout(rng, ch, cw, belt_h):
+    """라벨 크기: 크롭 + 좌우 여백 + 위 글자 영역 + 아래 여백."""
     mx = int(rng.uniform(0.06, 0.15) * cw) + 20
     top = rng.uniform(0.5, 0.9) * ch + 40
     bot = rng.uniform(0.25, 0.45) * ch + 20
@@ -144,7 +139,24 @@ def compose(crop: np.ndarray, rng: np.random.Generator, fonts, words):
     if top + bot > room:
         top, bot = top * room / (top + bot), bot * room / (top + bot)
     top, bot = int(top), int(bot)
-    lw, lh = cw + 2 * mx, ch + top + bot
+    return mx, top, cw + 2 * mx, ch + top + bot
+
+
+def _light(img, rng):
+    """조명: 한쪽이 밝은 완만한 기울기 + 센서 노이즈."""
+    gx = np.linspace(-1, 1, W, dtype=np.float32)[None, :] * rng.uniform(-0.15, 0.15)
+    gy = np.linspace(-1, 1, H, dtype=np.float32)[:, None] * rng.uniform(-0.10, 0.10)
+    img = img * (1 + gx + gy)[..., None] * rng.uniform(0.85, 1.1)
+    img += rng.normal(0, rng.uniform(0.004, 0.015), img.shape).astype(np.float32)
+    return np.clip(img * 255, 0, 255).astype(np.uint8)
+
+
+def compose(crop: np.ndarray, rng: np.random.Generator, fonts, words):
+    """crop(흑백) 을 붙인 장면(BGR uint8), 메타, 크롭 위치 [x, y, w, h]. 기울기 없음 (v1)."""
+    ch, cw = crop.shape
+    img, rail = _belt(rng)
+    belt_h = H - 2 * rail
+    mx, top, lw, lh = _layout(rng, ch, cw, belt_h)
 
     # 포장: 라벨보다 크고, 화면 밖으로 나가도 된다 (벨트 영역 안으로만 자른다)
     pw = lw + int(rng.uniform(80, 500))
@@ -169,13 +181,72 @@ def compose(crop: np.ndarray, rng: np.random.Generator, fonts, words):
     ly = int(rng.uniform(py + 10, py + ph - lh - 10 + 1))
     img[ly : ly + lh, lx : lx + lw] = _label(rng, fonts, words, crop, lh, lw, mx, top)
 
-    # 조명: 한쪽이 밝은 완만한 기울기 + 센서 노이즈
-    gx = np.linspace(-1, 1, W, dtype=np.float32)[None, :] * rng.uniform(-0.15, 0.15)
-    gy = np.linspace(-1, 1, H, dtype=np.float32)[:, None] * rng.uniform(-0.10, 0.10)
-    img = img * (1 + gx + gy)[..., None] * rng.uniform(0.85, 1.1)
-    img += rng.normal(0, rng.uniform(0.004, 0.015), img.shape).astype(np.float32)
-    scene = np.clip(img * 255, 0, 255).astype(np.uint8)
-
+    scene = _light(img, rng)
     x, y = lx + mx, ly + top
     scene[y : y + ch, x : x + cw] = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
     return scene, kind, [x, y, cw, ch]
+
+
+def compose_tilted(crop: np.ndarray, rng: np.random.Generator, fonts, words, angle: float):
+    """벨트 위에서 포장이 angle 도(반시계) 돌아간 장면 (v2).
+
+    벨트는 그대로 두고 포장·라벨·크롭을 한 덩어리로 돌린다 — 실제로 도는 것은 상자다.
+    크롭은 돌리면서 한 번 보간된다 (INTER_LANCZOS4). 조명·노이즈는 v1 처럼 크롭 위에는
+    얹지 않는다. 반환: 장면, 포장 종류, 크롭 네 꼭짓점(좌상·우상·우하·좌하, 장면 px).
+    """
+    ch, cw = crop.shape
+    img, rail = _belt(rng)
+    mx, top, lw, lh = _layout(rng, ch, cw, H - 2 * rail)
+
+    pw = lw + int(rng.uniform(80, 500))
+    ph = lh + int(rng.uniform(40, 300))
+    pkg, kind = (_cardboard if rng.random() < 0.5 else _vinyl)(rng, ph, pw)
+    lx = int(rng.uniform(10, pw - lw - 10 + 1))
+    ly = int(rng.uniform(10, ph - lh - 10 + 1))
+    pkg[ly : ly + lh, lx : lx + lw] = _label(rng, fonts, words, crop, lh, lw, mx, top)
+    cx, cy = lx + mx, ly + top
+    pkg[cy : cy + ch, cx : cx + cw] = (crop.astype(np.float32) / 255)[..., None]
+    crop_mask = np.zeros((ph, pw), np.float32)
+    crop_mask[cy : cy + ch, cx : cx + cw] = 1.0
+    quad = np.float32([[cx, cy], [cx + cw, cy], [cx + cw, cy + ch], [cx, cy + ch]])
+
+    # 포장을 돌린다. 캔버스를 넓혀 모서리가 잘리지 않게 한다
+    m = cv2.getRotationMatrix2D((pw / 2, ph / 2), angle, 1.0)
+    corners = np.float32([[0, 0], [pw, 0], [pw, ph], [0, ph]]) @ m[:, :2].T + m[:, 2]
+    m[:, 2] -= corners.min(0)
+    bw, bh = (np.ceil(corners.max(0) - corners.min(0)) + 1).astype(int)
+    warp = lambda a, f: cv2.warpAffine(a, m, (int(bw), int(bh)), flags=f)  # noqa: E731
+    obj = warp(pkg, cv2.INTER_LANCZOS4).clip(0, 1)
+    alpha = warp(np.ones((ph, pw), np.float32), cv2.INTER_LINEAR)
+    cmask = warp(crop_mask, cv2.INTER_NEAREST)
+    quad = quad @ m[:, :2].T + m[:, 2]
+
+    # 크롭이 화면 안(여백 40px)에 들어오는 자리를 고른다. 포장은 밖으로 나가도 된다
+    lo = 40 - quad.min(0)
+    hi = np.float32([W, H]) - 40 - quad.max(0)
+    ox = int(rng.uniform(lo[0], max(lo[0], hi[0]) + 1))
+    oy = int(
+        rng.uniform(max(lo[1], rail - 0.2 * bh), max(lo[1], min(hi[1], H - rail - 0.8 * bh)) + 1)
+    )
+
+    def paste(dst, src, weight):
+        x0, y0 = max(ox, 0), max(oy, 0)
+        x1, y1 = min(ox + bw, W), min(oy + bh, H)
+        s = src[y0 - oy : y1 - oy, x0 - ox : x1 - ox]
+        a = weight[y0 - oy : y1 - oy, x0 - ox : x1 - ox][..., None]
+        dst[y0:y1, x0:x1] = dst[y0:y1, x0:x1] * (1 - a) + s * a
+
+    sx, sy = int(rng.uniform(8, 25)), int(rng.uniform(8, 25))
+    shadow = np.zeros((H, W, 3), np.float32)
+    ox, oy = ox + sx, oy + sy
+    paste(shadow, np.ones((bh, bw, 3), np.float32), alpha)
+    ox, oy = ox - sx, oy - sy
+    img *= 1 - 0.55 * cv2.GaussianBlur(shadow, (0, 0), 12)
+    paste(img, obj, alpha)
+
+    clean = np.clip(img * 255, 0, 255).astype(np.uint8)
+    scene = _light(img, rng)
+    keep = np.zeros((H, W), np.float32)
+    paste(keep[..., None], np.ones((bh, bw, 1), np.float32), cmask)
+    scene[keep > 0.5] = clean[keep > 0.5]
+    return scene, kind, (quad + [ox, oy]).round(1).tolist()

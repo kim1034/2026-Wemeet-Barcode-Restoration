@@ -263,7 +263,7 @@ assert abs(map_x[10, 20] - 20) < 0.01
 ### 구현할 함수
 
 ```python
-def decode(image: RectifiedBarcode) -> DecodeResult:
+def decode(image: RectifiedBarcode, enhance: bool = True) -> DecodeResult:
 ```
 
 흐름은 이렇습니다.
@@ -280,6 +280,15 @@ CLAHE (명암 대비 개선)
       ↓
 디코더 호출
 ```
+
+> **구현 현황 (2026-10-26)** — 위 흐름 중 **CLAHE 만** 들어 있고, 그나마 항상 거치지 않는다.
+> **원본으로 먼저 읽고 못 읽었을 때만** CLAHE(강도 4, 격자 4×4)로 대비를 올려 한 번 더 읽는다.
+> 그래서 원래 읽히던 이미지는 결과가 같다. 1차 판독과 보정 후 판독이 모두 `decode()` 를 쓰므로 양쪽에
+> 적용되고, `enhance=False` 로 끌 수 있다. **반사 대응(행 선택)과 적응형 이진화는 아직 없다.**
+>
+> 실측 (전체 파이프라인 전후): 실제 웹캠 사진 6장 2 → 5 · 합성 벤치마크 100장 89 → 91 · 휴대폰 영상
+> 40프레임 34 → 35, 오독은 세 곳 모두 늘지 않았다. 비닐막 반사가 막대 일부만 옅게 만든 실제 크롭이
+> 기하가 멀쩡해도 못 읽히던 것을 살린다. 실제 표본이 작아서 효과 크기는 더 큰 실촬영 세트로 다시 재야 한다.
 
 재시도 루프는 `decode()` 안이 아니라 **`pipeline.py`가 돕니다** — 보정을 다시 하기 때문입니다.
 
@@ -378,33 +387,51 @@ def decode(image: RectifiedBarcode) -> DecodeResult:
 
 ## `wemeet/sw/server.py` — FastAPI
 
-### 엔드포인트 2개
+### 엔드포인트
 
 | 메서드 | 경로 | 용도 |
 |---|---|---|
-| `POST` | `/api/decode` | 이미지 한 장 처리 |
-| `GET` | `/api/health` | 서버 상태, 모델 버전 |
+| `GET` | `/` | 작업자 화면 (`web/index.html`) |
+| `POST` | `/api/decode` | 이미지 한 장 처리. **본문은 이미지 바이트 그대로** (multipart 아님) |
+| `GET` | `/api/health` | 서버 상태, 모델 가중치 경로 |
+
+실행은 저장소 폴더에서 `uv run uvicorn wemeet.sw.server:app --port 8000` 입니다.
 
 ### 응답 형식
+
+구현: `wemeet/sw/server/__init__.py` 의 `to_response()`. 화면(`web/index.html`)이 이 형식을 읽습니다.
 
 ```json
 {
   "ok": true,
   "text": "8801234567890",
-  "symbology": "CODE128",
-  "retry_count": 1,
+  "symbology": null,
   "failure_reason": null,
-  "candidate_count": 1,
+  "retry_count": 1,
   "degraded": false,
-  "stage_ms": { "detect": 95.0, "decode_first": 22.0, "estimate": 140.0, "warp": 18.0, "decode": 26.0 },
-  "total_ms": 302.1,
+  "stage_ms": { "detect": 95.0, "decode_first": 22.0, "estimate": 140.0, "warp": 18.0, "decode": 26.0, "retry": 25.0 },
+  "total_ms": 326.0,
+  "original_size": [1920, 1080],
+  "detection": { "confidence": 0.93, "angle_deg_ccw": 3.1, "crop_size": [612, 188] },
+  "rectify": {
+    "method": "tps", "confidence": 1.0, "out_scale": 1.5, "size": [918, 282], "grid": [16, 3],
+    "control_points_src_norm": [[0.01, 0.02], "..."],
+    "control_points_dst_norm": [[0.0, 0.0], "..."]
+  },
   "images": {
-    "original": "data:image/png;base64,...",
-    "detected_box": [[120, 340], [520, 350], [518, 430], [118, 420]],
+    "original": "data:image/jpeg;base64,...",
+    "detected_box": null,
+    "crop": "data:image/png;base64,...",
     "rectified": "data:image/png;base64,..."
   }
 }
 ```
+
+- `detection` 은 검출 실패 시 `null`, `rectify`·`images.rectified` 는 실제로 폈을 때만 채워집니다 (1차 판독 성공·`degraded` 이면 `null`)
+- `retry_count` 는 몇 번째 배율에서 끝났는지다 (0=1.0×, 1=1.5×, 2=3.0×)
+- `symbology` 는 `DecodeResult` 에 아직 없어서 항상 `null` 입니다
+- `detected_box` 는 `DetectedBarcode` 에 원본 좌표가 없어서 아직 `null` 입니다. 그리려면 `schemas.py` 변경이 필요합니다 (AI·SW 합의)
+- `candidate_count` 는 뺐습니다. `detect()` 가 한 개만 돌려주도록 확정됐기 때문입니다
 
 ### 판독 실패에도 HTTP 200을 씁니다
 
@@ -429,7 +456,7 @@ def decode(image: RectifiedBarcode) -> DecodeResult:
 
 원본은 클 수 있으니 **긴 변 1280px로 줄여서** 보냅니다. 화면 대조용이라 원해상도가 필요 없습니다.
 
-`detected_box`는 원본 좌표계의 네 점입니다. React가 원본 위에 그대로 그립니다. 회전된 사각형이므로 네 점입니다.
+`detected_box`는 원본 좌표계의 네 점으로 보낼 예정입니다(회전된 사각형이라 네 점). 지금은 `null` 이고, 화면은 대신 크롭 위에 confidence 를 표시합니다.
 
 ### 로그에 남기지 말아야 하는 것
 
