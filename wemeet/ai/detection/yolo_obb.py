@@ -26,8 +26,12 @@ from pathlib import Path
 DEFAULT_WEIGHTS = Path("downloads/detection/v2-yolo-obb/best.pt")
 DEFAULT_HF_REPO = "123metro/barcode-weights"
 DEFAULT_HF_FILENAME = "detection/v2-yolo-obb/best.pt"
-#: 학습 입력 크기. 데이터셋이 1280x720 이라 960 이면 화질 손실이 거의 없다.
-DEFAULT_IMGSZ = 960
+#: 추론 입력 크기. 학습은 960 으로 했지만 YOLO 는 추론 크기를 바꿔도 동작한다
+#: (재학습 불필요). 960 은 1920 px 사진을 절반으로 줄여 2 px 막대가 1 px 밑으로
+#: 뭉개지고, 작은 바코드를 놓친다. benchmark-v2(100장) 실측으로 검출 69→93,
+#: 최종 판독 64→80, 전체 p95 261 ms 로 0.5 초 예산 안 — SW파트 요청으로 1280.
+#: 1600·1920 은 검출이 더 오르지만 검출 예산(110 ms)을 넘어 GPU 실측 후 재결정.
+DEFAULT_IMGSZ = 1280
 
 
 def resolve_weights(weights: str | Path | None = None) -> Path:
