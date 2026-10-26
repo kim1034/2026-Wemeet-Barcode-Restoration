@@ -27,19 +27,30 @@ pyzbar 는 판정에 쓰지 않는다 (PC 마다 깔렸는지가 달라서). pyz
 **현장 비율이 아니라 팀이 정한 구성이다.** 이 세트의 수치는 이 구성의 수치다.
 
     uv run python -m scripts.make_benchmark --out downloads/benchmark-v1
+
+**v2** (`--version v2`, seed 2027) 는 같은 규칙에 두 가지를 더한다.
+
+- **막대 비율을 반반 섞는다.** 1단계는 막대 영역을 5:3·6:4 로, 2단계 합성은 2.0~2.3 으로
+  가정했고 어느 쪽도 실물로 확인되지 않았다. 50장씩 넣고 `aspect_family` 로 표시해,
+  실물이 확정되면 맞는 절반을 쓴다. 레시피의 `aspect` 만 덮어쓰고 `wemeet/data` 는 그대로다
+- **포장을 ±15° 돌린다.** v1 은 기울기가 없어 1단계의 기울기 보정이 평가되지 않았다.
+  크롭은 돌리면서 한 번 보간된다. 크롭 네 꼭짓점을 `crop_quad` 로 남긴다 (검출 채점용)
+
+    uv run python -m scripts.make_benchmark --version v2 --out downloads/benchmark-v2
 """
 
 import argparse
 import importlib.util
 import json
 from collections import Counter
+from dataclasses import replace
 from pathlib import Path
 
 import cv2
 import numpy as np
 from PIL import Image
 
-from scripts.benchmark_scene import compose
+from scripts.benchmark_scene import compose, compose_tilted
 from scripts.label_recipes import code_commit, rectify
 from wemeet.data.synthesis import build, draw_recipe, recipe_to_dict
 from wemeet.sw.decoding import _decode_with_zxingcpp
@@ -48,6 +59,26 @@ PER_BAND = {  # bucket -> target / hard / first_ok
     "low": {"target": 27, "hard": 2, "first_ok": 5},
     "mid": {"target": 27, "hard": 2, "first_ok": 5},
     "high": {"target": 26, "hard": 1, "first_ok": 5},
+}
+WIDE, SPEC = "2.0-2.3", "5:3|6:4"  # 2단계 합성 가정 / 1단계 검출 가정
+# v2: 버킷마다 두 비율을 반씩. 합은 PER_BAND 와 같다 (15/80/5)
+PER_BAND_V2 = {
+    "low": {
+        WIDE: {"target": 14, "hard": 1, "first_ok": 2},
+        SPEC: {"target": 13, "hard": 1, "first_ok": 3},
+    },
+    "mid": {
+        WIDE: {"target": 14, "hard": 1, "first_ok": 2},
+        SPEC: {"target": 13, "hard": 1, "first_ok": 3},
+    },
+    "high": {
+        WIDE: {"target": 13, "hard": 1, "first_ok": 2},
+        SPEC: {"target": 13, "hard": 0, "first_ok": 3},
+    },
+}
+VERSIONS = {
+    "v1": {"seed": 2026, "tilt": 0.0, "quota": {b: {WIDE: q} for b, q in PER_BAND.items()}},
+    "v2": {"seed": 2027, "tilt": 15.0, "quota": PER_BAND_V2},
 }
 TAU = 0.0741  # v1 과 같은 값 (data/hf/README.md)
 # 글꼴(Fonts)과 라벨 문구(WORDS)만 빌려 쓴다
@@ -77,33 +108,54 @@ def _band(scene: np.ndarray, sample, text: str) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--seed", type=int, default=2026)
+    ap.add_argument("--version", choices=sorted(VERSIONS), default="v1")
+    ap.add_argument("--seed", type=int, default=None, help="기본값은 버전별 (v1 2026, v2 2027)")
     ap.add_argument("--n", type=int, default=20000, help="버킷당 렌더 상한")
     args = ap.parse_args()
 
+    cfg = VERSIONS[args.version]
+    seed = cfg["seed"] if args.seed is None else args.seed
+    tilt = cfg["tilt"]
+    families = list(next(iter(cfg["quota"].values())))
     gen = _scene_gen()
     fonts = gen.Fonts()
     for sub in ("images", "crops"):
         (args.out / sub).mkdir(parents=True, exist_ok=True)
 
     rows, stats = [], {}
-    for b_i, (bucket, quota) in enumerate(PER_BAND.items()):
-        recipe_rng = np.random.default_rng([args.seed, b_i])
+    for b_i, (bucket, quota) in enumerate(cfg["quota"].items()):
+        recipe_rng = np.random.default_rng([seed, b_i])
         kept, seen, rendered = Counter(), Counter(), 0
-        while any(kept[b] < n for b, n in quota.items()):
+        while any(kept[f, b] < n for f, q in quota.items() for b, n in q.items()):
             if rendered >= args.n:
                 raise RuntimeError(f"{bucket}: 렌더 상한 도달, 부족 {dict(kept)} — --n 을 올리세요")
             # 번호가 버킷끼리 겹치지 않게 인덱스를 엇갈려 준다 (텍스트는 index % 10000)
             recipe = draw_recipe(recipe_rng, bucket, rendered * len(PER_BAND) + b_i)
-            scene_rng = np.random.default_rng([args.seed, b_i, rendered])
+            scene_rng = np.random.default_rng([seed, b_i, rendered])
+            family = families[rendered % len(families)]
+            if tilt:
+                aux = np.random.default_rng([seed, b_i, rendered, 1])
+                if family == SPEC:
+                    recipe = replace(recipe, aspect=5 / 3 if aux.random() < 0.5 else 3 / 2)
+                angle = float(aux.uniform(-tilt, tilt))
             rendered += 1
+            if all(kept[family, b] >= n for b, n in quota[family].items()):
+                continue
             sample = build(recipe)
-            scene, bg_kind, box = compose(sample.obs, scene_rng, fonts, gen.WORDS)
+            if tilt:
+                scene, bg_kind, quad = compose_tilted(
+                    sample.obs, scene_rng, fonts, gen.WORDS, angle
+                )
+                q = np.array(quad)
+                lo, hi = q.min(0), q.max(0)
+                box = [int(lo[0]), int(lo[1]), int(hi[0] - lo[0]), int(hi[1] - lo[1])]
+            else:
+                scene, bg_kind, box = compose(sample.obs, scene_rng, fonts, gen.WORDS)
             band = _band(scene, sample, recipe.text)
             seen[band] += 1
-            if kept[band] >= quota.get(band, 0):
+            if kept[family, band] >= quota[family].get(band, 0):
                 continue
-            kept[band] += 1
+            kept[family, band] += 1
 
             name = f"{len(rows):03d}"
             cv2.imwrite(str(args.out / "images" / f"{name}.png"), scene)
@@ -127,15 +179,19 @@ def main() -> None:
                 background=bg_kind,
                 crop_box_xywh=box,
             )
+            if tilt:
+                row.update(aspect_family=family, tilt_deg=round(angle, 2), crop_quad=quad)
             rows.append(row)
         stats[bucket] = {"rendered": rendered, "seen": dict(seen)}
         print(bucket, stats[bucket], flush=True)
 
     header = {
-        "seed": args.seed,
+        "dataset": f"benchmark-{args.version}",
+        "seed": seed,
         "render_cap": args.n,
         "tau": TAU,
-        "per_band": PER_BAND,
+        "per_band": cfg["quota"] if tilt else PER_BAND,
+        "tilt_deg": tilt,
         "band_rule": "scene-level, sw zxing-cpp path (read_barcodes)",
         "scene": "conveyor belt / box|vinyl / shipping label",
         "code": code_commit(),
