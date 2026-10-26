@@ -13,6 +13,12 @@
 | [2026-09-15-stage2-backbone](2026-09-15-stage2-backbone/README.md) | Stage 2 v1 기준 백본 `ResNet18-C3`와 `MobileNetV3-Small`·`EfficientNet-B0` 3-way 비교 설계. 같은 spatial Geometry Head·`16×3` 제어점·TPS 경로에서 구제율, pixel error, latency, model cost를 비교한다 |
 | [2026-09-29-e2e-benchmark-v1](2026-09-29-e2e-benchmark-v1/README.md) | 결과보고서용 고정 E2E 세트 100장(컨베이어 벨트 위 택배 송장)과 기준선. 디코딩만 15 → 서비스 57. +42 중 검출 크롭 32 · 기하 보정 8 · 재시도 2. 최대 손실은 검출(66/100, low 14/34). 크롭 기준 구간 라벨이 장면에서 성립하지 않음, `read_barcode`↔`read_barcodes` 불일치 |
 
+## 최신 기준선 재평가
+
+| 실험 | 평가 범위 |
+|---|---|
+| [2026-09-29 Stage 2 v1 재평가](2026-09-29-stage2-eval-v1/README.md) | 고정 ResNet18-C3 epoch 48, synthetic benchmark 1,500장·기존 validation 2,976장. EPE, C/W/U, RR_H/RR_U, oracle/crop 경로 분리 및 지연 3회 반복 측정 |
+
 ## 규칙
 
 - 폴더 이름은 `YYYY-MM-DD-주제`
