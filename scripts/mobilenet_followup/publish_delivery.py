@@ -121,6 +121,13 @@ def main():
         for name, expected in read_json(dependency_fix / "preserved.json")["files"].items():
             assert digest(name) == expected
         artifact.add_dir(str(dependency_fix), name="preserved_failures/reporting_dependency_fix")
+    test_review = root / "delivery_test_review_20261027"
+    if test_review.exists():
+        for name, expected in read_json(test_review / "preserved.json")["files"].items():
+            assert digest(name) == expected
+        for name, expected in read_json(test_review / "seal.json")["files"].items():
+            assert digest(name) == expected
+        artifact.add_dir(str(test_review), name="preserved_failures/test_reference_review")
     run.log_artifact(artifact).wait()
     url = run.url
     run.summary.update({"prepared": True, "github_pushed": False, "notion_posted": False})

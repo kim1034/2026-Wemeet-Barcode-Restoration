@@ -58,6 +58,10 @@
 - `report.py`: 표본 ID/GT, 판독 정책, 정답/오독/무응답 산술, 전이, 시간 quantile 재검사.
 
 이 실행의 로컬 기록은 `runs/mobilenet-followup-20261027/`에 있다.
+이 경로는 실행 원본 worktree `2026-Wemeet-Barcode-Restoration-mobilenet-followup-20261027`
+기준이다. 최종 공유용 `2026-Wemeet-Barcode-Restoration-mobilenet-delivery-20261027`는
+별도 worktree이며, 평가 코드는 원본과 동일하고 함수 원복 검사의 참조만 수정한 테스트를 담았다.
+원본 테스트와 최초 실패도 보존했으며 자세한 경위는 EXECUTION_ko.md에 있다.
 `inputs.json`과 `execution_lock.json`은 실행 당시 서버의 절대 경로를 포함한다.
 `jobs/<task>/attempt-XX/`는 부분 실패도 보존한다. 검증을 통과한 작업만 `completion.json`이 생긴다.
 계산이 완료된 뒤 W&B 업로드만 실패하면 같은 결과를 검사해 다시 업로드하며 추론을 반복하지 않는다.

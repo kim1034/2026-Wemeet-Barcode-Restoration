@@ -48,3 +48,23 @@ W&B 업로드, 전체 집계와 최종 완료 파일을 확인한다.
 Matplotlib 그림 생성 smoke 검사를 통과한 뒤, 같은 CPU closeout service를 이어서 실행했다.
 추론 패키지와 측정 결과는 바꾸지 않았고 GPU 평가를 재실행하지 않았다.
 보존된 실패 파일과 의존성 보완 기록도 최종 W&B 공유 artifact에 포함한다.
+
+## 전체 테스트에서 발견한 함수 참조 검사 수정
+
+첫 전체 pytest는 338 passed / 2 failed / 11 skipped였다. 실패한 두 검사는
+`tests/test_decoding.py`가 `importlib.reload(decoding)`을 실행한 뒤, 후속 테스트가
+import 시점의 `NATIVE_DECODE`와 현재 함수의 객체 동일성을 비교했기 때문이었다.
+CLAHE on/off의 호출 수, pipeline 참조 설정, pipeline 참조 원복은 모두 통과했고,
+실패한 항목은 디코더의 원복 기준을 오래된 함수 참조로 둔 마지막 assertion이었다.
+
+실험 당시 코드·테스트·seal과 이 실패 로그는 원래 실행 작업 디렉터리에 그대로 보존했다.
+GitHub 공유용 별도 worktree에서는 테스트 시작 시점의 실제 `decoding.decode`를 저장하고
+종료 후 그 참조로 원복됐는지 검사하도록 수정했다. 모듈 reload 전/후 두 경우를 명시적으로
+검사하도록 확장했다. 테스트를 제외하거나 assertion을 생략하지 않았다.
+평가·추론·집계 코드는 공유용 복사본과 실행 원본의 hash가 일치하는지 별도로 확인했다.
+같은 CPU closeout service의 작업 디렉터리만 공유용으로 변경하여 전체 검증을 이어갔다.
+최종 pytest 수와 독립 검증 결과는 DECISION_ko.md에 기록한다.
+
+- 실행 원본: `2026-Wemeet-Barcode-Restoration-mobilenet-followup-20261027`
+- 공유용 worktree: `2026-Wemeet-Barcode-Restoration-mobilenet-delivery-20261027`
+- 최초 실패 및 변경 검토: 실행 원본의 `runs/mobilenet-followup-20261027/delivery_test_review_20261027/`

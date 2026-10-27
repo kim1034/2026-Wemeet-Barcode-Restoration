@@ -1,3 +1,51 @@
+# 최종 판단과 공유용 요약
+
+백본은 **MobileNet M, seed42, epoch90**을 유지한다. 운영 후보 두 가지를 유지한다.
+M: lr 3e-4, batch 64, 100 epoch 학습, β=1/154. 검증 기준 선택은 epoch90이다.
+새 학습 없이 기존 선택 체크포인트로 추가 실험했다.
+
+아래 두 후보를 별도의 운영 검증 조건으로 유지한다.
+
+아래는 합성 장면 100개에서 관찰한 결과다. 오독률은 전체 입력 대비 비율이다.
+
+| 후보 | 설정 | 정답 | 오독 | 무응답 | p50 / p95(ms) |
+| --- | --- | --- | --- | --- | --- |
+| 오독 억제 우선 | imgsz 1280 · CLAHE on · 항상 보정 | 81 | 0 | 19 | 98.48 / 256.50 |
+| 정답률 우선 | imgsz 1600 · CLAHE on · 현재 조기 종료 | 90 | 4 | 6 | 66.39 / 284.70 |
+
+정책·해상도는 이 개발 결과에서 고른 후보이며, 독립 test로 검증된 배포 설정은 아니다.
+특히 100개에서 오독 0개를 관찰해도 실제 오독 위험이 0이라고 판단할 수 없다.
+
+## crop에서 확인한 정책 효과
+
+CLAHE benchmark 1,500개에서 항상 보정은 현재 정책 대비 정답률 93.40%→94.80%, 오독률 2.73%→1.00%였다.
+일치 확인은 오독 1/1,500개로 줄었지만 무응답 168개(11.20%)를 만들었다.
+crop 결과와 전체 장면 결과를 구분했다. 탐지 crop에서는 강제 보정의 손실도 있었다.
+기존 네 조건은 3개 seed의 평균±표준편차, 후속 실험은 단일 체크포인트 결과다.
+MobileNet은 공통 head를 적용한 새 후보다. 과거 보고서 모델의 정확한 재현은 아니다.
+CLAHE와 백본 효과를 분리한다. MobileNet이 항상 더 빠르다고 결론내리지 않는다.
+
+## 완료 및 검증
+
+정확도 12개, 시간 측정 10개가 모두 완료됐다.
+각 시간 작업은 50회 warmup 후 세 정책을 전체 입력에서 각각 3회 반복했다.
+측정에는 판독 추적·이미지 hash를 포함한다. 모델 로딩·파일 I/O·UI는 제외한다.
+항상 보정은 D0 판독을 생략한다. 일치 확인은 D0와 세 warp를 모두 실행한다.
+CPU 대조 8개 장면 조건×100개 판독이 일치했다. 기록된 detector/model 출력을 사용한 검사이며 GPU 재추론으로 표현하지 않는다.
+W&B 평가/시간 작업 22개의 finished 상태와 artifact 파일 digest를 확인했다. 원본·코드·수정 기록 보존 검사 202건이 통과했다.
+최종 코드 검사: pytest 342 passed, 11 skipped; ruff check/format 및 import-linter 4개 계약 통과.
+실행 중 native 대조 설정 수정과 실패 로그는 EXECUTION_ko.md에 공개했다.
+
+[통합 W&B 결과](https://wandb.ai/kim-1034/wemeet-barcode/runs/6l7wobm3) · [독립 최종 검증](https://wandb.ai/kim-1034/wemeet-barcode/runs/9exj2n9t)
+
+## 공유 파일
+
+Notion에는 NOTION_ko.md를 사용한다. 전체 수치·실패 샘플·재현 설명은 같은 폴더에 있다.
+GitHub 브랜치는 ai/mobilenet-followup-20261027이다. 원격 게시 여부는 별도 확인한다.
+가중치와 데이터는 GitHub에 넣지 않고 고정된 HF revision 및 W&B artifact로 연결한다.
+
+---
+
 # MobileNet 선정 및 후속 실험 통합 결과
 
 기존 네 조건의 3-seed 비교와, 선택한 MobileNet M/seed42의 후속 평가를 함께 정리했다.
@@ -137,3 +185,30 @@ GitHub에는 코드·문서·집계를 공유하고, 데이터/가중치/전체 
 | scene-mobilenetv3-small-1920-clahe-timing | [run](https://wandb.ai/kim-1034/wemeet-barcode/runs/bxxhbxai) |
 
 [이번 통합 W&B 보고서](https://wandb.ai/kim-1034/wemeet-barcode/runs/6l7wobm3)
+
+---
+
+# 기존 네 조건의 시간 측정
+
+seed42 체크포인트, A100, 50회 warmup 후 benchmark 1,500개를 3회 반복했다.
+아래 값은 반복별 p50/p95의 중앙값(ms)이다. crop 경로는 탐지(Stage 1)를 제외한다.
+
+| 모델·조건 | Stage 2 p50 / p95 | crop 정책 p50 / p95 | W&B |
+|---|---:|---:|---|
+| resnet18-c3 R | 2.627 / 3.172 | 29.540 / 168.933 | [run](https://wandb.ai/kim-1034/wemeet-barcode/runs/fxelrsmp) |
+| resnet18-c3 M | 2.629 / 3.201 | 28.481 / 161.445 | [run](https://wandb.ai/kim-1034/wemeet-barcode/runs/qeibu49e) |
+| mobilenetv3-small R | 4.042 / 4.642 | 29.313 / 153.426 | [run](https://wandb.ai/kim-1034/wemeet-barcode/runs/t1zgj93a) |
+| mobilenetv3-small M | 4.155 / 4.883 | 29.184 / 139.255 | [run](https://wandb.ai/kim-1034/wemeet-barcode/runs/ua4zdwkk) |
+
+이 A100 측정에서 MobileNet의 Stage 2 단독 지연시간은 ResNet보다 길었다.
+따라서 MobileNet을 경량 모델이라는 이유만으로 더 빠르다고 해석하지 않는다.
+MobileNet 채택 근거는 공통 조건에서의 정답률·복원 성능이며, 최종 처리시간은 전체 경로로 따로 확인한다.
+이번 후속 실험은 최신 소스의 디코더 CLAHE off/on과 세 정책을 분리했으므로, 예전 crop 수치와 새 수치를 그대로 합쳐 평균내지 않는다.
+
+## 그래프
+
+![기존 네 조건](prior_four_way.png)
+
+![crop 정책 비교](crop_policy_tradeoffs.png)
+
+![장면 정확도와 시간](scene_accuracy_latency.png)
