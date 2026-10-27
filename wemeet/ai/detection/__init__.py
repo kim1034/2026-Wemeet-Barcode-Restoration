@@ -75,6 +75,12 @@ def detect(
         return None
 
     best = int(obb.conf.argmax())
+    # Keep coordinates before ratio fitting, padding and upright crop rotation.
+    corners = obb.xyxyxyxy[best].cpu().numpy()
+    height, width = image_bgr.shape[:2]
+    x0, y0 = np.maximum(np.floor(corners.min(axis=0)), 0).astype(int)
+    x1, y1 = np.minimum(np.ceil(corners.max(axis=0)), (width, height)).astype(int)
+    bbox = (int(x0), int(y0), int(x1 - x0), int(y1 - y0))
     cx, cy, w, h, angle_rad = (float(v) for v in obb.xywhr[best].cpu().numpy())
     cx, cy, w, h, angle_rad = upright(cx, cy, w, h, angle_rad)
 
@@ -89,4 +95,5 @@ def detect(
         crop_bgr_uint8=np.ascontiguousarray(crop, dtype=np.uint8),
         angle_deg_ccw=angle_deg_ccw,
         confidence=float(obb.conf[best]),
+        bbox_xywh_original=bbox if bbox[2] > 0 and bbox[3] > 0 else None,
     )

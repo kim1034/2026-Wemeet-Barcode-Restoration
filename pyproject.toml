@@ -14,6 +14,7 @@ dependencies = [
     # 테스트 픽스처와 합성 원본 렌더링에 쓴다
     "python-barcode>=0.15",
     "fastapi>=0.115",
+    "python-multipart>=0.0.20",
     "uvicorn>=0.30",
     "huggingface-hub>=0.25",
     # 모델 런타임. 없으면 1·2단계가 조용히 실패한다(파이프라인이 예외를 값으로
@@ -31,6 +32,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "httpx>=0.28",
     "ruff>=0.6",
     "import-linter>=2.0",
     # 실험 기록. 런타임 의존성이 아니다 — AI파트가 학습할 때만 쓴다.

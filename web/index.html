@@ -223,7 +223,7 @@
 <nav class="tabs" id="tabs" role="tablist" aria-label="화면 전환">
   <button type="button" class="tab" data-view="live" role="tab" aria-current="page">실시간 판독</button>
   <button type="button" class="tab" data-view="history" role="tab" aria-current="false">판독 이력</button>
-  <button type="button" class="tab" data-view="review" role="tab" aria-current="false">미판독 확인 <span class="badge" id="reviewBadge">0</span></button>
+  <button type="button" class="tab" data-view="review" role="tab" aria-current="false">추가 확인 <span class="badge" id="reviewBadge">0</span></button>
   <button type="button" class="tab" data-view="settings" role="tab" aria-current="false">장비 설정</button>
 </nav>
 
@@ -237,11 +237,11 @@
             <h2>CAM-01 · 실시간 영상</h2>
             <div class="cam-ctrl">
               <select id="camSelect" class="cam-select" aria-label="카메라 선택" hidden></select>
-              <button type="button" class="btn-ghost" id="camStartBtn">카메라 시작</button>
+              <button type="button" class="btn-ghost" id="camStartBtn">카메라 · 자동 판독 시작</button>
               <button type="button" class="btn-ghost" id="camStopBtn" hidden>카메라 중지</button>
               <button type="button" class="btn-ghost" id="pauseBtn" hidden>
                 <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="5" width="3" height="14"/><rect x="14" y="5" width="3" height="14"/></svg>
-                <span id="pauseLabel">화면 표시 일시정지</span>
+                <span id="pauseLabel">빈 배경 다시 등록</span>
               </button>
             </div>
           </div>
@@ -254,7 +254,7 @@
               <div class="frame">
                 <svg class="ic" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a1 1 0 0 1 1-1h2M4 16v2a1 1 0 0 0 1 1h2M20 8V6a1 1 0 0 0-1-1h-2M20 16v2a1 1 0 0 1-1 1h-2"/></svg>
                 <strong>카메라 영상 영역</strong>
-                <span>사진을 올리거나 이 영역에 끌어다 놓으면 판독을 시작합니다</span>
+                <span>카메라 시작 후 바코드를 움직이면 자동으로 판독합니다</span>
               </div>
             </div>
           </div>
@@ -263,18 +263,36 @@
             <input type="file" id="photoInput" accept="image/*" hidden>
             <span class="fname mono" id="pickedFileName">선택된 사진 없음</span>
             <button type="button" class="btn-run" id="uploadRunBtn" disabled><span class="spin"></span><span id="uploadRunText">판독 요청 보내기</span></button>
-            <button type="button" class="btn-run" id="camCaptureBtn" disabled><span class="spin"></span><span id="camCaptureText">현재 화면 캡처 · 판독</span></button>
+            <button type="button" class="btn-run" id="camCaptureBtn" disabled><span id="camCaptureText">자동 판독 시작</span></button>
           </div>
+          <div class="cam-upload">
+            <label>수집 방식 <select id="captureMode">
+              <option value="barcode">바코드 추적 · 물품 구간별 판독</option>
+              <option value="fixed">기준선 · 고정 1초 / 최대 8장</option>
+              <option value="motion">실험 · 움직임 덩어리 추적</option>
+            </select></label>
+            <label><input type="checkbox" id="activityFilter" checked> 장면 변화가 있는 구간만 판독</label>
+            <span id="captureStatus" role="status" aria-live="polite">바코드 추적 · 초당 최대 8장 · 읽히면 통과 중에도 바로 성공으로 표시합니다</span>
+          </div>
+          <div class="cam-foot"><span id="captureStats">처리 0 · 대기 0 · 건너뜀 0 (물품 수가 아닌 촬영 구간 수)</span></div>
           <div class="cam-foot">
             <span id="camFootLeft">연결된 카메라 없음 · 사진 업로드로 판독</span>
             <span id="camFootRight" class="mono">마지막 수신 —</span>
           </div>
         </div>
+        <section class="panel" id="burstPanel" hidden>
+          <div class="cam-head"><h2>선택한 프레임</h2><span id="burstSummary"></span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px">
+            <figure style="margin:0"><figcaption id="representativeCaption">최종 대표 프레임</figcaption><img id="selectedFrame" alt="최종 판독에 사용한 원본 프레임" style="width:100%;max-height:240px;object-fit:contain"></figure>
+            <figure style="margin:0"><figcaption id="primaryCaption">최초 선택 프레임</figcaption><img id="firstFrame" alt="처음 선택한 원본 프레임" style="width:100%;max-height:240px;object-fit:contain"></figure>
+          </div>
+          <div style="padding:0 16px 16px"><p id="burstTiming"></p><ol id="attemptList"></ol><small>점수는 해당 후보 안의 상대값입니다. 교차 확인도 정답을 보장하지 않습니다.</small></div>
+        </section>
       </div>
 
       <div class="col-stack">
         <section class="panel result-card">
-          <div class="result-src">최근 확정 결과 · <span class="mono" id="resultSrcId">#—</span></div>
+          <div class="result-src">최근 판독 결과 · <span class="mono" id="resultSrcId">#—</span></div>
           <div class="proc-row" id="procRow"><span class="pdot"></span><span>새 캡처 처리 중 · <span id="procMs">0</span>ms 경과</span></div>
 
           <div class="status-pill idle" id="statusPill">
@@ -337,7 +355,7 @@
   <section class="page" id="view-review" hidden>
     <div class="review-layout">
       <div class="panel">
-        <div class="review-list-head"><h2>확인 대기 / 최근 이력</h2><span class="cnt" id="reviewCnt">확인 필요 0건</span></div>
+        <div class="review-list-head"><h2>확인 대기 / 최근 이력</h2><span class="cnt" id="reviewCnt">추가 확인 0건</span></div>
         <div id="reviewList"></div>
       </div>
       <div class="col-stack">
@@ -364,7 +382,10 @@
   </section>
 </main>
 
-<script>
+<script type="module">
+import { createContinuousCapture } from "/assets/continuous.mjs";
+import { createTrackingCapture } from "/assets/tracking.mjs";
+import { resultPresentation } from "/assets/result-state.mjs";
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -488,6 +509,114 @@
   let pickedFile = null;
   let originalImg = null;
   const modelNames = { detection: "—", geometry: "—" };
+  let autoEnabled = false;
+  let captureError = "";
+  let resumeAfterVisibility = false;
+  const failureLabels = { not_detected: "바코드 미검출", decode_failed: "검출 후 디코딩 실패", invalid_input: "입력 오류", pipeline_error: "처리 오류" };
+  const completionLabels = { consensus: "2개 프레임의 번호 일치", conflicting_texts: "서로 다른 번호가 읽혀 확정 중단", max_attempts: "최대 3장 시도 완료", candidates_exhausted: "후보 프레임 소진", insufficient_distinct_frames: "시간 간격을 확보한 다른 프레임 부족", budget_exhausted: "다음 시도의 시간 예산 부족", no_candidates: "사용 가능한 프레임 없음", selection_error: "프레임 선택 오류", queue_full: "판독 대기 초과 · 이 물품은 판독하지 못했습니다", processing_error: "처리 오류 · 재촬영이 필요합니다", preview_too_large: "미리보기 용량 초과" };
+  const trackEndLabels = { missing: "바코드가 사라짐", observation_timeout: "바코드를 다시 찾지 못함", left_view: "화면 이탈", input_gap: "영상 수신 공백", resolution_changed: "영상 크기 변경", association_break: "다른 위치의 물품 감지", duration_limit: "장시간 정지" };
+  function attemptDescription(attempt) {
+    const result = attempt.text != null ? `판독값 ${attempt.text}` : (failureLabels[attempt.failure_reason] || attempt.failure_reason || "원인 미확인");
+    return `${attempt.frame_index + 1}번째 · +${Math.round(attempt.offset_ms)}ms · 후보 ${attempt.candidate_count}장 중 점수 ${attempt.quality_score.toFixed(3)} · ${result}`;
+  }
+  function burstSummary(body) {
+    const verification = body.status === "conflict" ? "서로 다른 번호" : `동일 번호 확인 ${body.matching_frame_ids.length}/2장`;
+    return `${body.track_id ? "물품 구간 " + body.track_id + " · " : ""}${body.frame_count}장 후보 · ${body.frame_attempt_count}장 판독 · ${verification}`;
+  }
+  function burstFailureSummary(body) {
+    const counts = new Map();
+    for (const attempt of body.attempts) {
+      const label = attempt.text != null ? "번호 판독" : (failureLabels[attempt.failure_reason] || "원인 미확인");
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+    return [...counts].map(([label, count]) => `${label} ${count}장`).join(" · ");
+  }
+  function burstAttemptList(body) {
+    const list = document.createElement("ol");
+    for (const attempt of body.attempts) {
+      const li = document.createElement("li");
+      li.textContent = attemptDescription(attempt);
+      list.appendChild(li);
+    }
+    return list;
+  }
+  const captureCallbacks = {
+    video: $("camVideo"),
+    onError(error) { captureError = error.message; $("captureStatus").textContent = captureError; },
+    onState(state) {
+      if (state.tracking) {
+        $("captureStats").textContent = `물품 구간 완료 ${state.completed || 0} · 추적 ${state.active_track ? state.active_track + (state.active_resolved ? " (판독 성공)" : " (판독 중)") : "없음"} · 판독 대기 ${state.pending || 0} · 과부하 구간 ${state.dropped || 0} · 전송 건너뜀 ${state.skipped || 0} · 검출 건너뜀 ${state.skipped_detections || 0}`;
+        $("captureStatus").textContent = captureError || (state.enabled
+          ? (state.box_source === "motion" ? "움직임 덩어리 추적 · 바코드 검출이 아닙니다" : "바코드 추적 중 · 읽히면 통과 중에도 바로 성공으로 표시합니다")
+          : "추적 중지 · 미완료 구간은 폐기됩니다");
+        return;
+      }
+      $("captureStats").textContent = `처리 ${state.completed} · 대기 ${Number(state.pending)} · 건너뜀 ${state.skipped} (촬영 구간 수)`;
+      $("captureStatus").textContent = captureError || (state.enabled
+        ? (state.busy ? "판독 중 · 카메라 수집은 계속됩니다" : "자동 수집 중 · 바코드를 움직여 주세요")
+        : "자동 판독 중지 · 카메라 미리보기는 유지됩니다");
+    },
+    onResult(body, batch) {
+      body = { frame_count: 0, matching_frame_ids: [], attempts: [], timing_ms: { server: 0, selection: 0, pipeline: 0 }, ...body };
+      captureError = "";
+      setSvcStatus(true);
+      const real = body.result || { ok: false, text: null, failure_reason: body.completion_reason,
+        total_ms: 0, stage_ms: {}, retry_count: 0, original_size: [0, 0],
+        images: { original: null, crop: null, rectified: null } };
+      const ev = eventFromReal(real, null);
+      ev.burst = body;
+      ev.outcome = body.status === "confirmed" ? "success" : "review";
+      ev.barcode = body.text;
+      ev.ms = Math.round(body.timing_ms.server);
+      recordEvent(ev);
+      $("burstPanel").hidden = false;
+      $("burstSummary").textContent = burstSummary(body);
+      $("representativeCaption").textContent = "최종 대표 · " + (body.representative_frame_id || "없음");
+      $("primaryCaption").textContent = "최초 선택 · " + (body.primary_frame_id || "없음");
+      if (real.images.original) $("selectedFrame").src = real.images.original; else $("selectedFrame").removeAttribute("src");
+      if (body.primary_image) $("firstFrame").src = body.primary_image; else $("firstFrame").removeAttribute("src");
+      $("burstTiming").textContent = `${body.track_id ? (body.early ? "통과 중 성공 · 추적 " + Math.round(body.window_ms || 0) + "ms 시점" : "물품 구간 " + Math.round(body.window_ms || 0) + "ms · " + (trackEndLabels[body.track_end_reason] || "구간 종료")) : "수집 1초"} · 선택 ${Math.round(body.timing_ms.selection)}ms · 판독 ${Math.round(body.timing_ms.pipeline)}ms · 최초 수집부터 응답 ${Math.round(performance.now() - batch.capturedAt)}ms · ${completionLabels[body.completion_reason] || body.completion_reason}`;
+      $("attemptList").replaceChildren(...body.attempts.map((attempt) => {
+        const li = document.createElement("li");
+        li.textContent = attemptDescription(attempt);
+        return li;
+      }));
+      $("camFootRight").textContent = "마지막 수신 " + ev.time;
+    },
+  };
+  let autoCapture = createTrackingCapture(captureCallbacks);
+  $("activityFilter").disabled = true;
+  $("captureMode").addEventListener("change", () => {
+    const resume = autoEnabled;
+    autoCapture.stop();
+    const mode = $("captureMode").value;
+    autoCapture = mode === "fixed" ? createContinuousCapture(captureCallbacks)
+      : createTrackingCapture({ ...captureCallbacks, source: mode });
+    $("activityFilter").disabled = mode !== "fixed";
+    autoCapture.setFiltering($("activityFilter").checked);
+    if (resume) autoCapture.start();
+  });
+  function recordEvent(ev) {
+    EVENTS.unshift(ev);
+    EVENTS.splice(10); // Images and barcode values stay in bounded browser memory only.
+    if (reviewSelectedId && !EVENTS.some((item) => item.id === reviewSelectedId)) reviewSelectedId = null;
+    renderHistories();
+    renderConfirmed();
+  }
+  function startAutomatic() {
+    if (!mediaStream) return;
+    captureError = "";
+    autoEnabled = true;
+    autoCapture.start();
+    syncButtons();
+  }
+  function stopAutomatic() {
+    autoEnabled = false;
+    resumeAfterVisibility = false;
+    captureError = "";
+    autoCapture.stop();
+    syncButtons();
+  }
 
   // ================================================================
   // 상단 상태 / 서버 헬스체크
@@ -506,7 +635,7 @@
       const shortName = (p) => (p || "").split("/")[1] || p || "—";
       modelNames.detection = shortName(h.models && h.models.detection);
       modelNames.geometry = shortName(h.models && h.models.geometry);
-      setSvcStatus(true);
+      setSvcStatus(h.ready, h.ready ? "판독 서비스 정상" : h.preparing ? "모델 준비 중" : "모델 준비 실패 · 서버 설정 확인");
     } catch (e) {
       setSvcStatus(false);
     }
@@ -533,13 +662,14 @@
     const n = EVENTS.filter((e) => e.outcome === "review").length;
     $("reviewBadge").textContent = n;
     $("reviewBadge").style.display = n > 0 ? "inline-flex" : "none";
-    $("reviewCnt").textContent = "확인 필요 " + n + "건";
+    $("reviewCnt").textContent = "추가 확인 " + n + "건";
   }
-  function statusTag(outcome) {
-    if (outcome === "success") return '<span class="tag good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>판독 성공</span>';
-    return '<span class="tag warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.2h.01"/><circle cx="12" cy="12" r="9"/></svg>확인 필요</span>';
+  function statusTag(e) {
+    const state = resultPresentation(e);
+    return '<span class="tag ' + state.tone + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON[state.confirmed ? "success" : "review"] + '</svg>' + esc(state.label) + '</span>';
   }
   function pathLabel(e) {
+    if (e.burst) return resultPresentation(e).label;
     if (e.outcome === "success") return e.path === "즉시 판독" ? "즉시 판독" : "보정 후 판독";
     return e.path;
   }
@@ -547,8 +677,8 @@
     return "<tr>" +
       "<td class=\"mono\">" + e.time + "</td>" +
       '<td class="r-id">' + e.id + "</td>" +
-      '<td class="r-barcode mono">' + (e.barcode || "—") + "</td>" +
-      "<td>" + statusTag(e.outcome) + "</td>" +
+      '<td class="r-barcode mono">' + esc(e.barcode || "—") + "</td>" +
+      "<td>" + statusTag(e) + (e.burst ? '<small style="display:block;margin-top:6px">' + esc(burstSummary(e.burst)) + '<br>' + esc(burstFailureSummary(e.burst)) + '</small>' : '') + "</td>" +
       '<td class="mono num">' + e.ms + "ms</td>" +
       "</tr>";
   }
@@ -584,25 +714,22 @@
       return;
     }
     $("resultSrcId").textContent = latest.id;
-    if (latest.outcome === "success") {
-      $("statusPill").className = "status-pill good";
-      $("statusIcon").innerHTML = STATUS_ICON.success;
-      $("statusText").textContent = "판독 성공";
-      $("bigValue").textContent = latest.barcode;
-      $("bigValue").className = "v";
-      $("copyBtn").hidden = false;
-    } else {
-      $("statusPill").className = "status-pill warn";
-      $("statusIcon").innerHTML = STATUS_ICON.review;
-      $("statusText").textContent = "확인 필요";
-      $("bigValue").textContent = "미판독 · 원인 미확인";
-      $("bigValue").className = "v muted";
-      $("copyBtn").hidden = true;
-    }
+    const state = resultPresentation(latest);
+    $("statusPill").className = "status-pill " + state.tone;
+    $("statusIcon").innerHTML = STATUS_ICON[state.confirmed ? "success" : "review"];
+    $("statusText").textContent = state.label;
+    $("bigValue").textContent = state.value ?? (latest.burst?.status === "conflict" ? "서로 다른 번호가 읽혔습니다" : "읽지 못했습니다");
+    $("bigValue").className = state.hasValue ? "v" : "v muted";
+    $("copyBtn").hidden = !state.confirmed;
     $("resultPath").textContent = "판독 경로 · " + pathLabel(latest);
     $("mSym").textContent = latest.sym || "—";
     $("mTime").textContent = latest.time;
     $("mMs").textContent = latest.ms + "ms";
+    $("candNote").hidden = !latest.burst;
+    $("candNote").textContent = state.note;
+    if (latest.burst) {
+      $("mSend").textContent = "촬영 구간 응답 수신";
+    }
     closeDetail();
   }
 
@@ -634,6 +761,7 @@
     const det = body.detection, rect = body.rectify;
     const wrap = document.createElement("div");
     wrap.innerHTML =
+      (ev?.burst ? '<p class="cand-note">아래는 대표 프레임 1장의 처리 결과입니다. 묶음의 교차 확인 결과는 위의 상태와 프레임별 시도에서 확인하세요.</p>' : '') +
       '<div class="compare">' +
         '<div class="cmp-pane"><div class="cmp-label"><span>원본 이미지</span><span class="mono">' + body.original_size[0] + "×" + body.original_size[1] + "</span></div>" +
           '<div class="cmp-box"><canvas class="dOrig" width="480" height="360"></canvas>' +
@@ -648,8 +776,8 @@
       '<div class="tech-grid">' +
         "<div><span>검출 모델</span><b>" + esc(modelNames.detection) + "</b></div>" +
         "<div><span>기하 모델</span><b>" + esc(modelNames.geometry) + "</b></div>" +
-        "<div><span>API</span><b>POST /api/decode</b></div>" +
-        "<div><span>왕복 시간</span><b>" + Math.round(body.total_ms) + "ms</b></div>" +
+        "<div><span>API</span><b>" + (ev?.burst ? "POST /api/decode-burst" : "POST /api/decode") + "</b></div>" +
+        "<div><span>" + (ev?.burst ? "대표 프레임 처리 시간" : "처리 시간") + "</span><b>" + Math.round(body.total_ms) + "ms</b></div>" +
       "</div>" +
       (ev && ev.blob ? '<div style="margin-top:12px"><button type="button" class="btn-ghost dlOrig">캡처 원본 저장 (' + Math.round(ev.blob.size / 1024) + 'KB)</button></div>' : "");
     const dl = wrap.querySelector(".dlOrig");
@@ -688,10 +816,10 @@
     await wait(90);
     const rect = body.rectify;
     if (ms.estimate == null) {
-      setStep(byKey.decode_first, "done", "보정 없이 바로 읽힘", ms.decode_first);
-      setStep(byKey.estimate, "skip", "필요 없음", "");
-      setStep(byKey.warp, "skip", "필요 없음", "");
-      setStep(byKey.decode, "skip", "1차 판독에서 완료", "");
+      setStep(byKey.decode_first, body.ok ? "done" : "fail", body.ok ? "보정 없이 바로 읽힘" : "번호를 읽지 못함", ms.decode_first);
+      setStep(byKey.estimate, "skip", body.ok ? "필요 없음" : "실행되지 않음", "");
+      setStep(byKey.warp, "skip", body.ok ? "필요 없음" : "실행되지 않음", "");
+      setStep(byKey.decode, "skip", body.ok ? "1차 판독에서 완료" : "실행되지 않음", "");
       return;
     }
     setStep(byKey.decode_first, "pass", "읽히지 않아 다음 단계로", ms.decode_first);
@@ -746,6 +874,8 @@
   // ================================================================
   let mediaStream = null;
   let camPaused = false;
+  let cameraStarting = false;
+  let cameraGeneration = 0;
 
   function setCamStatus(state, text) {
     const el = $("camStatus");
@@ -753,7 +883,7 @@
     el.querySelector("span:last-child").textContent = text;
   }
   function footIdleText() {
-    return mediaStream ? "카메라 연결됨 · 화면은 실시간, 판독은 캡처할 때만 실행" : "연결된 카메라 없음 · 사진 업로드로 판독";
+    return mediaStream ? "실시간 카메라 · 자동 판독은 1초 단위로 최대 8장 수집" : "연결된 카메라 없음 · 사진 업로드로 판독";
   }
   function showOnly(which) {
     $("videoGhost").hidden = which !== "ghost";
@@ -769,11 +899,14 @@
   function syncButtons() {
     const live = !!mediaStream;
     $("camStartBtn").hidden = live;
-    $("camStopBtn").hidden = !live;
+    $("camStartBtn").disabled = cameraStarting || running;
+    $("camSelect").disabled = cameraStarting || running;
+    $("camStopBtn").hidden = !live && !cameraStarting;
     $("pauseBtn").hidden = !live;
-    $("camCaptureBtn").disabled = running || !live || camPaused;
-    $("uploadRunBtn").disabled = running || !pickedFile;
-    $("photoInput").disabled = running;
+    $("camCaptureBtn").disabled = !live;
+    $("camCaptureText").textContent = autoEnabled ? "자동 판독 중지" : "자동 판독 시작";
+    $("uploadRunBtn").disabled = running || autoEnabled || !pickedFile;
+    $("photoInput").disabled = running || autoEnabled;
   }
 
   async function listCameras() {
@@ -787,21 +920,27 @@
     } catch (e) { /* 목록을 못 읽어도 시작은 가능 */ }
   }
   async function startCamera(deviceId) {
-    if (running) return;
+    if (running || cameraStarting) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCamStatus("err", "카메라 사용 불가 · localhost 또는 HTTPS에서만 동작");
       return;
     }
     stopCamera(true);
+    const generation = cameraGeneration;
+    cameraStarting = true;
+    syncButtons();
     setCamStatus("", "카메라 연결 중…");
     $("videoBadgeText").textContent = "카메라 연결 중";
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: deviceId ? { deviceId: { exact: deviceId } } : { width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 }, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) },
         audio: false,
       });
     } catch (err) {
+      if (generation !== cameraGeneration) return;
+      cameraStarting = false;
+      syncButtons();
       const denied = err && (err.name === "NotAllowedError" || err.name === "SecurityError");
       const none = err && (err.name === "NotFoundError" || err.name === "OverconstrainedError");
       setCamStatus("err", denied ? "카메라 권한 거부됨" : none ? "카메라를 찾지 못함" : "카메라 연결 실패");
@@ -809,11 +948,14 @@
       $("camFootLeft").textContent = denied ? "브라우저에서 카메라 권한을 허용한 뒤 다시 시작하세요." : footIdleText();
       return;
     }
+    if (generation !== cameraGeneration) { stream.getTracks().forEach((track) => track.stop()); return; }
+    cameraStarting = false;
     mediaStream = stream;
     camPaused = false;
     const video = $("camVideo");
     video.srcObject = stream;
     try { await video.play(); } catch (e) { /* 사용자 클릭으로 시작했으므로 보통 통과 */ }
+    if (generation !== cameraGeneration) return;
     showOnly("live");
     const track = stream.getVideoTracks()[0];
     track.addEventListener("ended", () => {
@@ -830,12 +972,16 @@
     $("videoBadge").className = "video-badge live";
     $("videoBadgeText").textContent = "LIVE";
     setCamStatus("ok", "카메라 연결됨 · LIVE");
-    $("pauseLabel").textContent = "화면 표시 일시정지";
+    $("pauseLabel").textContent = "빈 배경 다시 등록";
     $("camFootLeft").textContent = footIdleText();
     syncButtons();
     listCameras();
+    startAutomatic();
   }
   function stopCamera(silent) {
+    cameraGeneration++;
+    cameraStarting = false;
+    stopAutomatic();
     if (mediaStream) { mediaStream.getTracks().forEach((t) => t.stop()); mediaStream = null; }
     $("camVideo").srcObject = null;
     camPaused = false;
@@ -851,18 +997,23 @@
   $("camSelect").addEventListener("change", (e) => startCamera(e.target.value));
   $("pauseBtn").addEventListener("click", () => {
     if (!mediaStream) return;
-    camPaused = !camPaused;
-    const video = $("camVideo");
-    if (camPaused) video.pause(); else video.play();
-    $("pauseLabel").textContent = camPaused ? "화면 표시 재개" : "화면 표시 일시정지";
-    $("videoBadge").className = "video-badge" + (camPaused ? "" : " live");
-    $("videoBadgeText").textContent = camPaused ? "화면 정지 (수신은 계속)" : "LIVE";
-    $("camFootLeft").textContent = camPaused ? "화면 표시만 정지됨 · 정지한 상태에서는 캡처할 수 없습니다" : footIdleText();
-    syncButtons();
+    autoCapture.recalibrate();
+    $("captureStatus").textContent = "빈 배경을 다시 등록했습니다. 바코드를 화면 안으로 움직여 주세요.";
   });
+  $("activityFilter").addEventListener("change", (event) => autoCapture.setFiltering(event.target.checked));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && autoEnabled) {
+      autoCapture.stop();
+      resumeAfterVisibility = true;
+    } else if (!document.hidden && resumeAfterVisibility && mediaStream) {
+      resumeAfterVisibility = false;
+      startAutomatic();
+    }
+  });
+  window.addEventListener("pagehide", () => stopCamera(true));
 
   function onFile(f) {
-    if (running) return;
+    if (running || autoEnabled) return;
     stopCamera(true);
     setCamStatus("", "카메라 미연결 · 사진 업로드로 판독");
     pickedFile = f;
@@ -897,7 +1048,6 @@
     running = b;
     ["uploadRunBtn", "camCaptureBtn"].forEach((id) => $(id).classList.toggle("loading", b && id === spinBtn));
     $("uploadRunText").textContent = b && spinBtn === "uploadRunBtn" ? "처리 중…" : "판독 요청 보내기";
-    $("camCaptureText").textContent = b && spinBtn === "camCaptureBtn" ? "처리 중…" : "현재 화면 캡처 · 판독";
     syncButtons();
   }
   function failReal(message) {
@@ -939,9 +1089,7 @@
     $("procMs").textContent = Math.round(body.total_ms);
 
     const ev = eventFromReal(body, blob);
-    EVENTS.unshift(ev);
-    renderHistories();
-    renderConfirmed();
+    recordEvent(ev);
 
     $("camFootLeft").textContent = footIdleText();
     $("camFootRight").textContent = "마지막 수신 " + ev.time;
@@ -952,17 +1100,7 @@
   // 사진 업로드 경로
   $("uploadRunBtn").addEventListener("click", () => { if (pickedFile) submitForDecode(pickedFile, "uploadRunBtn"); });
 
-  // 실시간 카메라 경로 — 지금 보이는 프레임 한 장만 잘라 보낸다 (스트림 자체는 서버로 보내지 않는다)
-  $("camCaptureBtn").addEventListener("click", async () => {
-    const video = $("camVideo");
-    if (running || !mediaStream || camPaused || !video.videoWidth) return;
-    const c = document.createElement("canvas");
-    c.width = video.videoWidth; c.height = video.videoHeight;
-    c.getContext("2d").drawImage(video, 0, 0);
-    const blob = await new Promise((resolve) => c.toBlob(resolve, "image/jpeg", 0.92));
-    if (!blob) { failReal("프레임을 캡처하지 못했습니다."); return; }
-    submitForDecode(blob, "camCaptureBtn");
-  });
+  $("camCaptureBtn").addEventListener("click", () => autoEnabled ? stopAutomatic() : startAutomatic());
 
   $("copyBtn").addEventListener("click", () => {
     const text = $("bigValue").textContent;
@@ -984,7 +1122,7 @@
     wrap.innerHTML = EVENTS.map((e) => (
       '<button type="button" class="review-row' + (e.id === reviewSelectedId ? " active" : "") + '" data-id="' + e.id + '">' +
         '<span><span class="rid mono">' + e.id + '</span><span class="rtime mono">' + e.time + "</span></span>" +
-        "<span>" + statusTag(e.outcome) + "</span>" +
+        "<span>" + statusTag(e) + "</span>" +
       "</button>"
     )).join("");
     wrap.querySelectorAll(".review-row").forEach((btn) => {
@@ -1010,14 +1148,14 @@
     }
 
     const card = $("reviewDetailCard");
-    const statusHtml = e.outcome === "success"
-      ? '<div class="status-pill good"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON.success + '</svg><span>판독 성공</span></div>'
-      : '<div class="status-pill warn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON.review + '</svg><span>확인 필요</span></div>';
+    const state = resultPresentation(e);
+    const statusHtml = '<div class="status-pill ' + state.tone + '"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + STATUS_ICON[state.confirmed ? "success" : "review"] + '</svg><span>' + esc(state.label) + '</span></div>';
     card.innerHTML =
       '<div class="result-src">선택한 결과 · <span class="mono">' + e.id + "</span></div>" +
       statusHtml +
-      '<div class="result-value"><div class="v' + (e.outcome === "success" ? "" : " muted") + '">' + (e.barcode || "미판독 · 원인 미확인") + "</div></div>" +
-      (e.outcome !== "success" ? '<p class="cand-note">보정 후에도 판독값이 확정되지 않았습니다. 재촬영 또는 수동 확인이 필요합니다.</p>' : "") +
+      '<div class="result-value"><div class="v' + (state.hasValue ? "" : " muted") + '">' + esc(state.value ?? (e.burst?.status === "conflict" ? "서로 다른 번호가 읽혔습니다" : "읽지 못했습니다")) + "</div></div>" +
+      '<p class="cand-note">' + esc(state.note) + '</p>' +
+      (e.burst ? '<p class="cand-note">' + esc(burstSummary(e.burst)) + " · " + esc(completionLabels[e.burst.completion_reason] || e.burst.completion_reason) + '</p><div id="reviewBurstDetails"></div>' : "") +
       '<div class="result-path">판독 경로 · ' + pathLabel(e) + "</div>" +
       '<div class="r-divider"></div>' +
       '<div class="meta-grid">' +
@@ -1026,6 +1164,8 @@
       "</div>" +
       '<button type="button" class="detail-link" id="reviewDetailToggle" aria-expanded="false"><svg class="ic car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>처리 상세</button>' +
       '<div class="detail-body" id="reviewDetailBody" hidden></div>';
+
+    if (e.burst) $("reviewBurstDetails").appendChild(burstAttemptList(e.burst));
 
     let open = false;
     $("reviewDetailToggle").addEventListener("click", () => {
@@ -1067,6 +1207,7 @@
   renderHistories();
   renderConfirmed();
   checkHealth();
+  setInterval(checkHealth, 5000);
 })();
 </script>
 </body>

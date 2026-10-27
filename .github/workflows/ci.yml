@@ -32,3 +32,10 @@ jobs:
 
       - name: 테스트
         run: uv run pytest -v
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 자동 수집 상태 테스트
+        run: node --test tests/web/*.test.mjs

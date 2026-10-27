@@ -59,6 +59,9 @@ class _FakeObb:
     def __init__(self, cx: float, cy: float, w: float, h: float, angle_rad: float) -> None:
         self.conf = np.array([0.9])
         self.xywhr = [_FakeTensorRow([cx, cy, w, h, angle_rad])]
+        self.xyxyxyxy = [
+            _FakeTensorRow(cv2.boxPoints(((cx, cy), (w, h), float(np.rad2deg(angle_rad)))))
+        ]
 
     def __len__(self) -> int:
         return 1
@@ -131,3 +134,11 @@ def test_detect_crop_comes_from_original_not_enhanced_image(monkeypatch):
     assert result is not None
     assert np.all(fake_model.received_input == 255)  # 모델 입력은 enhance된 것
     assert not np.all(result.crop_bgr_uint8 == 255)  # 크롭은 원본(전부 0)에서 왔다
+    assert result.bbox_xywh_original == (10, 15, 20, 10)
+
+
+def test_original_bbox_is_clipped_before_crop_padding(monkeypatch):
+    model = _FakeModel([_FakeResult(_FakeObb(5, 5, 20, 20, 0))])
+    monkeypatch.setattr(detection, "load_model", lambda: model)
+    result = detection.detect(np.zeros((40, 40, 3), np.uint8), use_clahe=False)
+    assert result.bbox_xywh_original == (0, 0, 15, 15)
