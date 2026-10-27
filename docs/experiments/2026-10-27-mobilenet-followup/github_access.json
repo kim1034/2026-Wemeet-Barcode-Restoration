@@ -1,0 +1,13 @@
+{
+  "checked_date": "2026-10-27",
+  "connected_account": "yeonwoo29",
+  "repository": "kim1034/2026-Wemeet-Barcode-Restoration",
+  "permissions": {
+    "admin": false,
+    "maintain": false,
+    "pull": true,
+    "push": false,
+    "triage": false
+  },
+  "remote_publication": false
+}
