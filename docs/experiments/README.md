@@ -11,14 +11,7 @@
 | [2026-08-28-synthesis-spike](2026-08-28-synthesis-spike/README.md) | Stage 2 합성 데이터 — 왜곡 수식이 실제로 어떤 그림을 만드는가, 정답 제어점으로 되펴면 읽히는가. 설계 문서 §4·§8·§15 의 오류 3건과 목표 구간의 해상도 의존성 |
 | [2026-09-09-control-points](2026-09-09-control-points/README.md) | 제어점 격자 개수 확정 — `6×3` → **`16×3`**. 표본 정의를 `n_x` 에서 떼어내 순환을 끊고, 좌표 오차 σ 를 축으로 넣어 상한 곡선을 처음 쟀다. 최적 격자가 σ 의 함수임을 보이고 최대 후회로 확정. `n_y` 도 σ 에 대해 뒤집힌다 (`16×7` 은 σ=0 에서 1위, σ=4 에서 14.3%). 확정값은 3단계 20ms 예산을 17% 넘는다 |
 | [2026-09-15-stage2-backbone](2026-09-15-stage2-backbone/README.md) | Stage 2 v1 기준 백본 `ResNet18-C3`와 `MobileNetV3-Small`·`EfficientNet-B0` 3-way 비교 설계. 같은 spatial Geometry Head·`16×3` 제어점·TPS 경로에서 구제율, pixel error, latency, model cost를 비교한다 |
-| [2026-09-29-e2e-benchmark-v1](2026-09-29-e2e-benchmark-v1/README.md) | 결과보고서용 고정 E2E 세트 100장(컨베이어 벨트 위 택배 송장)과 기준선. 디코딩만 15 → 서비스 57. +42 중 검출 크롭 32 · 기하 보정 8 · 재시도 2. 최대 손실은 검출(66/100, low 14/34). 크롭 기준 구간 라벨이 장면에서 성립하지 않음, `read_barcode`↔`read_barcodes` 불일치 |
-| [2026-09-30-e2e-benchmark-v2](2026-09-30-e2e-benchmark-v2/README.md) | 검출 실패·오독 원인 측정과 단계별 수정사항. 검출 실패 원인은 입력 축소(960) — 1920 이면 검출 69→99, 서비스 56→85. 비율·흰 라벨·CLAHE·기울기는 원인 아님. 오독 7건 모두 Code128·1차 디코딩, 후보 불일치 거부 + 형식 검사로 6건 차단. v2 세트: 막대 비율 반반 + 포장 ±15° |
-
-## 최신 기준선 재평가
-
-| 실험 | 평가 범위 |
-|---|---|
-| [2026-09-29 Stage 2 v1 재평가](2026-09-29-stage2-eval-v1/README.md) | 고정 ResNet18-C3 epoch 48, synthetic benchmark 1,500장·기존 validation 2,976장. EPE, C/W/U, RR_H/RR_U, oracle/crop 경로 분리 및 지연 3회 반복 측정 |
+| [2026-10-02-detection-imgsz-1920](2026-10-02-detection-imgsz-1920/README.md) | Stage 1 `DEFAULT_IMGSZ` 960→1920 — 저해상도 막대(1.6~2.2px)가 960 축소에서 1px 밑으로 뭉개져 탐지가 실패함을 실측(69→99/100), 전체 판독 52→89/100. 수용장 미스매치 우려 검토, 속도(CPU) 트레이드오프, `eval/benchmark-v2` 기록(1280~1600 제안)과의 차이점 정리 |
 
 ## 규칙
 
