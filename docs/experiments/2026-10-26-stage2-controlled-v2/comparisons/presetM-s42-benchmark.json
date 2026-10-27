@@ -1,0 +1,63 @@
+{
+  "preset": "M",
+  "seed": 42,
+  "dataset": "benchmark",
+  "delta_direction": "MobileNet minus ResNet",
+  "n": 1500,
+  "draws": 10000,
+  "grouping": "payload proxy; independence unproven",
+  "paths": {
+    "crop_forced_model": {
+      "EDR": {
+        "delta_right_minus_left_pp": 2.933333333333333,
+        "ci95_pp": [
+          1.19758488342464,
+          4.679144385026738
+        ],
+        "valid_draws": 10000
+      },
+      "FDR": {
+        "delta_right_minus_left_pp": -0.2,
+        "ci95_pp": [
+          -0.8037508372404555,
+          0.40187541862022774
+        ],
+        "valid_draws": 10000
+      },
+      "RR_H": {
+        "delta_right_minus_left_pp": 2.9231815091774305,
+        "ci95_pp": [
+          1.171445185164541,
+          4.700272479564033
+        ],
+        "valid_draws": 10000
+      }
+    },
+    "crop_policy_model": {
+      "EDR": {
+        "delta_right_minus_left_pp": 2.8,
+        "ci95_pp": [
+          1.1258278145695364,
+          4.530313124583611
+        ],
+        "valid_draws": 10000
+      },
+      "FDR": {
+        "delta_right_minus_left_pp": -0.13333333333333333,
+        "ci95_pp": [
+          -0.7357859531772575,
+          0.46635576282478347
+        ],
+        "valid_draws": 10000
+      },
+      "RR_H": {
+        "delta_right_minus_left_pp": 2.855200543847723,
+        "ci95_pp": [
+          1.1447426518038488,
+          4.61437766855745
+        ],
+        "valid_draws": 10000
+      }
+    }
+  }
+}
