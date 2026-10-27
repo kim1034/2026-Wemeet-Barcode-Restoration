@@ -117,3 +117,89 @@ def test_tracking_off_does_not_replace_baseline_and_jpegs_never_spool(client, mo
     assert client.get("/assets/tracking.mjs").status_code == 200
     assert 'value="fixed"' in client.get("/").text
     assert client.post("/api/decode", content=b"bad").status_code == 400
+
+
+def test_detect_interval_comes_from_setting_with_a_safe_default(monkeypatch):
+    from wemeet.sw.server.tracking import DETECT_INTERVAL_ENV, TrackController
+
+    def controller_interval():
+        controller = TrackController(InferenceRuntime(ready=True), None, None)
+        return controller.detect_interval_ms, controller.session("s", "barcode").source.interval_ms
+
+    monkeypatch.delenv(DETECT_INTERVAL_ENV, raising=False)
+    assert controller_interval() == (500, 500)
+    monkeypatch.setenv(DETECT_INTERVAL_ENV, "2000")
+    assert controller_interval() == (2000, 2000)
+    monkeypatch.setenv(DETECT_INTERVAL_ENV, "")
+    assert controller_interval() == (500, 500)
+    explicit = TrackController(InferenceRuntime(ready=True), None, None, detect_interval=250)
+    assert explicit.session("s", "barcode").source.interval_ms == 250
+
+
+@pytest.mark.parametrize("value", ["abc", "0.5", "99", "10001", "-500"])
+def test_invalid_detect_interval_fails_at_startup_not_per_frame(monkeypatch, value):
+    from wemeet.sw.server.tracking import DETECT_INTERVAL_ENV, TrackController
+
+    monkeypatch.setenv(DETECT_INTERVAL_ENV, value)
+    with pytest.raises(ValueError, match=DETECT_INTERVAL_ENV):
+        TrackController(InferenceRuntime(ready=True), None, None)
+
+
+def _visible(client, chunks):
+    for i in chunks:
+        assert post(client, *payload(i, 100)).status_code == 200
+
+
+def _hidden(client, chunks):
+    for i in chunks:
+        assert post(client, *payload(i, 200)).status_code == 200
+
+
+def test_success_is_reported_while_the_barcode_is_still_in_view(client, monkeypatch):
+    monkeypatch.setattr(
+        "wemeet.sw.tracking.sources.detect",
+        lambda image: (
+            DetectedBarcode(image, 0, 1, (10, 10, 150, 80)) if image.mean() < 150 else None
+        ),
+    )
+    _visible(client, range(3))
+    controller = server.tracking_controller()
+    session = controller.sessions["private-session"]
+    asyncio.run(controller.work_once())
+    body = client.get("/api/tracking/private-session").json()
+    assert body["active_track"] == "t-1" and body["active_resolved"]
+    [result] = body["results"]
+    assert result["status"] == "confirmed" and result["text"] == "00123"
+    assert result["early"] is True and result["track_end_reason"] is None
+    # 이후 퇴장해도 같은 물품의 결과가 다시 나오지 않는다.
+    _hidden(client, range(3, 12))
+    assert session.tracker.active is None
+    asyncio.run(controller.work_once())
+    assert not session.pending
+    assert len(client.get("/api/tracking/private-session").json()["results"]) == 1
+
+
+def test_unreadable_barcode_is_reported_only_after_it_leaves(client, monkeypatch):
+    monkeypatch.setattr(
+        "wemeet.sw.tracking.sources.detect",
+        lambda image: (
+            DetectedBarcode(image, 0, 1, (10, 10, 150, 80)) if image.mean() < 150 else None
+        ),
+    )
+    monkeypatch.setattr(
+        service,
+        "run",
+        lambda im: PipelineResult(
+            im, None, None, DecodeResult(None, 0, failure_reason="decode_failed")
+        ),
+    )
+    _visible(client, range(4))
+    controller = server.tracking_controller()
+    for _ in range(5):
+        asyncio.run(controller.work_once())
+    assert client.get("/api/tracking/private-session").json()["results"] == []
+    _hidden(client, range(4, 12))
+    asyncio.run(controller.work_once())
+    [result] = client.get("/api/tracking/private-session").json()["results"]
+    assert result["status"] == "unread" and result["early"] is False
+    assert result["track_end_reason"] is not None

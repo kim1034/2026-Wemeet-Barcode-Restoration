@@ -29,6 +29,11 @@ class Passage:
     frames: list[Frame] = field(default_factory=list)
     end_ms: float | None = None
     reason: str | None = None
+    # 통과 중 판독(interim) 상태. resolved 이면 번호가 이미 확정되어 퇴장 후 재판독하지 않는다.
+    resolved: bool = False
+    appended: int = 0
+    interim_at: int = 0
+    interim_runs: int = 0
 
     def batch(self, session_id: str) -> FrameBatch:
         return FrameBatch(
@@ -172,6 +177,7 @@ class Tracker:
                 x1, y1 = min(w, x + bw), min(h, y + bh)
                 roi = (x0, y0, x1 - x0, y1 - y0) if track.box.source == "barcode" else None
                 track.frames.append(Frame(frame.frame_id, now, frame.image_bgr, roi))
+                track.appended += 1
                 if len(track.frames) > self.max_candidates:
                     # Keep first/last and thin the densest interior time interval.
                     remove = min(

@@ -272,7 +272,7 @@
               <option value="motion">실험 · 움직임 덩어리 추적</option>
             </select></label>
             <label><input type="checkbox" id="activityFilter" checked> 장면 변화가 있는 구간만 판독</label>
-            <span id="captureStatus" role="status" aria-live="polite">바코드 추적 · 초당 최대 8장 · CPU 시험은 천천히 움직여 주세요</span>
+            <span id="captureStatus" role="status" aria-live="polite">바코드 추적 · 초당 최대 8장 · 읽히면 통과 중에도 바로 성공으로 표시합니다</span>
           </div>
           <div class="cam-foot"><span id="captureStats">처리 0 · 대기 0 · 건너뜀 0 (물품 수가 아닌 촬영 구간 수)</span></div>
           <div class="cam-foot">
@@ -545,9 +545,9 @@ import { resultPresentation } from "/assets/result-state.mjs";
     onError(error) { captureError = error.message; $("captureStatus").textContent = captureError; },
     onState(state) {
       if (state.tracking) {
-        $("captureStats").textContent = `물품 구간 완료 ${state.completed || 0} · 추적 ${state.active_track || "없음"} · 판독 대기 ${state.pending || 0} · 과부하 구간 ${state.dropped || 0} · 전송 건너뜀 ${state.skipped || 0} · 검출 건너뜀 ${state.skipped_detections || 0}`;
+        $("captureStats").textContent = `물품 구간 완료 ${state.completed || 0} · 추적 ${state.active_track ? state.active_track + (state.active_resolved ? " (판독 성공)" : " (판독 중)") : "없음"} · 판독 대기 ${state.pending || 0} · 과부하 구간 ${state.dropped || 0} · 전송 건너뜀 ${state.skipped || 0} · 검출 건너뜀 ${state.skipped_detections || 0}`;
         $("captureStatus").textContent = captureError || (state.enabled
-          ? (state.box_source === "motion" ? "움직임 덩어리 추적 · 바코드 검출이 아닙니다" : "바코드 추적 중 · CPU 시험은 천천히 움직여 주세요")
+          ? (state.box_source === "motion" ? "움직임 덩어리 추적 · 바코드 검출이 아닙니다" : "바코드 추적 중 · 읽히면 통과 중에도 바로 성공으로 표시합니다")
           : "추적 중지 · 미완료 구간은 폐기됩니다");
         return;
       }
@@ -575,7 +575,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
       $("primaryCaption").textContent = "최초 선택 · " + (body.primary_frame_id || "없음");
       if (real.images.original) $("selectedFrame").src = real.images.original; else $("selectedFrame").removeAttribute("src");
       if (body.primary_image) $("firstFrame").src = body.primary_image; else $("firstFrame").removeAttribute("src");
-      $("burstTiming").textContent = `${body.track_id ? "물품 구간 " + Math.round(body.window_ms || 0) + "ms · " + (trackEndLabels[body.track_end_reason] || "구간 종료") : "수집 1초"} · 선택 ${Math.round(body.timing_ms.selection)}ms · 판독 ${Math.round(body.timing_ms.pipeline)}ms · 최초 수집부터 응답 ${Math.round(performance.now() - batch.capturedAt)}ms · ${completionLabels[body.completion_reason] || body.completion_reason}`;
+      $("burstTiming").textContent = `${body.track_id ? (body.early ? "통과 중 성공 · 추적 " + Math.round(body.window_ms || 0) + "ms 시점" : "물품 구간 " + Math.round(body.window_ms || 0) + "ms · " + (trackEndLabels[body.track_end_reason] || "구간 종료")) : "수집 1초"} · 선택 ${Math.round(body.timing_ms.selection)}ms · 판독 ${Math.round(body.timing_ms.pipeline)}ms · 최초 수집부터 응답 ${Math.round(performance.now() - batch.capturedAt)}ms · ${completionLabels[body.completion_reason] || body.completion_reason}`;
       $("attemptList").replaceChildren(...body.attempts.map((attempt) => {
         const li = document.createElement("li");
         li.textContent = attemptDescription(attempt);

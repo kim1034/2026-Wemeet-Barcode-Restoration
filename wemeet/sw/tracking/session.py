@@ -4,9 +4,15 @@ import json
 import threading
 import time
 from collections import deque
+from dataclasses import replace
 
 from wemeet.sw.frame_batch import process_batch
 from wemeet.sw.tracking.core import Tracker
+
+# 통과 중 판독: 후보가 이만큼 새로 쌓일 때마다, 트랙당 최대 이 횟수까지 시도한다.
+# 계속 못 읽는 바코드가 추론 슬롯을 독점해 재검출을 굶기지 않게 상한을 둔다.
+INTERIM_MIN_NEW_FRAMES = 4
+INTERIM_MAX_RUNS = 3
 
 
 class TrackingSession:
@@ -68,6 +74,8 @@ class TrackingSession:
             if self.closed:
                 return
             for passage in passages:
+                if passage.resolved:
+                    continue  # 통과 중 이미 성공해 결과를 냈다. 같은 물품을 두 번 내지 않는다.
                 if len(self.pending) >= self.max_pending:
                     self.dropped += 1
                     # Explicit unread result for this known passage, no fake vote.
@@ -98,6 +106,45 @@ class TrackingSession:
             self.decode_busy = True
             return self.pending.popleft()
 
+    def take_interim(self):
+        """추적 중인 트랙의 현재 후보 스냅샷을 판독용으로 꺼낸다. 퇴장한 통과가 우선이다."""
+        with self.lock:
+            track = self.tracker.active
+            if (
+                self.closed
+                or self.decode_busy
+                or track is None
+                or track.resolved
+                or track.interim_runs >= INTERIM_MAX_RUNS
+                or track.appended - track.interim_at < INTERIM_MIN_NEW_FRAMES
+                or len(track.frames) < 2
+            ):
+                return None
+            self.decode_busy = True
+            track.interim_runs += 1
+            track.interim_at = track.appended
+            return track, replace(track, frames=list(track.frames))
+
+    def release_interim(self, track, *, retry=False):
+        with self.lock:
+            self.decode_busy = False
+            if retry:
+                # 슬롯이 바빠 시작하지 못했다. 시도 횟수를 쓰지 않고 다음 기회에 다시 한다.
+                track.interim_runs -= 1
+                track.interim_at = track.appended - INTERIM_MIN_NEW_FRAMES
+
+    def complete_interim(self, track, response):
+        """확정(confirmed)일 때만 결과를 낸다. 미확정은 퇴장 뒤 최종 판독에 맡긴다."""
+        with self.lock:
+            self.decode_busy = False
+            if self.closed or response.get("status") != "confirmed":
+                return
+            track.resolved = True
+            # 판독 중에 트랙이 끝나 이미 대기열에 들어갔다면 중복 판독하지 않는다.
+            self.pending = deque(p for p in self.pending if p is not track)
+            self.finished += 1
+            self._store(track.track_id, response)
+
     def decode(self, passage):
         return process_batch(passage.batch(self.session_id))
 
@@ -114,6 +161,7 @@ class TrackingSession:
             return {
                 "active_track": track.track_id if track else None,
                 "active_box": list(track.box.xywh) if track else None,
+                "active_resolved": bool(track and track.resolved),
                 "frame_count": self.received,
                 "pending": len(self.pending),
                 "decoding": self.decode_busy,

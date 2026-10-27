@@ -1,6 +1,7 @@
 """Bounded session transport and independent decode scheduling for passages."""
 
 import asyncio
+import os
 import time
 from typing import Literal
 
@@ -16,6 +17,30 @@ from wemeet.sw.server.runtime import RuntimeUnavailable
 from wemeet.sw.tracking import BarcodeBoxes, MotionBoxes, Tracker
 from wemeet.sw.tracking.session import TrackingSession
 
+DETECT_INTERVAL_ENV = "WEMEET_TRACK_DETECT_INTERVAL_MS"
+DEFAULT_DETECT_INTERVAL_MS = 500
+# 프레임은 125ms(8fps) 간격이라 그보다 촘촘한 값은 의미가 없고, 너무 길면 트랙을 못 잇는다.
+MIN_DETECT_INTERVAL_MS = 100
+MAX_DETECT_INTERVAL_MS = 10000
+
+
+def detect_interval_ms(value=None):
+    """바코드 재검출 간격(ms). 값이 없으면 환경 변수, 그것도 없으면 기본값을 쓴다."""
+    if value is None:
+        value = os.environ.get(DETECT_INTERVAL_ENV)
+    if value is None or value == "":
+        return DEFAULT_DETECT_INTERVAL_MS
+    try:
+        interval = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{DETECT_INTERVAL_ENV}는 정수(ms)여야 합니다: {value!r}") from None
+    if not MIN_DETECT_INTERVAL_MS <= interval <= MAX_DETECT_INTERVAL_MS:
+        raise ValueError(
+            f"{DETECT_INTERVAL_ENV}는 {MIN_DETECT_INTERVAL_MS}~{MAX_DETECT_INTERVAL_MS}ms "
+            f"사이여야 합니다: {interval}"
+        )
+    return interval
+
 
 class TrackFrameInfo(FrameInfo):
     offset_ms: float = Field(ge=0, lt=500)
@@ -30,7 +55,8 @@ class TrackManifest(Manifest):
 
 
 class TrackController:
-    def __init__(self, runtime, to_response, data_uri):
+    def __init__(self, runtime, to_response, data_uri, detect_interval=None):
+        self.detect_interval_ms = detect_interval_ms(detect_interval)
         self.runtime = runtime
         self.to_response = to_response
         self.data_uri = data_uri
@@ -78,7 +104,7 @@ class TrackController:
             def execute(fn):
                 return self.runtime.execute(fn)
 
-            session.source = BarcodeBoxes(execute=execute)
+            session.source = BarcodeBoxes(interval_ms=self.detect_interval_ms, execute=execute)
         self.sessions[key] = session
         self.sources[key] = source
         return session
@@ -145,10 +171,12 @@ class TrackController:
                 {"error": getattr(exc, "message", None) or exc.reason}, status_code=exc.status_code
             )
 
-    def response(self, session, passage, outcome):
+    def response(self, session, passage, outcome, early=False):
         batch = passage.batch(session.session_id)
         return {
             "ok": outcome.status == "confirmed",
+            # 통과 중에 확정한 결과다. 이때 track_end_* 는 아직 없다(null).
+            "early": early,
             "status": outcome.status,
             "text": outcome.text,
             "completion_reason": outcome.completion_reason,
@@ -184,6 +212,8 @@ class TrackController:
         for session in list(self.sessions.values()):
             passage = session.take_pending()
             if passage is None:
+                if await self.interim_once(session):
+                    return
                 continue
             try:
 
@@ -210,6 +240,29 @@ class TrackController:
                 }
             session.complete(passage, response)
             return
+
+    async def interim_once(self, session):
+        """아직 화면에 있는 트랙을 판독해 확정되면 바로 결과를 낸다. 시도했으면 True."""
+        taken = session.take_interim()
+        if taken is None:
+            return False
+        track, snapshot = taken
+        try:
+
+            def work():
+                outcome = session.decode(snapshot)
+                return self.response(session, snapshot, outcome, early=True)
+
+            response = await run_in_threadpool(self.runtime.execute, work)
+        except RuntimeUnavailable:
+            session.release_interim(track, retry=True)
+            return False
+        except Exception:
+            # 이 시도만 버린다. 트랙은 퇴장 뒤 최종 판독에서 다시 판독한다.
+            session.release_interim(track)
+            return True
+        session.complete_interim(track, response)
+        return True
 
     async def worker(self):
         try:

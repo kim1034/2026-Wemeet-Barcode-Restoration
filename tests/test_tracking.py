@@ -164,3 +164,90 @@ def test_result_retention_is_bounded_and_completion_cannot_revive_closed_session
     session.enqueue([passage])
     session.complete(passage, {"track_id": passage.track_id, "status": "unread"})
     assert not session.pending and not session.results
+
+
+class FixedBoxes:
+    def observe(self, frame):
+        return [Box((20, 60, 40, 40))]
+
+
+def _visible_session(frames=8):
+    session = TrackingSession("s", FixedBoxes())
+    for i in range(frames):
+        session.ingest([frame(i * 125)])
+    return session
+
+
+def _confirmed(track):
+    return {"track_id": track.track_id, "status": "confirmed", "text": "00123"}
+
+
+def test_interim_waits_for_enough_new_candidates_and_caps_its_attempts():
+    session = TrackingSession("s", FixedBoxes())
+    clock = iter(range(0, 10**6, 125))
+
+    def feed(count):
+        for _ in range(count):
+            session.ingest([frame(next(clock))])
+
+    feed(1)
+    assert session.take_interim() is None  # 후보 1장: 서로 다른 두 프레임이 없다
+    feed(4)
+    track, snapshot = session.take_interim()
+    assert snapshot is not track and snapshot.frames is not track.frames
+    session.release_interim(track)
+    assert session.take_interim() is None  # 새 후보가 4장 쌓일 때까지 다시 하지 않는다
+    for _ in range(2):
+        feed(4)
+        taken = session.take_interim()
+        assert taken is not None
+        session.release_interim(taken[0])
+    feed(4)
+    assert session.take_interim() is None  # 못 읽는 바코드가 슬롯을 독점하지 못한다
+
+
+def test_busy_slot_does_not_spend_an_interim_attempt():
+    session = _visible_session()
+    track, _ = session.take_interim()
+    session.release_interim(track, retry=True)
+    assert track.interim_runs == 0
+    assert session.take_interim() is not None
+
+
+def test_confirmed_interim_result_is_the_only_result_for_that_passage():
+    session = _visible_session()
+    track, _ = session.take_interim()
+    session.complete_interim(track, _confirmed(track))
+    assert track.resolved and session.snapshot()["active_resolved"]
+    assert session.take_interim() is None
+    ended = session.tracker.close(2000, "left_view")
+    session.enqueue(ended)
+    assert not session.pending and session.take_pending() is None
+    assert [body["status"] for _, body in session.results] == ["confirmed"]
+    assert session.finished == 1
+
+
+def test_unconfirmed_interim_is_not_reported_and_the_passage_is_decoded_at_exit():
+    session = _visible_session()
+    track, _ = session.take_interim()
+    session.complete_interim(track, {"track_id": track.track_id, "status": "provisional"})
+    assert not track.resolved and not session.results
+    session.enqueue(session.tracker.close(2000, "left_view"))
+    assert session.take_pending() is track
+
+
+def test_passage_that_ends_during_interim_decode_is_not_decoded_again():
+    session = _visible_session()
+    track, _ = session.take_interim()
+    session.enqueue(session.tracker.close(2000, "left_view"))
+    assert len(session.pending) == 1  # 판독 중에 퇴장해 이미 대기열에 들어갔다
+    session.complete_interim(track, _confirmed(track))
+    assert not session.pending
+    assert len(session.results) == 1
+
+
+def test_exit_pending_passage_takes_priority_over_a_new_interim():
+    session = _visible_session()
+    session.enqueue(session.tracker.close(1000, "left_view"))
+    assert session.take_interim() is None  # 추적 중인 트랙이 없다
+    assert session.take_pending() is not None
