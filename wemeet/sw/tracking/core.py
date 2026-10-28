@@ -172,7 +172,8 @@ class Tracker:
             elif now - track.start_ms >= self.max_track_ms:
                 completed += self.close(now, "duration_limit")
                 self.holding = True
-            elif boxes != []:
+            elif boxes != [] and self.max_candidates > 0:
+                # max_candidates=0: 프레임마다 이미 판독했으면(stream.py) 후보 이미지를 두지 않는다.
                 x0, y0 = max(0, x), max(0, y)
                 x1, y1 = min(w, x + bw), min(h, y + bh)
                 roi = (x0, y0, x1 - x0, y1 - y0) if track.box.source == "barcode" else None

@@ -23,6 +23,7 @@ from wemeet.schemas import PipelineResult
 from wemeet.sw.pipeline import run
 from wemeet.sw.server.burst import InputError, decode_burst, inspect_image, read_limited_body
 from wemeet.sw.server.runtime import InferenceRuntime, RuntimeUnavailable
+from wemeet.sw.server.stream import StreamController
 from wemeet.sw.server.tracking import TrackController
 
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
@@ -48,6 +49,8 @@ async def lifespan(app):
 
 app = FastAPI(title="노리드존 판독기", lifespan=lifespan)
 tracking = None
+# 이름이 같은 하위 모듈(wemeet.sw.server.stream)을 가리지 않도록 _controller 를 붙인다.
+stream_controller_instance = None
 
 
 def tracking_controller():
@@ -55,6 +58,14 @@ def tracking_controller():
     if tracking is None or tracking.runtime is not runtime:
         tracking = TrackController(runtime, to_response, _data_uri)
     return tracking
+
+
+def stream_controller():
+    global stream_controller_instance
+    current = stream_controller_instance
+    if current is None or current.runtime is not runtime:
+        current = stream_controller_instance = StreamController(runtime, to_response, _data_uri)
+    return current
 
 
 def _data_uri(image: np.ndarray, fmt: str = ".png") -> str:
@@ -150,6 +161,7 @@ def javascript(filename: str):
         "continuous.mjs",
         "result-state.mjs",
         "tracking.mjs",
+        "stream.mjs",
     }:
         return _error(404, "파일을 찾지 못했습니다.")
     # Avoid Windows MIME registry overrides and stale cached modules during experiments.
@@ -175,6 +187,16 @@ def health() -> dict:
 @app.post("/api/decode-burst")
 async def decode_frames(request: Request) -> JSONResponse:
     return await decode_burst(request, runtime, to_response, _data_uri)
+
+
+@app.post("/api/stream-frame")
+async def stream_frame(request: Request):
+    return await stream_controller().ingest(request)
+
+
+@app.delete("/api/stream/{session_id}")
+async def stream_close(session_id: str):
+    return {"ok": True, "events": stream_controller().close(session_id)}
 
 
 @app.post("/api/track-frames")

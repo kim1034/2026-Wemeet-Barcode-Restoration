@@ -267,12 +267,13 @@
           </div>
           <div class="cam-upload">
             <label>수집 방식 <select id="captureMode">
+              <option value="stream">판독 먼저 · 매 프레임 판독 (GPU)</option>
               <option value="barcode">바코드 추적 · 물품 구간별 판독</option>
               <option value="fixed">기준선 · 고정 1초 / 최대 8장</option>
               <option value="motion">실험 · 움직임 덩어리 추적</option>
             </select></label>
             <label><input type="checkbox" id="activityFilter" checked> 장면 변화가 있는 구간만 판독</label>
-            <span id="captureStatus" role="status" aria-live="polite">바코드 추적 · 초당 최대 8장 · 읽히면 통과 중에도 바로 성공으로 표시합니다</span>
+            <span id="captureStatus" role="status" aria-live="polite">판독 먼저 · 매 프레임 판독 · 읽히는 즉시 성공으로 표시합니다</span>
           </div>
           <div class="cam-foot"><span id="captureStats">처리 0 · 대기 0 · 건너뜀 0 (물품 수가 아닌 촬영 구간 수)</span></div>
           <div class="cam-foot">
@@ -385,6 +386,7 @@
 <script type="module">
 import { createContinuousCapture } from "/assets/continuous.mjs";
 import { createTrackingCapture } from "/assets/tracking.mjs";
+import { createStreamCapture } from "/assets/stream.mjs";
 import { resultPresentation } from "/assets/result-state.mjs";
 (function () {
   "use strict";
@@ -513,11 +515,13 @@ import { resultPresentation } from "/assets/result-state.mjs";
   let captureError = "";
   let resumeAfterVisibility = false;
   const failureLabels = { not_detected: "바코드 미검출", decode_failed: "검출 후 디코딩 실패", invalid_input: "입력 오류", pipeline_error: "처리 오류" };
-  const completionLabels = { consensus: "2개 프레임의 번호 일치", conflicting_texts: "서로 다른 번호가 읽혀 확정 중단", max_attempts: "최대 3장 시도 완료", candidates_exhausted: "후보 프레임 소진", insufficient_distinct_frames: "시간 간격을 확보한 다른 프레임 부족", budget_exhausted: "다음 시도의 시간 예산 부족", no_candidates: "사용 가능한 프레임 없음", selection_error: "프레임 선택 오류", queue_full: "판독 대기 초과 · 이 물품은 판독하지 못했습니다", processing_error: "처리 오류 · 재촬영이 필요합니다", preview_too_large: "미리보기 용량 초과" };
-  const trackEndLabels = { missing: "바코드가 사라짐", observation_timeout: "바코드를 다시 찾지 못함", left_view: "화면 이탈", input_gap: "영상 수신 공백", resolution_changed: "영상 크기 변경", association_break: "다른 위치의 물품 감지", duration_limit: "장시간 정지" };
+  const completionLabels = { consensus: "2개 프레임의 번호 일치", conflicting_texts: "서로 다른 번호가 읽혀 확정 중단", max_attempts: "최대 3장 시도 완료", candidates_exhausted: "후보 프레임 소진", insufficient_distinct_frames: "시간 간격을 확보한 다른 프레임 부족", budget_exhausted: "다음 시도의 시간 예산 부족", no_candidates: "사용 가능한 프레임 없음", selection_error: "프레임 선택 오류", queue_full: "판독 대기 초과 · 이 물품은 판독하지 못했습니다", processing_error: "처리 오류 · 재촬영이 필요합니다", preview_too_large: "미리보기 용량 초과", track_ended: "통과가 끝날 때까지 두 프레임 일치를 얻지 못함" };
+  const trackEndLabels = { missing: "바코드가 사라짐", observation_timeout: "바코드를 다시 찾지 못함", left_view: "화면 이탈", input_gap: "영상 수신 공백", resolution_changed: "영상 크기 변경", association_break: "다른 위치의 물품 감지", duration_limit: "장시간 정지", stopped: "카메라 중지" };
   function attemptDescription(attempt) {
     const result = attempt.text != null ? `판독값 ${attempt.text}` : (failureLabels[attempt.failure_reason] || attempt.failure_reason || "원인 미확인");
-    return `${attempt.frame_index + 1}번째 · +${Math.round(attempt.offset_ms)}ms · 후보 ${attempt.candidate_count}장 중 점수 ${attempt.quality_score.toFixed(3)} · ${result}`;
+    // 판독 먼저 방식은 후보를 고르지 않으므로 점수가 없다.
+    const scored = typeof attempt.quality_score === "number" ? ` · 후보 ${attempt.candidate_count}장 중 점수 ${attempt.quality_score.toFixed(3)}` : "";
+    return `${attempt.frame_index + 1}번째 · +${Math.round(attempt.offset_ms)}ms${scored} · ${result}`;
   }
   function burstSummary(body) {
     const verification = body.status === "conflict" ? "서로 다른 번호" : `동일 번호 확인 ${body.matching_frame_ids.length}/2장`;
@@ -544,6 +548,14 @@ import { resultPresentation } from "/assets/result-state.mjs";
     video: $("camVideo"),
     onError(error) { captureError = error.message; $("captureStatus").textContent = captureError; },
     onState(state) {
+      if (state.stream) {
+        const counts = state.counts || {};
+        $("captureStats").textContent = `전송 ${state.sent || 0}장 · 판독 ${Math.round(state.pipeline_ms || 0)}ms · 추적 ${state.active_track ? state.active_track + (state.active_resolved ? " (판독 성공)" : " (판독 중)") : "없음"} · 확정 ${counts.confirmed || 0} · 미판독 ${counts.unread || 0} · 서버 바쁨 ${state.busy_skipped || 0} · 오류 ${state.failed || 0}`;
+        $("captureStatus").textContent = captureError || (state.enabled
+          ? "판독 먼저 · 매 프레임 판독 · 읽히는 즉시 성공으로 표시합니다"
+          : "자동 판독 중지 · 남은 구간을 정리했습니다");
+        return;
+      }
       if (state.tracking) {
         $("captureStats").textContent = `물품 구간 완료 ${state.completed || 0} · 추적 ${state.active_track ? state.active_track + (state.active_resolved ? " (판독 성공)" : " (판독 중)") : "없음"} · 판독 대기 ${state.pending || 0} · 과부하 구간 ${state.dropped || 0} · 전송 건너뜀 ${state.skipped || 0} · 검출 건너뜀 ${state.skipped_detections || 0}`;
         $("captureStatus").textContent = captureError || (state.enabled
@@ -584,13 +596,14 @@ import { resultPresentation } from "/assets/result-state.mjs";
       $("camFootRight").textContent = "마지막 수신 " + ev.time;
     },
   };
-  let autoCapture = createTrackingCapture(captureCallbacks);
+  let autoCapture = createStreamCapture(captureCallbacks);
   $("activityFilter").disabled = true;
   $("captureMode").addEventListener("change", () => {
     const resume = autoEnabled;
     autoCapture.stop();
     const mode = $("captureMode").value;
     autoCapture = mode === "fixed" ? createContinuousCapture(captureCallbacks)
+      : mode === "stream" ? createStreamCapture(captureCallbacks)
       : createTrackingCapture({ ...captureCallbacks, source: mode });
     $("activityFilter").disabled = mode !== "fixed";
     autoCapture.setFiltering($("activityFilter").checked);
