@@ -83,6 +83,14 @@
   .btn-ghost { appearance: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px; }
   .btn-ghost:hover { background: var(--bg); }
 
+  /* 자동 판독 — 켜져 있는 동안은 눈에 띄게 둔다. 현장에서 꺼진 걸 모르고 서 있으면 화물을 놓친다 */
+  .btn-run.auto.on { background: var(--warn, #b45309); border-color: transparent; color: #fff; }
+  .auto-bar { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink2); }
+  .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink2); flex: none; }
+  .auto-bar.on .auto-dot { background: #16a34a; animation: autopulse 1.4s ease-in-out infinite; }
+  @keyframes autopulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+  .r-dup { color: var(--ink2); font-size: 11px; margin-left: 5px; }
+
   .video-box { position: relative; aspect-ratio: 16 / 9; background: var(--video-bg); overflow: hidden; }
   .video-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .video-box video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--video-bg); display: block; }
@@ -264,6 +272,11 @@
             <span class="fname mono" id="pickedFileName">선택된 사진 없음</span>
             <button type="button" class="btn-run" id="uploadRunBtn" disabled><span class="spin"></span><span id="uploadRunText">판독 요청 보내기</span></button>
             <button type="button" class="btn-run" id="camCaptureBtn" disabled><span class="spin"></span><span id="camCaptureText">현재 화면 캡처 · 판독</span></button>
+            <button type="button" class="btn-run auto" id="autoBtn" hidden><span id="autoText">자동 판독 시작</span></button>
+          </div>
+          <div class="auto-bar" id="autoBar" hidden>
+            <span class="auto-dot"></span>
+            <span id="autoStat">자동 판독 대기</span>
           </div>
           <div class="cam-foot">
             <span id="camFootLeft">연결된 카메라 없음 · 사진 업로드로 판독</span>
@@ -487,7 +500,18 @@
   let serverOnline = false;
   let pickedFile = null;
   let originalImg = null;
+  let autoOn = false;
   const modelNames = { detection: "—", geometry: "—" };
+
+  // 자동 판독 — 계속 찍고, 처리가 끝나면 **그 시점의 최신 프레임**을 처리한다.
+  // "찍고 → 처리 끝날 때까지 기다리고 → 또 찍기" 가 아니다. 처리 한 번이
+  // 200ms 대인데 그 동안 캡처를 멈추면, 하필 그 사이에 바코드가 가장 잘
+  // 보이는 위치를 지나갔을 때 통째로 놓친다.
+  const GATE_SIDE = 160; //       프레임차 비교용 축소 폭(px)
+  const GATE_BLOCKS = 8; //       프레임을 이 수만큼 격자로 나눠 블록별로 본다
+  const GATE_MIN_DIFF = 2.0; //   한 블록이라도 평균 밝기차가 이 값 이상이면 '변화 있음'
+  const AUTO_IDLE_MS = 120; //    건너뛴 뒤 다음 확인까지 쉬는 시간
+  const DEDUP_WINDOW_MS = 3000; // 같은 번호를 '같은 박스'로 보는 시간
 
   // ================================================================
   // 상단 상태 / 서버 헬스체크
@@ -547,7 +571,8 @@
     return "<tr>" +
       "<td class=\"mono\">" + e.time + "</td>" +
       '<td class="r-id">' + e.id + "</td>" +
-      '<td class="r-barcode mono">' + (e.barcode || "—") + "</td>" +
+      '<td class="r-barcode mono">' + (e.barcode || "—") +
+        (e.dup ? '<span class="r-dup">재판독 ' + e.dup + "회</span>" : "") + "</td>" +
       "<td>" + statusTag(e.outcome) + "</td>" +
       '<td class="mono num">' + e.ms + "ms</td>" +
       "</tr>";
@@ -753,7 +778,10 @@
     el.querySelector("span:last-child").textContent = text;
   }
   function footIdleText() {
-    return mediaStream ? "카메라 연결됨 · 화면은 실시간, 판독은 캡처할 때만 실행" : "연결된 카메라 없음 · 사진 업로드로 판독";
+    if (!mediaStream) return "연결된 카메라 없음 · 사진 업로드로 판독";
+    return autoOn
+      ? "자동 판독 중 · 변화가 있는 프레임만 서버로 보냅니다 (같은 번호는 3초간 중복 제외)"
+      : "카메라 연결됨 · 화면은 실시간, 판독은 캡처할 때만 실행";
   }
   function showOnly(which) {
     $("videoGhost").hidden = which !== "ghost";
@@ -772,6 +800,8 @@
     $("camStopBtn").hidden = !live;
     $("pauseBtn").hidden = !live;
     $("camCaptureBtn").disabled = running || !live || camPaused;
+    $("autoBtn").hidden = !live;
+    $("autoBar").hidden = !live;
     $("uploadRunBtn").disabled = running || !pickedFile;
     $("photoInput").disabled = running;
   }
@@ -831,14 +861,16 @@
     $("videoBadgeText").textContent = "LIVE";
     setCamStatus("ok", "카메라 연결됨 · LIVE");
     $("pauseLabel").textContent = "화면 표시 일시정지";
-    $("camFootLeft").textContent = footIdleText();
     syncButtons();
+    setAuto(true);
     listCameras();
   }
   function stopCamera(silent) {
     if (mediaStream) { mediaStream.getTracks().forEach((t) => t.stop()); mediaStream = null; }
     $("camVideo").srcObject = null;
     camPaused = false;
+    setAuto(false);
+    gatePrev = null;
     if (!silent) {
       setVideoIdle();
       setCamStatus("", "카메라 미연결 · 사진 업로드로 판독");
@@ -906,6 +938,84 @@
     setRealBusy(false);
   }
 
+  // ================================================================
+  // 프레임차 게이트 — 변화가 없는 프레임은 아예 보내지 않는다
+  //
+  // 빈 컨베이어나 멈춘 화면에 검출(실측 218ms)을 돌리는 건 통째로 낭비다.
+  // 여기서 버리면 JPEG 인코딩·전송·추론을 전부 건너뛴다.
+  //
+  // 저해상도 검출 모델로 게이트를 만드는 방안은 실측 후 버렸다: 바코드가
+  // 프레임 폭의 13%(약 250px)뿐이라 imgsz 640 에서는 30장 중 4장만 검출돼,
+  // 읽을 수 있던 프레임의 85%를 버린다. 모델을 쓰지 않는 이 게이트는
+  // "바코드인가" 를 판정하지 않으므로 그런 거짓 탈락이 없다 (실측 0.08ms).
+  // ================================================================
+  const gateCanvas = document.createElement("canvas");
+  const frameCanvas = document.createElement("canvas");
+  let gatePrev = null;
+
+  function frameChanged(video) {
+    const w = GATE_SIDE;
+    const h = Math.max(1, Math.round((GATE_SIDE * video.videoHeight) / video.videoWidth));
+    gateCanvas.width = w; gateCanvas.height = h;
+    const ctx = gateCanvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0, w, h);
+    const rgba = ctx.getImageData(0, 0, w, h).data;
+    const gray = new Uint8Array(w * h);
+    for (let i = 0, p = 0; p < gray.length; i += 4, p++) {
+      gray[p] = (rgba[i] * 77 + rgba[i + 1] * 150 + rgba[i + 2] * 29) >> 8;
+    }
+    if (!gatePrev || gatePrev.length !== gray.length) { gatePrev = gray; return true; }
+
+    // 프레임 전체 평균으로 보면 둔감하다 — 바코드는 화면의 6% 정도라, 바코드만
+    // 움직여도 전체 평균은 거의 흔들리지 않는다. 그래서 격자 블록으로 나눠
+    // **한 블록이라도** 변했으면 통과시킨다. 축소로 노이즈는 이미 1/10 로
+    // 줄어들어 있어서, 블록을 작게 봐도 센서 노이즈에는 걸리지 않는다.
+    const bw = Math.max(1, Math.floor(w / GATE_BLOCKS));
+    const bh = Math.max(1, Math.floor(h / GATE_BLOCKS));
+    let changed = false;
+    for (let by = 0; by + bh <= h && !changed; by += bh) {
+      for (let bx = 0; bx + bw <= w && !changed; bx += bw) {
+        let sum = 0;
+        for (let y = by; y < by + bh; y++) {
+          const row = y * w;
+          for (let x = bx; x < bx + bw; x++) sum += Math.abs(gray[row + x] - gatePrev[row + x]);
+        }
+        if (sum / (bw * bh) >= GATE_MIN_DIFF) changed = true;
+      }
+    }
+    gatePrev = gray;
+    return changed;
+  }
+
+  function captureFrame(video) {
+    frameCanvas.width = video.videoWidth; frameCanvas.height = video.videoHeight;
+    frameCanvas.getContext("2d").drawImage(video, 0, 0);
+    return new Promise((resolve) => frameCanvas.toBlob(resolve, "image/jpeg", 0.92));
+  }
+
+  // ================================================================
+  // 중복 억제 — 같은 박스를 여러 프레임에서 읽으므로 이력이 같은 번호로 덮인다
+  //
+  // 자동 판독에서는 박스 하나가 화각을 지나는 동안 4~5번 판독된다. 창(3초)
+  // 안에 같은 번호가 다시 나오면 같은 박스로 보고 버리고, 원래 줄에 재판독
+  // 횟수만 올린다. 창은 재판독마다 갱신한다 — 박스가 카메라 앞에 오래 멈춰
+  // 있어도 3초마다 새 줄이 생기지 않게 한다.
+  // ================================================================
+  const recentReads = new Map(); // 번호 → { at, id }
+
+  function duplicateOf(text) {
+    const t = Date.now();
+    for (const [k, v] of recentReads) if (t - v.at > DEDUP_WINDOW_MS) recentReads.delete(k);
+    if (!text) return null;
+    const hit = recentReads.get(text);
+    if (!hit) return null;
+    hit.at = t;
+    return hit;
+  }
+  function rememberRead(text, id) {
+    if (text) recentReads.set(text, { at: Date.now(), id });
+  }
+
   async function submitForDecode(blob, spinBtn) {
     if (running) return;
     setRealBusy(true, spinBtn);
@@ -938,7 +1048,18 @@
     setSvcStatus(true);
     $("procMs").textContent = Math.round(body.total_ms);
 
+    const dup = body.ok ? duplicateOf(body.text) : null;
+    if (dup) {
+      const prev = EVENTS.find((e) => e.id === dup.id);
+      if (prev) { prev.dup = (prev.dup || 0) + 1; renderHistories(); }
+      $("camFootLeft").textContent = "같은 번호를 다시 읽었습니다 · " + dup.id + " 의 재판독으로 처리";
+      $("procRow").classList.remove("show");
+      setRealBusy(false);
+      return;
+    }
+
     const ev = eventFromReal(body, blob);
+    rememberRead(body.ok ? body.text : null, ev.id);
     EVENTS.unshift(ev);
     renderHistories();
     renderConfirmed();
@@ -956,13 +1077,55 @@
   $("camCaptureBtn").addEventListener("click", async () => {
     const video = $("camVideo");
     if (running || !mediaStream || camPaused || !video.videoWidth) return;
-    const c = document.createElement("canvas");
-    c.width = video.videoWidth; c.height = video.videoHeight;
-    c.getContext("2d").drawImage(video, 0, 0);
-    const blob = await new Promise((resolve) => c.toBlob(resolve, "image/jpeg", 0.92));
+    const blob = await captureFrame(video);
     if (!blob) { failReal("프레임을 캡처하지 못했습니다."); return; }
     submitForDecode(blob, "camCaptureBtn");
   });
+
+  // ================================================================
+  // 자동 판독 루프
+  // ================================================================
+  function setAutoStat(text) { $("autoStat").textContent = text; }
+
+  async function autoLoop() {
+    const video = $("camVideo");
+    let skipped = 0;
+    while (autoOn) {
+      if (!mediaStream || camPaused || !video.videoWidth) { await wait(250); continue; }
+      if (!frameChanged(video)) {
+        skipped += 1;
+        setAutoStat("변화 없음 · 건너뛴 프레임 " + skipped + "장");
+        await wait(AUTO_IDLE_MS);
+        continue;
+      }
+      const blob = await captureFrame(video);
+      if (!blob) { await wait(AUTO_IDLE_MS); continue; }
+      setAutoStat("판독 중…");
+      await submitForDecode(blob, "camCaptureBtn");
+      if (!autoOn) break;
+      if (!serverOnline) {
+        // 서버가 죽은 동안 전속력으로 재시도하면 복구도 못 하게 두드린다
+        setAutoStat("서버 응답 없음 · 1.5초 후 다시 시도");
+        await wait(1500);
+        continue;
+      }
+      setAutoStat("자동 판독 중 · 건너뛴 프레임 " + skipped + "장");
+    }
+  }
+
+  function setAuto(on) {
+    const next = on && !!mediaStream;
+    const wasOn = autoOn;
+    autoOn = next;
+    gatePrev = null; // 켤 때마다 비교 기준을 비운다 — 첫 프레임은 항상 보낸다
+    $("autoText").textContent = next ? "자동 판독 중지" : "자동 판독 시작";
+    $("autoBtn").classList.toggle("on", next);
+    $("autoBar").classList.toggle("on", next);
+    setAutoStat(next ? "자동 판독 중 · 변화가 있는 프레임만 보냅니다" : "자동 판독 중지됨");
+    $("camFootLeft").textContent = footIdleText();
+    if (next && !wasOn) autoLoop();
+  }
+  $("autoBtn").addEventListener("click", () => setAuto(!autoOn));
 
   $("copyBtn").addEventListener("click", () => {
     const text = $("bigValue").textContent;
