@@ -268,6 +268,10 @@ uv run uvicorn wemeet.sw.server:app --host 127.0.0.1 --port 8001
 카메라 권한을 허용한다. LAN 주소로 접근할 때는 HTTPS가 필요하다.
 서버는 모델을 미리 불러오고 워밍업한다. `/api/health`의 `ready=true`를 확인한다.
 모델 준비 실패 시 가중치 경로나 HF 연결을 확인한 뒤 서버를 다시 시작한다.
+컨테이너(CHEETAH 등)에서는 서버가 켜질 때 cgroup CPU 할당량을 읽어 torch·OpenCV·numpy
+스레드 수를 그만큼으로 맞춘다(`wemeet/sw/server/threads.py`). CHEETAH는 3개분인데 128개로
+보여서, 맞추지 않으면 스로틀링으로 기하 추정·TPS가 수십 배 느려진다. 맞춘 값은 `/api/health`의
+`cpu_threads`에 보이고(`null` = 손대지 않음), `WEMEET_CPU_THREADS`로 직접 정하거나 `0`으로 끈다.
 여러 uvicorn worker를 쓰면 추론 슬롯과 중복 캐시가 프로세스마다 생기므로,
 이 실험은 **단일 프로세스, worker 1개**로 실행한다.
 

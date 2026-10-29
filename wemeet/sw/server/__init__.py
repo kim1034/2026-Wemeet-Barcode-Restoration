@@ -4,6 +4,12 @@
 디스크와 로그에 남기지 않는다 — 실제 송장에는 수취인 정보가 있다.
 """
 
+# ruff: noqa: E402
+# 스레드 제한은 numpy·torch 를 불러오기 전에 해야 해서 다른 import 보다 앞선다 (threads.py).
+from wemeet.sw.server import threads
+
+threads.limit_cpu_threads()
+
 import asyncio
 import base64
 import logging
@@ -37,7 +43,14 @@ runtime = InferenceRuntime()
 @asynccontextmanager
 async def lifespan(app):
     runtime.preparing = True
-    preparation = asyncio.create_task(run_in_threadpool(runtime.prepare))
+    prepare = runtime.prepare
+
+    def prepare_models():
+        # torch 를 처음 불러오는 곳이라 이벤트 루프를 막지 않게 작업 스레드에서 한다.
+        threads.apply_library_threads()
+        prepare()
+
+    preparation = asyncio.create_task(run_in_threadpool(prepare_models))
     tracker = tracking_controller()
     worker = asyncio.create_task(tracker.worker())
     yield
@@ -182,6 +195,7 @@ def health() -> dict:
         "busy": runtime.busy,
         "error": runtime.error,
         "models": {"detection": DETECTION_WEIGHTS, "geometry": GEOMETRY_WEIGHTS},
+        "cpu_threads": threads.cpu_threads,  # None = 손대지 않음 (할당량 없음)
     }
 
 
