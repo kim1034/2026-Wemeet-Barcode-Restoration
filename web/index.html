@@ -87,7 +87,7 @@
   .video-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .video-box video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--video-bg); display: block; }
   .cam-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .cam-select { font-size: 12.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; max-width: 200px; }
+  .cam-select { font-size: 12.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; max-width: 260px; }
   .video-badge { position: absolute; top: 12px; left: 14px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #cdd3da; }
   .video-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #8a95a1; }
   .video-badge.live .dot { background: #3bb273; }
@@ -387,6 +387,7 @@
 import { createContinuousCapture } from "/assets/continuous.mjs";
 import { createTrackingCapture } from "/assets/tracking.mjs";
 import { createStreamCapture } from "/assets/stream.mjs";
+import { cameraOptions, loadCamera, preferredCamera, saveCamera } from "/assets/camera.mjs";
 import { resultPresentation } from "/assets/result-state.mjs";
 (function () {
   "use strict";
@@ -922,15 +923,32 @@ import { resultPresentation } from "/assets/result-state.mjs";
     $("photoInput").disabled = running || autoEnabled;
   }
 
+  // 카메라 목록 — 내장/외장(USB·USB-C) 카메라를 고르고, 마지막에 고른 카메라를 다음에도 쓴다.
+  let cameras = [];
+  // 저장소가 막힌 브라우저에서는 localStorage 를 읽는 것만으로 예외가 난다 — 그때는 기억 없이 동작한다.
+  const cameraStore = (() => { try { return window.localStorage; } catch (e) { return null; } })();
   async function listCameras() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
     try {
-      const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+      cameras = cameraOptions(await navigator.mediaDevices.enumerateDevices());
       const sel = $("camSelect");
       const track = mediaStream && mediaStream.getVideoTracks()[0];
-      const cur = track && track.getSettings().deviceId;
-      sel.innerHTML = devs.map((d, i) => '<option value="' + esc(d.deviceId) + '"' + (d.deviceId === cur ? " selected" : "") + ">" + esc(d.label || "카메라 " + (i + 1)) + "</option>").join("");
-      sel.hidden = devs.length < 2;
+      const cur = (track && track.getSettings().deviceId) || preferredCamera(cameras, loadCamera(cameraStore));
+      sel.innerHTML = cameras.map((c) => '<option value="' + esc(c.deviceId) + '"' + (c.deviceId === cur ? " selected" : "") + ">" + esc(c.text) + "</option>").join("");
+      // 권한 전에는 이름·ID 가 비어 있어 고를 수 없다 — 카메라를 한 번 켜면 목록이 채워진다.
+      sel.hidden = !cameras.some((c) => c.deviceId);
     } catch (e) { /* 목록을 못 읽어도 시작은 가능 */ }
+  }
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    // USB 카메라를 꽂거나 뽑으면 목록을 다시 읽는다. 쓰던 카메라가 뽑히면 track 의 ended 가 처리한다.
+    navigator.mediaDevices.addEventListener("devicechange", () => listCameras());
+  }
+  listCameras();
+  function openCamera(deviceId) {
+    return navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 }, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) },
+      audio: false,
+    });
   }
   async function startCamera(deviceId) {
     if (running || cameraStarting) return;
@@ -944,12 +962,16 @@ import { resultPresentation } from "/assets/result-state.mjs";
     syncButtons();
     setCamStatus("", "카메라 연결 중…");
     $("videoBadgeText").textContent = "카메라 연결 중";
+    // 직접 고른 카메라가 아니면 저장된 카메라로 시작한다. 그 카메라가 빠져 있으면 기본 카메라로 다시 연다.
+    const remembered = deviceId ? null : preferredCamera(cameras, loadCamera(cameraStore));
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 }, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) },
-        audio: false,
-      });
+      try {
+        stream = await openCamera(deviceId || remembered);
+      } catch (err) {
+        if (!remembered || !err || (err.name !== "OverconstrainedError" && err.name !== "NotFoundError")) throw err;
+        stream = await openCamera(null);
+      }
     } catch (err) {
       if (generation !== cameraGeneration) return;
       cameraStarting = false;
@@ -1007,7 +1029,11 @@ import { resultPresentation } from "/assets/result-state.mjs";
   }
   $("camStartBtn").addEventListener("click", () => startCamera());
   $("camStopBtn").addEventListener("click", () => stopCamera(false));
-  $("camSelect").addEventListener("change", (e) => startCamera(e.target.value));
+  $("camSelect").addEventListener("change", (e) => {
+    saveCamera(cameraStore, e.target.value);
+    // 켜져 있으면 바로 바꾸고, 꺼져 있으면 다음 시작 때 이 카메라를 쓴다.
+    if (mediaStream) startCamera(e.target.value);
+  });
   $("pauseBtn").addEventListener("click", () => {
     if (!mediaStream) return;
     autoCapture.recalibrate();

@@ -162,6 +162,7 @@ def javascript(filename: str):
         "result-state.mjs",
         "tracking.mjs",
         "stream.mjs",
+        "camera.mjs",
     }:
         return _error(404, "파일을 찾지 못했습니다.")
     # Avoid Windows MIME registry overrides and stale cached modules during experiments.

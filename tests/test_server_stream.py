@@ -116,5 +116,6 @@ def test_busy_slot_and_unready_models_are_reported_without_processing(client, mo
 
 def test_stream_module_is_served_and_is_the_default_capture_mode(client):
     assert client.get("/assets/stream.mjs").status_code == 200
+    assert client.get("/assets/camera.mjs").status_code == 200
     page = client.get("/").text
     assert page.index('value="stream"') < page.index('value="barcode"')
