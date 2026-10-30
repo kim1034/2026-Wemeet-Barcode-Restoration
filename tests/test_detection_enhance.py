@@ -83,7 +83,24 @@ class _FakeModel:
         return self._results
 
 
-def test_detect_applies_clahe_to_model_input_by_default(monkeypatch):
+def test_detect_does_not_apply_clahe_by_default(monkeypatch):
+    # 실험 A(2026-10-30) 결과로 기본값이 off 가 되었다. 기본 호출은 원본을 그대로 모델에 넣는다.
+    fake_model = _FakeModel([_NoObb()])  # 미검출로 일찍 반환시켜 크롭 경로는 안 탄다
+    monkeypatch.setattr(detection, "load_model", lambda: fake_model)
+
+    def _must_not_be_called(*_args: object, **_kwargs: object) -> np.ndarray:
+        raise AssertionError("기본값(use_clahe=False)이면 enhance_for_detection이 호출되면 안 된다")
+
+    monkeypatch.setattr(detection, "enhance_for_detection", _must_not_be_called)
+
+    original = np.zeros((10, 10, 3), dtype=np.uint8)
+    detection.detect(original)
+
+    assert fake_model.received_input is not None
+    assert np.array_equal(fake_model.received_input, original)  # 원본이 그대로 들어갔다
+
+
+def test_detect_use_clahe_true_applies_enhancement(monkeypatch):
     fake_model = _FakeModel([_NoObb()])  # 미검출로 일찍 반환시켜 크롭 경로는 안 탄다
     monkeypatch.setattr(detection, "load_model", lambda: fake_model)
 
@@ -93,7 +110,7 @@ def test_detect_applies_clahe_to_model_input_by_default(monkeypatch):
     monkeypatch.setattr(detection, "enhance_for_detection", _fake_enhance)
 
     original = np.zeros((10, 10, 3), dtype=np.uint8)
-    detection.detect(original)
+    detection.detect(original, use_clahe=True)
 
     assert fake_model.received_input is not None
     assert np.all(fake_model.received_input == 255)  # 가짜 enhance 결과가 모델에 들어갔다
@@ -126,7 +143,7 @@ def test_detect_crop_comes_from_original_not_enhanced_image(monkeypatch):
         detection, "enhance_for_detection", lambda image, *a, **k: np.full_like(image, 255)
     )
 
-    result = detection.detect(original)
+    result = detection.detect(original, use_clahe=True)
 
     assert result is not None
     assert np.all(fake_model.received_input == 255)  # 모델 입력은 enhance된 것

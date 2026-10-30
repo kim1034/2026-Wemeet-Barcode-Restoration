@@ -16,8 +16,10 @@
 
     합성 val 2,000장 · mAP50 0.973 · mAP50-95 0.943 · 추론 4.1ms (RTX 4050)
 
-    **위 수치는 CLAHE 적용 전 원본 이미지 기준이다.** CLAHE(`enhance.py`)는
-    이후 추가된 전처리라 재측정 전까지는 참고치일 뿐이다.
+    **위 수치는 CLAHE 적용 전 원본 이미지 기준이다.** 이후 추가된 CLAHE
+    (`enhance.py`)는 실험 A(2026-10-30)에서 검출 정확도를 오히려 떨어뜨려서
+    (원본학습 모델 + 추론때만 CLAHE = train/test 도메인 어긋남, mAP50 −6.2·
+    recall −8.7) **기본값을 off 로 두었다** — `detect(use_clahe=...)` 참고.
 
 **ultralytics 가 없어도 이 모듈은 import 됩니다.** 실제로 `detect()` 를 부를
 때 처음 필요해집니다 (yolo_obb.py 의 라이선스 주석 참고).
@@ -42,7 +44,7 @@ CONF_THRESHOLD = 0.25
 
 def detect(
     image_bgr: np.ndarray,
-    use_clahe: bool = True,
+    use_clahe: bool = False,
     clahe_clip_limit: float = DEFAULT_CLIP_LIMIT,
     clahe_tile_grid_size: tuple[int, int] = DEFAULT_TILE_GRID_SIZE,
 ) -> DetectedBarcode | None:
@@ -55,9 +57,12 @@ def detect(
     크롭은 **막대 영역을 규격 비율(5:3 또는 6:4)로 맞추고 각 변에 10% 여백을
     붙인 것**이다. 여백은 2단계 기하 추정이 막대 끝을 판단할 여지를 남긴다.
 
-    `use_clahe=True`(기본값)면 검출 모델 입력에만 CLAHE로 대비를 올린다
-    (`enhance.py`). **크롭 자체는 항상 원본 `image_bgr`에서 뜬다** — CLAHE
-    처리된 픽셀을 크롭으로 내보내면 Stage 2가 학습한 도메인과 어긋난다.
+    `use_clahe=True`면 검출 모델 입력에만 CLAHE로 대비를 올린다(`enhance.py`).
+    **기본값은 False다** — 실험 A(2026-10-30)에서 원본으로 학습한 모델에 추론
+    때만 CLAHE를 끼얹으면 train/test 도메인이 어긋나 mAP50 −6.2·recall −8.7로
+    정확도가 떨어졌고, 전체프레임 CLAHE가 ~70ms를 더 먹었다. 필요하면 명시적으로
+    켤 수 있게 파라미터는 남겨둔다. **크롭 자체는 항상 원본 `image_bgr`에서
+    뜬다** — CLAHE 처리된 픽셀을 크롭으로 내보내면 Stage 2 도메인과 어긋난다.
     """
     if image_bgr is None or image_bgr.ndim != 3 or image_bgr.size == 0:
         return None
