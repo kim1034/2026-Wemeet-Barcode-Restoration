@@ -210,7 +210,10 @@ async def stream_frame(request: Request):
 
 
 @app.delete("/api/stream/{session_id}")
-async def stream_close(session_id: str):
+def stream_close(session_id: str):
+    # async 로 두면 안 된다: close() 는 판독 중인 프레임이 세션 잠금을 놓을 때까지 기다리는데,
+    # 그 잠금은 이벤트 루프에서 풀린다. 루프에서 기다리면 서로를 기다려 서버 전체가 멈춘다.
+    # def 로 두면 FastAPI 가 작업 스레드에서 실행해 루프는 계속 돈다.
     return {"ok": True, "events": stream_controller().close(session_id)}
 
 

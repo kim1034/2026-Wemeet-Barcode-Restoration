@@ -91,6 +91,43 @@ def test_stopping_flushes_an_unreadable_passage(client, monkeypatch):
     assert post(client, *frame(5)).status_code == 409
 
 
+def test_stopping_while_a_frame_is_being_read_does_not_freeze_the_server(client, monkeypatch):
+    # 2026-10-31 CHEETAH: 판독 중에 중지(DELETE)가 오면 서버 전체가 멈췄다. 중지가 이벤트 루프에서
+    # 세션 잠금을 기다리는데, 그 잠금을 풀어야 할 판독 응답도 같은 이벤트 루프에서 돌기 때문이다.
+    import threading
+
+    reading, release = threading.Event(), threading.Event()
+    readable = fake_run()
+
+    def slow_run(image):
+        reading.set()
+        release.wait(10)
+        return readable(image)
+
+    monkeypatch.setattr("wemeet.sw.server.stream.run", slow_run)
+    monkeypatch.setattr(server.runtime, "prepare", lambda: None)
+    results = {}
+    # 실제 서버처럼 모든 요청이 이벤트 루프 하나를 같이 쓰게 한다 (with 블록 = 루프 하나)
+    with TestClient(server.app) as shared:
+        posting = threading.Thread(
+            target=lambda: results.update(post=post(shared, *frame(1)).status_code), daemon=True
+        )
+        posting.start()
+        assert reading.wait(5)
+        closing = threading.Thread(
+            target=lambda: results.update(close=shared.delete("/api/stream/cam-1").status_code),
+            daemon=True,
+        )
+        closing.start()
+        closing.join(0.5)  # 중지는 판독이 끝날 때까지 기다린다
+        release.set()
+        posting.join(10)
+        closing.join(10)
+        assert results == {"post": 200, "close": 200}, "서버가 멈췄다"
+        # 멈추지 않았다면 다른 요청에도 답한다
+        assert shared.get("/api/health").status_code == 200
+
+
 def test_order_and_input_are_validated(client, monkeypatch):
     monkeypatch.setattr("wemeet.sw.server.stream.run", fake_run())
     assert post(client, *frame(3)).status_code == 200
