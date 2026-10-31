@@ -72,11 +72,14 @@ def _with_timing(result: DecodeResult, stage_ms: dict[str, float]) -> DecodeResu
 
 
 def _rectify_and_decode(
-    detected: DetectedBarcode, field: GeometryField, stage_ms: dict[str, float]
+    detected: DetectedBarcode,
+    field: GeometryField,
+    stage_ms: dict[str, float],
+    scales: tuple[float, ...],
 ) -> tuple[RectifiedBarcode, DecodeResult]:
-    """배율을 바꿔 가며 최대 3회 편다. 마지막 시도의 (보정 결과, 판독 결과)."""
+    """배율을 바꿔 가며 `scales` 개수만큼 편다. 마지막 시도의 (보정 결과, 판독 결과)."""
     rectified, result = None, None
-    for attempt, out_scale in enumerate(_RETRY_OUT_SCALES):
+    for attempt, out_scale in enumerate(scales):
         rectified = _timed(stage_ms, "warp", apply_field, detected, field, out_scale=out_scale)
         result = _timed(stage_ms, "decode" if attempt == 0 else "retry", decode, rectified)
         result.retry_count = attempt
@@ -85,7 +88,13 @@ def _rectify_and_decode(
     return rectified, result
 
 
-def run(image_bgr: np.ndarray) -> PipelineResult:
+def run(
+    image_bgr: np.ndarray, *, retry_scales: tuple[float, ...] = _RETRY_OUT_SCALES
+) -> PipelineResult:
+    """`retry_scales` 는 보정 경로의 출력 배율 순서다 (비워 두지 않는다).
+
+    스트림은 다음 프레임이 곧 다시 시도하므로 3.0 을 빼고 부른다 (`sw/server/stream.py`).
+    """
     stage_ms: dict[str, float] = {}
 
     try:
@@ -129,5 +138,5 @@ def run(image_bgr: np.ndarray) -> PipelineResult:
         result.degraded = True
         return PipelineResult(image_bgr, detected, plain, _with_timing(result, stage_ms))
 
-    rectified, result = _rectify_and_decode(detected, field, stage_ms)
+    rectified, result = _rectify_and_decode(detected, field, stage_ms, retry_scales)
     return PipelineResult(image_bgr, detected, rectified, _with_timing(result, stage_ms))

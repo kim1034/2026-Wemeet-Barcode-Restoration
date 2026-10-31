@@ -188,6 +188,12 @@ def test_retry_changes_the_output_scale(monkeypatch: pytest.MonkeyPatch) -> None
     assert seen == [1.0, 1.5, 3.0]
     assert result.decode.retry_count == 2  # 0, 1, 2 — 세 번째 시도까지 갔다
 
+    # 스트림처럼 배율을 줄여 부르면 그만큼만 편다
+    seen.clear()
+    result = run(noise_bgr, retry_scales=(1.0, 1.5))
+    assert seen == [1.0, 1.5]
+    assert result.decode.retry_count == 1
+
 
 def test_retry_stops_at_the_first_success(
     monkeypatch: pytest.MonkeyPatch, clean_barcode_bgr: np.ndarray

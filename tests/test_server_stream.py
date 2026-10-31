@@ -20,7 +20,8 @@ def client(monkeypatch):
 def fake_run(readable=True):
     """밝기로 물품 유무를 정하는 가짜 판독. 밝으면 바코드 없음, 어두우면 x=밝기 위치에 바코드."""
 
-    def run(image):
+    def run(image, retry_scales):
+        assert retry_scales == (1.0, 1.5)  # 스트림은 3.0 재시도를 뺀다
         level = int(image.mean())
         if level > 150:
             return PipelineResult(
@@ -106,10 +107,10 @@ def test_stopping_while_a_frame_is_being_read_does_not_freeze_the_server(client,
     reading, release = threading.Event(), threading.Event()
     readable = fake_run()
 
-    def slow_run(image):
+    def slow_run(image, **options):
         reading.set()
         release.wait(10)
-        return readable(image)
+        return readable(image, **options)
 
     monkeypatch.setattr("wemeet.sw.server.stream.run", slow_run)
     monkeypatch.setattr(server.runtime, "prepare", lambda: None)
