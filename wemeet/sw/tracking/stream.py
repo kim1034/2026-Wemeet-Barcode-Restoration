@@ -36,6 +36,9 @@ class _Track:
     detections: int = 0
     history: list = field(default_factory=list)
     confirmed: dict = field(default_factory=dict)  # 확정한 번호 → 이벤트 순번
+    # 확정이 아닌 결과(미판독 등)에 보여 줄 대표 사진: (순위, 프레임 ID, 판독 결과). 구간당 한 장만
+    # 메모리에 두고 구간이 끝나면 버린다.
+    best: tuple | None = None
 
 
 class StreamTracker:
@@ -85,6 +88,11 @@ class StreamTracker:
             _Read(frame.frame_id, frame.offset_ms, text, result.decode.failure_reason)
         )
         del track.history[:-_MAX_HISTORY]
+        if not track.confirmed:
+            # 번호가 읽힌 사진을 먼저, 그다음 검출 신뢰도가 높은 사진을 대표로 둔다 (같으면 최신).
+            rank = (text is not None, detected.confidence)
+            if track.best is None or rank >= track.best[0]:
+                track.best = (rank, frame.frame_id, result)
         if text is None or text in track.confirmed:
             return events
         same = [read for read in track.history if read.text == text]
@@ -127,7 +135,11 @@ class StreamTracker:
             else:
                 status, text = "provisional", reads[0].text
             matching = [read for read in reads if text is not None and read.text == text]
-            events.append(self._event(track, status, text, matching, early=False, passage=passage))
+            event = self._event(track, status, text, matching, early=False, passage=passage)
+            if track.best is not None:
+                # "_result" 는 서버가 이미지로 바꾸고 지운다 (JSON 으로 그대로 나가지 않는다).
+                _, event["representative_frame_id"], event["_result"] = track.best
+            events.append(event)
         return events
 
     def _event(self, track: _Track, status, text, matching, *, early, passage=None) -> dict:

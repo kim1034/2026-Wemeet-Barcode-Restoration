@@ -87,6 +87,12 @@ def test_stopping_flushes_an_unreadable_passage(client, monkeypatch):
         assert post(client, *frame(i, level=100 + i * 4)).json()["events"] == []
     body = client.delete("/api/stream/cam-1").json()
     assert [(e["status"], e["track_end_reason"]) for e in body["events"]] == [("unread", "stopped")]
+    # 미판독에도 대표 사진(전체 프레임)을 붙인다 — 없으면 화면이 깨진 이미지를 띄운다
+    [unread] = body["events"]
+    assert unread["primary_image"].startswith("data:image/jpeg")
+    assert unread["result"]["images"]["original"].startswith("data:image/jpeg")
+    assert unread["representative_frame_id"] == unread["primary_frame_id"]
+    assert "_result" not in unread
     # 닫힌 스트림의 늦은 프레임은 거부한다
     assert post(client, *frame(5)).status_code == 409
 

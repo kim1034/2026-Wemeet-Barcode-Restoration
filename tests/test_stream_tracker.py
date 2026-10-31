@@ -103,6 +103,30 @@ def test_a_second_number_in_the_same_track_is_confirmed_separately():
     assert events[0]["event_id"] < events[1]["event_id"]
 
 
+def test_results_that_are_not_confirmed_carry_a_representative_frame():
+    def observe(tracker, t, x, text, confidence):
+        found = DetectedBarcode(CROP, 0.0, confidence, (x, 500, 200, 80))
+        failure = None if text else "decode_failed"
+        decoded = PipelineResult(IMAGE, found, None, DecodeResult(text, 0, failure_reason=failure))
+        return tracker.observe(Frame(f"f-{t}", float(t), IMAGE), decoded)
+
+    def run(steps):
+        tracker, events = StreamTracker(), []
+        for i, (text, confidence) in enumerate(steps):
+            events += observe(tracker, i * 125, 100 + i * 40, text, confidence)
+        return events + tracker.close(10_000)
+
+    # 못 읽은 구간은 검출 신뢰도가 가장 높았던 사진
+    [unread] = run([(None, 0.5), (None, 0.9), (None, 0.7)])
+    assert unread["status"] == "unread" and unread["representative_frame_id"] == "f-125"
+    assert unread["_result"].detected.confidence == 0.9
+    # 한 번이라도 읽힌 사진이 있으면 신뢰도가 낮아도 그 사진
+    [provisional] = run([(None, 0.95), ("111", 0.4), (None, 0.9)])
+    assert (
+        provisional["status"] == "provisional" and provisional["representative_frame_id"] == "f-125"
+    )
+
+
 def test_close_reports_an_open_unreadable_track():
     tracker = StreamTracker()
     feed(tracker, moving(5))

@@ -586,8 +586,14 @@ import { resultPresentation } from "/assets/result-state.mjs";
       $("burstSummary").textContent = burstSummary(body);
       $("representativeCaption").textContent = "최종 대표 · " + (body.representative_frame_id || "없음");
       $("primaryCaption").textContent = "최초 선택 · " + (body.primary_frame_id || "없음");
-      if (real.images.original) $("selectedFrame").src = real.images.original; else $("selectedFrame").removeAttribute("src");
-      if (body.primary_image) $("firstFrame").src = body.primary_image; else $("firstFrame").removeAttribute("src");
+      // 사진이 없으면 칸을 숨긴다 — src 없는 img 는 브라우저가 깨진 이미지 표시를 띄운다.
+      const showFrame = (id, src) => {
+        const img = $(id);
+        if (src) img.src = src; else img.removeAttribute("src");
+        img.hidden = !src;
+      };
+      showFrame("selectedFrame", real.images.original);
+      showFrame("firstFrame", body.primary_image);
       $("burstTiming").textContent = `${body.track_id ? (body.early ? "통과 중 성공 · 추적 " + Math.round(body.window_ms || 0) + "ms 시점" : "물품 구간 " + Math.round(body.window_ms || 0) + "ms · " + (trackEndLabels[body.track_end_reason] || "구간 종료")) : "수집 1초"} · 선택 ${Math.round(body.timing_ms.selection)}ms · 판독 ${Math.round(body.timing_ms.pipeline)}ms · 최초 수집부터 응답 ${Math.round(performance.now() - batch.capturedAt)}ms · ${completionLabels[body.completion_reason] || body.completion_reason}`;
       $("attemptList").replaceChildren(...body.attempts.map((attempt) => {
         const li = document.createElement("li");

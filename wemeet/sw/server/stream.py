@@ -82,7 +82,23 @@ class StreamController:
             return []
         with session.lock:
             end = (session.last_captured_ms or 0.0) + 1.0
-            return session.tracker.close(end)
+            return [self.attach_images(event) for event in session.tracker.close(end)]
+
+    def attach_images(self, event, current=None, frame_id=None):
+        """확정은 지금 프레임의 사진을, 그 밖(미판독·확정 부족·충돌)은 구간 대표 사진을 붙인다.
+
+        사진이 없으면 화면이 깨진 이미지를 띄우므로, 결과마다 원본 프레임을 항상 함께 보낸다.
+        """
+        stored = event.pop("_result", None)
+        result = current if event["status"] == "confirmed" else stored
+        if result is None:
+            return event
+        if event["status"] == "confirmed":
+            event["representative_frame_id"] = frame_id
+        event["result"] = self.to_response(result)
+        event["primary_frame_id"] = event["representative_frame_id"]
+        event["primary_image"] = self.data_uri(result.original_bgr_uint8, ".jpg")
+        return event
 
     async def ingest(self, request) -> JSONResponse:
         received = time.perf_counter()
@@ -113,12 +129,7 @@ class StreamController:
                     frame = Frame(info.frame_id, manifest.captured_at_ms, image)
                     events = session.tracker.observe(frame, result)
                     for event in events:
-                        if event["status"] == "confirmed":
-                            # 확정은 지금 프레임에서 일어나므로 이 프레임의 판독 결과를 붙인다.
-                            event["result"] = self.to_response(result)
-                            event["primary_frame_id"] = info.frame_id
-                            event["representative_frame_id"] = info.frame_id
-                            event["primary_image"] = self.data_uri(image, ".jpg")
+                        self.attach_images(event, result, info.frame_id)
                         event["timing_ms"] = {"selection": 0.0, "pipeline": pipeline_ms}
                     detected = result.detected
                     return (
