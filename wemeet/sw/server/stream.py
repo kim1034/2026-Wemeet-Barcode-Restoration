@@ -87,7 +87,7 @@ class StreamController:
     def attach_images(self, event, current=None, frame_id=None):
         """확정은 지금 프레임의 사진을, 그 밖(미판독·확정 부족·충돌)은 구간 대표 사진을 붙인다.
 
-        사진이 없으면 화면이 깨진 이미지를 띄우므로, 결과마다 원본 프레임을 항상 함께 보낸다.
+        사진이 없으면 화면이 깨진 이미지를 띄우므로, 결과마다 원본 프레임을 함께 보낸다.
         """
         stored = event.pop("_result", None)
         result = current if event["status"] == "confirmed" else stored
@@ -95,9 +95,10 @@ class StreamController:
             return event
         if event["status"] == "confirmed":
             event["representative_frame_id"] = frame_id
-        event["result"] = self.to_response(result)
+        # 응답이 크면(PNG 크롭·보정 약 1.1MB) 그동안 다음 프레임이 밀린다 — JPEG 로 보낸다.
+        # 원본은 result 안에 이미 있어 primary_image 로 한 번 더 보내지 않는다 (화면이 그걸 쓴다).
+        event["result"] = self.to_response(result, image_fmt=".jpg")
         event["primary_frame_id"] = event["representative_frame_id"]
-        event["primary_image"] = self.data_uri(result.original_bgr_uint8, ".jpg")
         return event
 
     async def ingest(self, request) -> JSONResponse:

@@ -71,9 +71,11 @@ def test_second_matching_frame_returns_the_confirmed_result_in_its_own_response(
     second = post(client, *frame(2, level=104)).json()
     [event] = second["events"]
     assert event["status"] == "confirmed" and event["text"] == "00123" and event["early"]
-    assert event["result"]["text"] == "00123" and event["primary_image"].startswith(
-        "data:image/jpeg"
-    )
+    assert event["result"]["text"] == "00123"
+    images = event["result"]["images"]
+    # 매 프레임 응답은 작아야 한다: 크롭도 JPEG, 원본은 result 안에 한 번만
+    assert images["original"].startswith("data:image/jpeg")
+    assert images["crop"].startswith("data:image/jpeg") and "primary_image" not in event
     assert set(event["timing_ms"]) >= {"pipeline", "server"}
     assert second["active_resolved"] and second["event_counts"] == {"confirmed": 1}
     # 같은 물품의 다음 프레임은 결과를 다시 내지 않는다
@@ -89,7 +91,6 @@ def test_stopping_flushes_an_unreadable_passage(client, monkeypatch):
     assert [(e["status"], e["track_end_reason"]) for e in body["events"]] == [("unread", "stopped")]
     # 미판독에도 대표 사진(전체 프레임)을 붙인다 — 없으면 화면이 깨진 이미지를 띄운다
     [unread] = body["events"]
-    assert unread["primary_image"].startswith("data:image/jpeg")
     assert unread["result"]["images"]["original"].startswith("data:image/jpeg")
     assert unread["representative_frame_id"] == unread["primary_frame_id"]
     assert "_result" not in unread

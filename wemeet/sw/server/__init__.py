@@ -103,8 +103,12 @@ def _grid_shape(dst: np.ndarray) -> list[int] | None:
     return [n_x, n_y] if n_x * n_y == len(dst) else None
 
 
-def to_response(result: PipelineResult) -> dict:
-    """PipelineResult 를 화면이 쓰는 JSON 으로 바꾼다. 형식은 web/index.html 이 읽는다."""
+def to_response(result: PipelineResult, image_fmt: str = ".png") -> dict:
+    """PipelineResult 를 화면이 쓰는 JSON 으로 바꾼다. 형식은 web/index.html 이 읽는다.
+
+    `image_fmt` 는 크롭·보정 이미지 형식이다. 사진 한 장 판독은 무손실 PNG 그대로 두고,
+    매 프레임 판독(stream.py)은 응답이 작아야 다음 프레임이 밀리지 않아 JPEG 를 쓴다.
+    """
     decode = result.decode
     detected = result.detected
     rectified = result.rectified
@@ -139,7 +143,7 @@ def to_response(result: PipelineResult) -> dict:
             "angle_deg_ccw": round(detected.angle_deg_ccw, 1),
             "crop_size": [cw, ch],
         }
-        body["images"]["crop"] = _data_uri(detected.crop_bgr_uint8)
+        body["images"]["crop"] = _data_uri(detected.crop_bgr_uint8, image_fmt)
 
         if field is not None:
             rh, rw = rectified.image_gray_uint8.shape
@@ -152,7 +156,7 @@ def to_response(result: PipelineResult) -> dict:
                 "control_points_src_norm": _points(field.control_points_src_norm),
                 "control_points_dst_norm": _points(field.control_points_dst_norm),
             }
-            body["images"]["rectified"] = _data_uri(rectified.image_gray_uint8)
+            body["images"]["rectified"] = _data_uri(rectified.image_gray_uint8, image_fmt)
 
     return body
 

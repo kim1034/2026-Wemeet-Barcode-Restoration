@@ -593,7 +593,8 @@ import { resultPresentation } from "/assets/result-state.mjs";
         img.hidden = !src;
       };
       showFrame("selectedFrame", real.images.original);
-      showFrame("firstFrame", body.primary_image);
+      // 판독 먼저는 원본을 한 번만 보낸다(result 안). 따로 고른 사진이 없으면 그 원본을 쓴다.
+      showFrame("firstFrame", body.primary_image || real.images.original);
       $("burstTiming").textContent = `${body.track_id ? (body.early ? "통과 중 성공 · 추적 " + Math.round(body.window_ms || 0) + "ms 시점" : "물품 구간 " + Math.round(body.window_ms || 0) + "ms · " + (trackEndLabels[body.track_end_reason] || "구간 종료")) : "수집 1초"} · 선택 ${Math.round(body.timing_ms.selection)}ms · 판독 ${Math.round(body.timing_ms.pipeline)}ms · 최초 수집부터 응답 ${Math.round(performance.now() - batch.capturedAt)}ms · ${completionLabels[body.completion_reason] || body.completion_reason}`;
       $("attemptList").replaceChildren(...body.attempts.map((attempt) => {
         const li = document.createElement("li");
