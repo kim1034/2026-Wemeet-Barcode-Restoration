@@ -10,8 +10,9 @@ CLAHE를 전제하지 않으므로, 크롭 자체를 CLAHE 처리된 픽셀로 �
 대체하지 않는다 — 저대비·저조도 상황에서 검출기가 바코드 경계를 더 잘 보도록
 돕는 보완 수단일 뿐이다.
 
-`docs/experiments/2026-09-22-stage1-detection`의 측정치(mAP50 0.973 등)는
-CLAHE 적용 전 원본 이미지 기준이다. CLAHE를 넣은 뒤의 재측정은 아직 없다.
+재측정 결과 탐지가 나아지지 않아 `detect()` 기본값에서는 쓰지 않는다
+(`docs/experiments/2026-11-02-detection-clahe-off`). 원본으로 학습한 모델에
+추론 때만 거는 것이라, 쓰려면 CLAHE 를 건 데이터로 다시 학습하는 게 먼저다.
 """
 
 from __future__ import annotations

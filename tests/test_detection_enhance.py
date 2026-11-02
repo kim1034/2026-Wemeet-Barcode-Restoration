@@ -2,7 +2,7 @@
 
 `enhance_for_detection` 자체는 가중치 없이 도는 순수 함수 테스트다.
 `detect()` 쪽은 실제 YOLO 모델 대신 `load_model`을 가짜로 바꿔치기해서,
-"모델 입력에는 CLAHE가 적용되지만 실제 크롭은 원본에서 뜬다"는 계약만
+"기본은 CLAHE 를 안 쓰고, use_clahe=True 면 모델 입력에만 적용되며 크롭은 원본에서 뜬다"는 계약만
 검증한다 — 모델을 직접 부르는 테스트를 넣으면 CI에서 가중치가 없어 깨진다
 (`tests/test_detection.py` 와 같은 이유).
 """
@@ -83,7 +83,7 @@ class _FakeModel:
         return self._results
 
 
-def test_detect_applies_clahe_to_model_input_by_default(monkeypatch):
+def test_detect_use_clahe_true_applies_enhancement(monkeypatch):
     fake_model = _FakeModel([_NoObb()])  # 미검출로 일찍 반환시켜 크롭 경로는 안 탄다
     monkeypatch.setattr(detection, "load_model", lambda: fake_model)
 
@@ -93,23 +93,23 @@ def test_detect_applies_clahe_to_model_input_by_default(monkeypatch):
     monkeypatch.setattr(detection, "enhance_for_detection", _fake_enhance)
 
     original = np.zeros((10, 10, 3), dtype=np.uint8)
-    detection.detect(original)
+    detection.detect(original, use_clahe=True)
 
     assert fake_model.received_input is not None
     assert np.all(fake_model.received_input == 255)  # 가짜 enhance 결과가 모델에 들어갔다
 
 
-def test_detect_use_clahe_false_skips_enhancement(monkeypatch):
+def test_detect_skips_enhancement_by_default(monkeypatch):
     fake_model = _FakeModel([_NoObb()])
     monkeypatch.setattr(detection, "load_model", lambda: fake_model)
 
     def _must_not_be_called(*_args: object, **_kwargs: object) -> np.ndarray:
-        raise AssertionError("use_clahe=False면 enhance_for_detection이 호출되면 안 된다")
+        raise AssertionError("기본값이면 enhance_for_detection이 호출되면 안 된다")
 
     monkeypatch.setattr(detection, "enhance_for_detection", _must_not_be_called)
 
     original = np.zeros((10, 10, 3), dtype=np.uint8)
-    detection.detect(original, use_clahe=False)
+    detection.detect(original)
 
     assert fake_model.received_input is not None
     assert np.array_equal(fake_model.received_input, original)
@@ -126,7 +126,7 @@ def test_detect_crop_comes_from_original_not_enhanced_image(monkeypatch):
         detection, "enhance_for_detection", lambda image, *a, **k: np.full_like(image, 255)
     )
 
-    result = detection.detect(original)
+    result = detection.detect(original, use_clahe=True)
 
     assert result is not None
     assert np.all(fake_model.received_input == 255)  # 모델 입력은 enhance된 것

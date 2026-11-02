@@ -1,0 +1,25 @@
+Ultralytics 8.4.137  Python-3.12.10 torch-2.13.0+cu126 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+YOLO11n-obb summary (fused): 109 layers, 2,653,918 parameters, 0 gradients, 6.6 GFLOPs
+val: Fast image access  (ping: 0.00.0 ms, read: 1375.4618.7 MB/s, size: 363.3 KB)
+                   all       2000       2000      0.933      0.944      0.972       0.94
+Speed: 1.3ms preprocess, 15.8ms inference, 0.0ms loss, 6.2ms postprocess per image
+Ultralytics 8.4.137  Python-3.12.10 torch-2.13.0+cu126 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+val: Fast image access  (ping: 0.00.0 ms, read: 1353.0118.9 MB/s, size: 576.6 KB)
+                   all       2000       2000      0.957      0.855       0.91      0.865
+Speed: 1.3ms preprocess, 13.2ms inference, 0.0ms loss, 5.4ms postprocess per image
+imgsz=1280          mAP50   mAP50-95  P       R
+  CLAHE off        0.9716  0.9398    0.9328  0.9443
+  CLAHE on         0.9098  0.8648    0.9572  0.8550
+  on - off         -0.0618  -0.0750   +0.0243 -0.0893
+Ultralytics 8.4.137  Python-3.12.10 torch-2.13.0+cu126 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+val: Fast image access  (ping: 0.00.0 ms, read: 1244.1180.8 MB/s, size: 398.6 KB)
+                   all       2000       2000      0.896      0.897      0.955      0.876
+Speed: 1.7ms preprocess, 19.6ms inference, 0.0ms loss, 5.8ms postprocess per image
+Ultralytics 8.4.137  Python-3.12.10 torch-2.13.0+cu126 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+val: Fast image access  (ping: 0.00.0 ms, read: 1054.5181.1 MB/s, size: 494.7 KB)
+                   all       2000       2000      0.929      0.828      0.887      0.789
+Speed: 1.9ms preprocess, 19.0ms inference, 0.0ms loss, 6.2ms postprocess per image
+imgsz=1920          mAP50   mAP50-95  P       R
+  CLAHE off        0.9548  0.8756    0.8957  0.8974
+  CLAHE on         0.8866  0.7888    0.9292  0.8275
+  on - off         -0.0682  -0.0867   +0.0335 -0.0699
