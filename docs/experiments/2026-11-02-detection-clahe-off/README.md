@@ -13,8 +13,12 @@
 
 CLAHE(`wemeet/ai/detection/enhance.py`) 는 저대비 바코드를 검출기가 더 잘 보라고
 2026-09-22 에 들어왔고 기본값이 `True` 였다. 그런데 이 모델은 **원본 이미지로
-학습**했다 — CLAHE 는 추론 때만 걸린다. 들어온 뒤 재측정은 없었다
-(`enhance.py` docstring 에도 "재측정은 아직 없다" 고 적혀 있었다).
+학습**했다 — CLAHE 는 추론 때만 걸린다.
+
+같은 방향의 측정이 이미 한 번 있었다. [`2026-09-30-e2e-benchmark-v2`](../2026-09-30-e2e-benchmark-v2/README.md)
+에서 입력 960 기준 CLAHE on 66 / off 67 로 효과가 없었고, "끌지는 GPU 시간과 같이
+판단" 하기로 남겨뒀다. 이 기록은 그 판단에 필요한 두 가지 — 현재 입력 크기(1280·1920)
+에서의 탐지와 CLAHE 자체 시간 — 를 잰다.
 
 ## 결과 1 — benchmark-v2 탐지 성공 (100장, 1920×1080)
 
@@ -65,7 +69,17 @@ CPU 전처리라 GPU 가 아무리 빨라도 줄지 않는다. 같은 장비에�
 
 합성 val 은 떨어지고 benchmark-v2 는 그대로다. benchmark-v2 장면은 대비가 이미 충분하고
 배경이 단순해서 CLAHE 를 걸어도 확신도가 conf 0.25 를 넘는 쪽에 남는 것으로 보인다.
-어느 쪽이든 **CLAHE 로 좋아진 데이터셋은 없다.**
+어느 쪽이든 **CLAHE 로 좋아진 데이터셋은 없다** — 9/30 기록(66 vs 67)까지 세 번 모두 그렇다.
+
+## 다른 파트에 미치는 영향
+
+`detect()` 기본값이 바뀌므로 기본값으로 부르는 쪽은 모두 영향을 받는다. git 충돌은 없다.
+
+- **Stage 2 [`2026-10-27-mobilenet-followup`](../2026-10-27-mobilenet-followup/README.md)**
+  — "탐지 전 CLAHE 공통 적용" 조건으로 쟀다. 그 운영 후보 수치(예: 1280 · 81/0/19)는
+  CLAHE on 기준이므로, 이후 비교할 때 탐지 조건이 다르다는 점을 감안한다.
+- **SW `sw/decode-first-stream` · `sw/barcode-track-capture`** — `detect()` 를 기본값으로
+  부르므로 머지되면 CLAHE 가 꺼진다. 예전 동작이 필요하면 `detect(image, use_clahe=True)`.
 
 ## 한계
 
