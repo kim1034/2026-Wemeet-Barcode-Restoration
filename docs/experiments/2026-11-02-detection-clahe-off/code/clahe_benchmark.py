@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 import wemeet.ai.detection as detection
 from wemeet.ai.detection.enhance import enhance_for_detection
@@ -46,7 +47,13 @@ def main() -> None:
     records = [
         json.loads(line) for line in open(args.data_root / "manifest.jsonl", encoding="utf-8")
     ][1:]
-    images = [cv2.imread(str(args.data_root / r["file"])) for r in records]
+    # cv2.imread 는 Windows 에서 비ASCII 경로를 못 읽는다
+    images = [
+        cv2.imdecode(np.fromfile(str(args.data_root / r["file"]), np.uint8), cv2.IMREAD_COLOR)
+        for r in records
+    ]
+    if any(image is None for image in images):
+        raise SystemExit(f"이미지를 읽지 못했다: {args.data_root}")
     buckets = [r.get("bucket", "all") for r in records]
     names = sorted(set(buckets))
 
