@@ -23,6 +23,8 @@
 때 처음 필요해집니다 (yolo_obb.py 의 라이선스 주석 참고).
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from wemeet.ai.detection.enhance import (
@@ -30,14 +32,84 @@ from wemeet.ai.detection.enhance import (
     DEFAULT_TILE_GRID_SIZE,
     enhance_for_detection,
 )
-from wemeet.ai.detection.geometry import CROP_PAD, crop_upright, decide_ratio, fit_ratio, upright
+from wemeet.ai.detection.geometry import (
+    CROP_PAD,
+    crop_upright,
+    decide_ratio,
+    fit_ratio,
+    obb_corners,
+    upright,
+)
 from wemeet.ai.detection.yolo_obb import DEFAULT_IMGSZ, load_model
 from wemeet.schemas import DetectedBarcode
 
-__all__ = ["detect"]
+__all__ = ["ObbDetection", "detect", "detect_obb"]
 
 #: 이 값 미만은 바코드로 치지 않는다.
 CONF_THRESHOLD = 0.25
+
+
+@dataclass
+class ObbDetection:
+    """`detect_obb()` 반환값 — 원본 이미지 좌표의 회전 박스.
+
+    `wemeet.schemas` 의 공용 계약이 아니다 (`best_frame.BestFrameResult` 와 같은
+    이유). 화면에 박스를 그리거나, 원본 좌표 박스가 필요한 쪽이 쓴다 — 축 정렬
+    박스가 필요하면 `corners_px` 의 min/max 를 쓰면 된다.
+
+    (cx, cy, w, h, angle_rad) 는 `upright()` 를 거친 값이라 항상 w >= h 다.
+    """
+
+    corners_px: np.ndarray  # (4, 2) float32, 원본 이미지 픽셀 좌표
+    cx: float
+    cy: float
+    w: float
+    h: float
+    angle_rad: float
+    ratio: float  # 판정한 규격 비율 (RATIO_5X3 또는 RATIO_6X4)
+    confidence: float  # 0.0 ~ 1.0
+
+
+def detect_obb(
+    image_bgr: np.ndarray,
+    use_clahe: bool = False,
+    clahe_clip_limit: float = DEFAULT_CLIP_LIMIT,
+    clahe_tile_grid_size: tuple[int, int] = DEFAULT_TILE_GRID_SIZE,
+) -> ObbDetection | None:
+    """사진에서 가장 확신도가 높은 바코드 박스 하나를 찾는다. 크롭은 하지 않는다.
+
+    바코드가 없거나 입력이 비정상이면 None 을 반환한다 (예외를 던지지 않는다).
+    CLAHE 인자는 `detect()` 와 같다.
+    """
+    if image_bgr is None or image_bgr.ndim != 3 or image_bgr.size == 0:
+        return None
+
+    detection_input = (
+        enhance_for_detection(image_bgr, clahe_clip_limit, clahe_tile_grid_size)
+        if use_clahe
+        else image_bgr
+    )
+    result = load_model().predict(
+        detection_input, imgsz=DEFAULT_IMGSZ, conf=CONF_THRESHOLD, verbose=False
+    )[0]
+    obb = result.obb
+    if obb is None or len(obb) == 0:
+        return None
+
+    best = int(obb.conf.argmax())
+    cx, cy, w, h, angle_rad = (float(v) for v in obb.xywhr[best].cpu().numpy())
+    cx, cy, w, h, angle_rad = upright(cx, cy, w, h, angle_rad)
+    ratio, _ = decide_ratio(w, h)
+    return ObbDetection(
+        corners_px=obb_corners(cx, cy, w, h, angle_rad),
+        cx=cx,
+        cy=cy,
+        w=w,
+        h=h,
+        angle_rad=angle_rad,
+        ratio=ratio,
+        confidence=float(obb.conf[best]),
+    )
 
 
 def detect(
@@ -61,34 +133,19 @@ def detect(
     `image_bgr`에서 뜬다** — CLAHE 처리된 픽셀을 크롭으로 내보내면 Stage 2가
     학습한 도메인과 어긋난다.
     """
-    if image_bgr is None or image_bgr.ndim != 3 or image_bgr.size == 0:
+    found = detect_obb(image_bgr, use_clahe, clahe_clip_limit, clahe_tile_grid_size)
+    if found is None:
         return None
 
-    detection_input = (
-        enhance_for_detection(image_bgr, clahe_clip_limit, clahe_tile_grid_size)
-        if use_clahe
-        else image_bgr
+    w, h = fit_ratio(found.w, found.h, found.ratio)
+    crop, angle_deg_ccw = crop_upright(
+        image_bgr, found.cx, found.cy, w, h, found.angle_rad, pad=CROP_PAD
     )
-    result = load_model().predict(
-        detection_input, imgsz=DEFAULT_IMGSZ, conf=CONF_THRESHOLD, verbose=False
-    )[0]
-    obb = result.obb
-    if obb is None or len(obb) == 0:
-        return None
-
-    best = int(obb.conf.argmax())
-    cx, cy, w, h, angle_rad = (float(v) for v in obb.xywhr[best].cpu().numpy())
-    cx, cy, w, h, angle_rad = upright(cx, cy, w, h, angle_rad)
-
-    ratio, _ = decide_ratio(w, h)
-    w, h = fit_ratio(w, h, ratio)
-
-    crop, angle_deg_ccw = crop_upright(image_bgr, cx, cy, w, h, angle_rad, pad=CROP_PAD)
     if crop.size == 0:
         return None
 
     return DetectedBarcode(
         crop_bgr_uint8=np.ascontiguousarray(crop, dtype=np.uint8),
         angle_deg_ccw=angle_deg_ccw,
-        confidence=float(obb.conf[best]),
+        confidence=found.confidence,
     )

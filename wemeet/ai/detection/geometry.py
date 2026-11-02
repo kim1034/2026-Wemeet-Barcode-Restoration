@@ -25,6 +25,27 @@ RATIO_THRESHOLD = (RATIO_5X3 + RATIO_6X4) / 2
 CROP_PAD = 0.10
 
 
+def obb_corners(cx: float, cy: float, w: float, h: float, angle_rad: float) -> np.ndarray:
+    """회전 박스 → 원본 이미지 픽셀 좌표의 네 꼭짓점, shape (4, 2) float32.
+
+    ultralytics `xywhr2xyxyxyxy` 와 같은 순서다 (w 축 +, h 축 + 에서 시작해
+    한 바퀴). 화면에 박스를 그리거나 SW 쪽이 원본 좌표 박스를 만들 때 쓴다.
+    """
+    cos, sin = np.cos(angle_rad), np.sin(angle_rad)
+    half_w = np.array([w / 2 * cos, w / 2 * sin])
+    half_h = np.array([-h / 2 * sin, h / 2 * cos])
+    center = np.array([cx, cy])
+    return np.array(
+        [
+            center + half_w + half_h,
+            center + half_w - half_h,
+            center - half_w - half_h,
+            center - half_w + half_h,
+        ],
+        dtype=np.float32,
+    )
+
+
 def upright(cx: float, cy: float, w: float, h: float, angle_rad: float) -> tuple[float, ...]:
     """긴 변이 가로가 되도록 (w, h, angle) 을 정규화한다.
 
