@@ -38,13 +38,23 @@ _CLAHE_TILE_GRID = (4, 4)
 #   · Linux(CI): 시스템에 libzbar0 가 없으면 ImportError
 #   · Windows: 휠에 DLL 은 번들돼 있지만 VC++ 2013 런타임(msvcr120.dll)이 없으면
 #     FileNotFoundError, 32/64비트가 섞이면 OSError. 둘 다 OSError 계열이다.
+#
+# 두 판독기 모두 기본은 QR·Code39 등 모든 종류를 시도한다. 우리가 읽는 두 종류로 좁히면
+# 결과는 같고 빨라진다 — 벤치마크 v1·v2 200장 + 실제 웹캠 사진 6장에서 판독 결과가 한 장도
+# 바뀌지 않았고(정답 180·오독 3 그대로), 못 읽은 프레임의 판독 시간이 약 1/3 줄었다
+# (로컬 CPU, 스트림 325→217ms). 라벨에 같이 붙은 QR 등을 번호로 읽는 일도 막는다.
 try:
+    from pyzbar.pyzbar import ZBarSymbol
     from pyzbar.pyzbar import decode as _pyzbar_decode
+
+    _PYZBAR_SYMBOLS = [ZBarSymbol.CODE128, ZBarSymbol.EAN13]
 except (ImportError, OSError):
     _pyzbar_decode = None
 
 try:
     import zxingcpp as _zxingcpp
+
+    _ZXING_FORMATS = (_zxingcpp.BarcodeFormat.Code128, _zxingcpp.BarcodeFormat.EAN13)
 except ImportError:
     _zxingcpp = None
 
@@ -53,7 +63,7 @@ def _decode_with_pyzbar(gray_image: Image.Image) -> str | None:
     if _pyzbar_decode is None:
         return None
     try:
-        found = _pyzbar_decode(gray_image)
+        found = _pyzbar_decode(gray_image, symbols=_PYZBAR_SYMBOLS)
         if not found:
             return None
         return found[0].data.decode()
@@ -65,7 +75,7 @@ def _decode_with_zxingcpp(gray_image: Image.Image) -> str | None:
     if _zxingcpp is None:
         return None
     try:
-        for result in _zxingcpp.read_barcodes(gray_image):
+        for result in _zxingcpp.read_barcodes(gray_image, formats=_ZXING_FORMATS):
             if result.valid and result.text:
                 return result.text
         return None

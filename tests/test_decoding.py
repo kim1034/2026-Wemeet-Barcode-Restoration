@@ -14,7 +14,7 @@ from collections.abc import Callable
 import cv2
 import numpy as np
 import pytest
-from barcode import Code128
+from barcode import EAN13, Code39, Code128
 from barcode.writer import ImageWriter
 from PIL import Image
 
@@ -38,6 +38,33 @@ def test_decode_succeeds_on_clean_code128(clean_barcode_bgr: np.ndarray) -> None
 
     assert result.text == "WEMEET0001"
     assert result.failure_reason is None
+
+
+def _render(symbology, text: str) -> np.ndarray:
+    buffer = io.BytesIO()
+    symbology(text, writer=ImageWriter()).write(buffer, options={"write_text": False})
+    buffer.seek(0)
+    return np.asarray(Image.open(buffer).convert("L"))
+
+
+def test_decode_reads_ean13() -> None:
+    result = decode(_rectified_from_gray(_render(EAN13, "880104301522")))
+
+    assert result.text == "8801043015226"  # 마지막 자리는 체크 숫자
+
+
+def test_decode_ignores_symbologies_we_do_not_use() -> None:
+    """판독기를 Code128·EAN-13 으로 좁혔다 — 라벨의 다른 바코드를 번호로 읽지 않는다."""
+    import wemeet.sw.decoding as decoding
+
+    code39 = _render(Code39, "WEMEET1")
+    # 전제: 좁히기 전 판독기는 이 이미지를 읽는다 (그래야 아래 단언이 의미가 있다)
+    assert decoding._zxingcpp.read_barcodes(code39)
+
+    result = decode(_rectified_from_gray(code39))
+
+    assert result.text is None
+    assert result.failure_reason == "decode_failed"
 
 
 @pytest.mark.parametrize(
