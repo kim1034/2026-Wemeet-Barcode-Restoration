@@ -12,6 +12,7 @@
 | [2026-09-09-control-points](2026-09-09-control-points/README.md) | 제어점 격자 개수 확정 — `6×3` → **`16×3`**. 표본 정의를 `n_x` 에서 떼어내 순환을 끊고, 좌표 오차 σ 를 축으로 넣어 상한 곡선을 처음 쟀다. 최적 격자가 σ 의 함수임을 보이고 최대 후회로 확정. `n_y` 도 σ 에 대해 뒤집힌다 (`16×7` 은 σ=0 에서 1위, σ=4 에서 14.3%). 확정값은 3단계 20ms 예산을 17% 넘는다 |
 | [2026-09-15-stage2-backbone](2026-09-15-stage2-backbone/README.md) | Stage 2 v1 기준 백본 `ResNet18-C3`와 `MobileNetV3-Small`·`EfficientNet-B0` 3-way 비교 설계. 같은 spatial Geometry Head·`16×3` 제어점·TPS 경로에서 구제율, pixel error, latency, model cost를 비교한다 |
 | [2026-10-02-detection-imgsz-1920](2026-10-02-detection-imgsz-1920/README.md) | Stage 1 `DEFAULT_IMGSZ` 960→1920 — 저해상도 막대(1.6~2.2px)가 960 축소에서 1px 밑으로 뭉개져 탐지가 실패함을 실측(69→99/100), 전체 판독 52→89/100. 수용장 미스매치 우려 검토, 속도(CPU) 트레이드오프, `eval/benchmark-v2` 기록(1280~1600 제안)과의 차이점 정리 |
+| [2026-11-04-detection-v4-synthetic](2026-11-04-detection-v4-synthetic/README.md) | Stage 1 재학습 — 합성 생성기 정답 박스 버그(`foot_pts[::3]`, 막대 높이 절반 밀림)를 고친 1920×1080 데이터로 `v5_n` 학습. 정답을 고친 v2 val 에서 박스 위치 성공률 99.9% (v2 79.7%). **v2 생성기·배포 v2 가중치에도 같은 버그**(반사광 val 200/200 밀림), 학습 전 데이터 검사(`qa_dataset.py`), MIG 에서 AutoBatch 실패 |
 
 ## 규칙
 
