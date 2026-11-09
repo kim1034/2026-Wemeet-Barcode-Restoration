@@ -1,0 +1,89 @@
+Ultralytics 8.4.152  Python-3.12.10 torch-2.6.0+cu124 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+YOLO11n-obb summary (fused): 109 layers, 2,653,918 parameters, 0 gradients, 6.6 GFLOPs
+val: Fast image access  (ping: 0.10.0 ms, read: 242.574.0 MB/s, size: 241.3 KB)
+
+
+                   all       2000       2000      0.789      0.806      0.777      0.713
+Speed: 21.9ms preprocess, 27.3ms inference, 0.0ms loss, 10.8ms postprocess per image
+v2 {
+ "val_1920": {
+  "precision": 0.7889581408982472,
+  "recall": 0.8056244848586462,
+  "mAP50": 0.7768789383275729,
+  "mAP50-95": 0.7127418767357813
+ },
+ "iou_1920": {
+  "images": 2000,
+  "missed": 15,
+  "iou_ge_0.5": 0.7965,
+  "iou_ge_0.75": 0.7415,
+  "iou_median": 0.9513
+ },
+ "bench_1920": {
+  "high": "31/32",
+  "low": "34/34",
+  "mid": "34/34",
+  "all": "99/100",
+  "p50_ms": 56.1
+ }
+}
+Ultralytics 8.4.152  Python-3.12.10 torch-2.6.0+cu124 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+YOLO11n-obb summary (fused): 109 layers, 2,653,918 parameters, 0 gradients, 6.6 GFLOPs
+val: Fast image access  (ping: 0.10.1 ms, read: 275.743.1 MB/s, size: 229.5 KB)
+
+val: Scanning dataset_720_fixedval\labels\val.cache... 2000 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 2000/2000  0.0s
+
+                   all       2000       2000      0.999          1      0.995      0.986
+Speed: 15.3ms preprocess, 26.9ms inference, 0.0ms loss, 10.9ms postprocess per image
+v5_n {
+ "val_1920": {
+  "precision": 0.9989426029197263,
+  "recall": 1.0,
+  "mAP50": 0.9949949974987494,
+  "mAP50-95": 0.9862030758309104
+ },
+ "iou_1920": {
+  "images": 2000,
+  "missed": 1,
+  "iou_ge_0.5": 0.999,
+  "iou_ge_0.75": 0.991,
+  "iou_median": 0.9821
+ },
+ "bench_1920": {
+  "high": "31/32",
+  "low": "34/34",
+  "mid": "34/34",
+  "all": "99/100",
+  "p50_ms": 31.6
+ }
+}
+Ultralytics 8.4.152  Python-3.12.10 torch-2.6.0+cu124 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+YOLO11s-obb summary (fused): 109 layers, 9,699,174 parameters, 0 gradients, 22.4 GFLOPs
+val: Fast image access  (ping: 0.10.1 ms, read: 392.0120.0 MB/s, size: 190.9 KB)
+
+val: Scanning dataset_720_fixedval\labels\val.cache... 2000 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 2000/2000  0.0s
+
+                   all       2000       2000      0.999          1      0.995      0.983
+Speed: 15.5ms preprocess, 57.8ms inference, 0.0ms loss, 5.6ms postprocess per image
+v5_s {
+ "val_1920": {
+  "precision": 0.9990009137813373,
+  "recall": 0.9999146524661258,
+  "mAP50": 0.995,
+  "mAP50-95": 0.9833828146917138
+ },
+ "iou_1920": {
+  "images": 2000,
+  "missed": 0,
+  "iou_ge_0.5": 0.9995,
+  "iou_ge_0.75": 0.9925,
+  "iou_median": 0.9709
+ },
+ "bench_1920": {
+  "high": "31/32",
+  "low": "34/34",
+  "mid": "34/34",
+  "all": "99/100",
+  "p50_ms": 52.9
+ }
+}

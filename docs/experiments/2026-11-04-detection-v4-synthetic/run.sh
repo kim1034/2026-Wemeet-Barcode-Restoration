@@ -19,6 +19,8 @@ python "$C/probe_batch.py" yolo11s-obb.pt --imgsz 1920       # → 2
 #    서버에서는 2~3 단계와 스모크·n·s 학습을 한 번에: code/run_v5_pipeline.sh
 python "$C/train_cheetah.py" --data dataset_v5 --device 0 --model barcode_v2_best.pt \
     --imgsz 1920 --batch 4 --hours 36 --name v5_n --project runs
+python "$C/train_cheetah.py" --data dataset_v5 --device 0 --model yolo11s-obb.pt \
+    --imgsz 1920 --batch 2 --hours 36 --name v5_s --project runs
 
 # ── 4. v2 val 정답 다시 계산 (옛 생성기 make_barcode_dataset.py 를 import 하므로 같은 폴더에 둘 것)
 python "$C/relabel720.py" relabeled          # → relabeled/labels/val/*.txt (10000번대 1,000장)
@@ -29,3 +31,7 @@ python "$C/compare_models.py" \
     --model v2=barcode_v2_best.pt --model v4_n=v4_n/best.pt --model v5_n=runs/v5_n/weights/best.pt \
     --val-data dataset_720_fixedval/data.yaml --bench downloads/hf/benchmark/v2 \
     --imgsz 1920 --out results/compare_models_fixedval.json
+python "$C/compare_models.py" \
+    --model v2=barcode_v2_best.pt --model v5_n=runs/v5_n/weights/best.pt --model v5_s=runs/v5_s/weights/best.pt \
+    --val-data dataset_720_fixedval/data.yaml --bench downloads/hf/benchmark/v2 \
+    --imgsz 1920 --out results/compare_models_s.json
