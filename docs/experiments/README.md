@@ -13,6 +13,7 @@
 | [2026-09-15-stage2-backbone](2026-09-15-stage2-backbone/README.md) | Stage 2 v1 기준 백본 `ResNet18-C3`와 `MobileNetV3-Small`·`EfficientNet-B0` 3-way 비교 설계. 같은 spatial Geometry Head·`16×3` 제어점·TPS 경로에서 구제율, pixel error, latency, model cost를 비교한다 |
 | [2026-10-02-detection-imgsz-1920](2026-10-02-detection-imgsz-1920/README.md) | Stage 1 `DEFAULT_IMGSZ` 960→1920 — 저해상도 막대(1.6~2.2px)가 960 축소에서 1px 밑으로 뭉개져 탐지가 실패함을 실측(69→99/100), 전체 판독 52→89/100. 수용장 미스매치 우려 검토, 속도(CPU) 트레이드오프, `eval/benchmark-v2` 기록(1280~1600 제안)과의 차이점 정리 |
 | [2026-10-26-stage2-efficientnet-b0](2026-10-26-stage2-efficientnet-b0/README.md) | Stage 2 백본 ResNet18-C3 대비 EfficientNet-B0-C3, 조건 고정 1:1 비교 (seed 42, 동일 split). 구제율 71.13%→78.67%(+7.53%p, 버킷별 균일), 좌표 오차·params(−61%)·CPU 지연(약 3.2배 빠름) 모두 개선됐으나 오독도 0.47%→0.73%로 함께 늘어 본 코드 반영은 보류, seed 추가 확인 필요 |
+| [2026-11-04-detection-v4-synthetic](2026-11-04-detection-v4-synthetic/README.md) | Stage 1 재학습 — 합성 생성기 정답 박스 버그(`foot_pts[::3]`, 막대 높이 절반 밀림)를 고친 1920×1080 데이터로 `v5_n`·`v5_s` 학습. 정답을 고친 v2 val 에서 박스 위치 성공률 n 99.9%·s 99.95% (v2 79.7%), 배포 후보는 2배 빠른 n. **v2 생성기·배포 v2 가중치에도 같은 버그**(반사광 val 200/200 밀림), 학습 전 데이터 검사(`qa_dataset.py`), MIG 에서 AutoBatch 실패 |
 
 ## 규칙
 

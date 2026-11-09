@@ -1,0 +1,58 @@
+﻿Ultralytics 8.4.137  Python-3.12.10 torch-2.13.0+cu126 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+YOLO11n-obb summary (fused): 109 layers, 2,653,918 parameters, 0 gradients, 6.6 GFLOPs
+[34m[1mval: [0mFast image access  (ping: 0.10.1 ms, read: 296.326.1 MB/s, size: 210.7 KB)
+
+
+                   all       2000       2000      0.933      0.941      0.972      0.939
+Speed: 4.7ms preprocess, 13.2ms inference, 0.0ms loss, 3.2ms postprocess per image
+v2 {
+ "val_1280": {
+  "precision": 0.9330411668233898,
+  "recall": 0.9405821166714023,
+  "mAP50": 0.971533328417149,
+  "mAP50-95": 0.9390137922914674
+ },
+ "bench_1280": {
+  "high": "32/32",
+  "low": "28/34",
+  "mid": "31/34",
+  "all": "91/100",
+  "p50_ms": 19.1
+ },
+ "bench_1920": {
+  "high": "31/32",
+  "low": "34/34",
+  "mid": "34/34",
+  "all": "99/100",
+  "p50_ms": 28.2
+ }
+}
+Ultralytics 8.4.137  Python-3.12.10 torch-2.13.0+cu126 CUDA:0 (NVIDIA GeForce RTX 4050 Laptop GPU, 6141MiB)
+YOLO11n-obb summary (fused): 109 layers, 2,653,918 parameters, 0 gradients, 6.6 GFLOPs
+[34m[1mval: [0mFast image access  (ping: 0.00.0 ms, read: 1323.1232.3 MB/s, size: 238.0 KB)
+
+
+                   all       2000       2000      0.544      0.734      0.433      0.416
+Speed: 3.6ms preprocess, 11.9ms inference, 0.0ms loss, 3.5ms postprocess per image
+v4_n {
+ "val_1280": {
+  "precision": 0.5443084909158324,
+  "recall": 0.734,
+  "mAP50": 0.4333199344637334,
+  "mAP50-95": 0.4156722165572191
+ },
+ "bench_1280": {
+  "high": "32/32",
+  "low": "34/34",
+  "mid": "34/34",
+  "all": "100/100",
+  "p50_ms": 39.2
+ },
+ "bench_1920": {
+  "high": "32/32",
+  "low": "34/34",
+  "mid": "34/34",
+  "all": "100/100",
+  "p50_ms": 33.6
+ }
+}

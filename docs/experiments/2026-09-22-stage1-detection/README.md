@@ -109,3 +109,17 @@ python eval_ratio.py --weights runs/barcode_v2/weights/best.pt --data dataset_72
 | 최고 성능 | — | 38 epoch |
 
 v2 는 `patience=20` 으로 38 epoch 이후 개선이 없어 58 epoch 에서 자동 종료됐다.
+
+---
+
+## 정정 (2026-11-07) — 이 기록의 생성기에 정답 박스 버그가 있다
+
+[`code/make_barcode_dataset.py:781`](code/make_barcode_dataset.py) 의 `foot_pts = ...[::3]` 은
+변형이 없는 직사각형 발자국에서 윗변 두 점만 남겨, 정답 박스를 **막대 높이 절반만큼 위로 민다.**
+이 생성기에서 반사광 장면은 막대를 변형하지 않으므로 val 의 반사광 200장이 **전부** 밀려 있고,
+복합 손상 69장·구김 7장도 밀려 있다. 위의 숫자(mAP50 0.973 등)는 이 밀린 정답으로 잰 것이고,
+배포된 v2 가중치도 반사광 장면에서 밀린 박스를 그리도록 학습됐다.
+
+정답을 고친 val 에서 v2 는 mAP50 0.777, 회전 IoU ≥ 0.5 성공률 79.7% (imgsz 1920) 이다.
+경위·재계산 방법·새 모델과의 비교: [2026-11-04 기록](../2026-11-04-detection-v4-synthetic/README.md).
+원문은 기록으로 남겨 둔다 (`decisions/README.md` 원칙).
