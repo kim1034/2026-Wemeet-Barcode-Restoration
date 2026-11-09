@@ -126,7 +126,7 @@ def run(
 ) -> PipelineResult:
     """`retry_scales` 는 보정 경로의 출력 배율 순서다 (비워 두지 않는다).
 
-    스트림은 다음 프레임이 곧 다시 시도하므로 3.0 을 빼고 부른다 (`sw/server/stream.py`).
+    스트림은 입력 해상도에 따라 배율을 골라 부른다 (`sw/server/stream.py`).
     """
     stage_ms: dict[str, float] = {}
 

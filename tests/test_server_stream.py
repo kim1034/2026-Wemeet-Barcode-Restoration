@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 import wemeet.sw.server as server
 from wemeet.schemas import DecodeResult, DetectedBarcode, PipelineResult
 from wemeet.sw.server.runtime import InferenceRuntime
+from wemeet.sw.server.stream import retry_scales_for
 
 
 @pytest.fixture
@@ -21,7 +22,7 @@ def fake_run(readable=True):
     """밝기로 물품 유무를 정하는 가짜 판독. 밝으면 바코드 없음, 어두우면 x=밝기 위치에 바코드."""
 
     def run(image, retry_scales):
-        assert retry_scales == (1.0, 1.5)  # 스트림은 3.0 재시도를 뺀다
+        assert retry_scales == (1.0, 1.5, 3.0)  # frame() 은 320×180 저해상도다
         level = int(image.mean())
         if level > 150:
             return PipelineResult(
@@ -82,6 +83,20 @@ def test_second_matching_frame_returns_the_confirmed_result_in_its_own_response(
     # 같은 물품의 다음 프레임은 결과를 다시 내지 않는다
     assert post(client, *frame(3, level=108)).json()["events"] == []
     assert "00123" not in caplog.text and "data:image" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("height", "width", "scales"),
+    [
+        (1080, 1920, (1.0, 1.5)),
+        (1920, 1080, (1.0, 1.5)),  # 세로 영상도 긴 변으로 판단한다
+        (1079, 1919, (1.0, 1.5, 3.0)),
+        (720, 1280, (1.0, 1.5, 3.0)),
+        (540, 960, (1.0, 1.5, 3.0)),
+    ],
+)
+def test_the_3x_retry_runs_only_below_full_resolution(height, width, scales):
+    assert retry_scales_for(np.zeros((height, width, 3), np.uint8)) == scales
 
 
 def test_stopping_flushes_an_unreadable_passage(client, monkeypatch):

@@ -24,12 +24,17 @@ from wemeet.sw.tracking.stream import StreamTracker
 MAX_SESSIONS = 2
 SESSION_IDLE_S = 30
 CLOSED_MEMORY_S = 60
-# 못 읽은 프레임의 배율 재시도에서 3.0 을 뺀다. 3.0 펴기·읽기는 CPU 작업이라 GPU 서버에서도
-# 실패 프레임 하나를 약 0.8초 붙잡고, 그동안 다음 프레임을 받지 못한다. 벤치마크 v1·v2 200장에서
-# 1.0→1.5 는 1.0→1.5→3.0 과 판독 결과가 같았고(CHEETAH 처럼 zxing 만: 정답 174·오독 6, pyzbar 까지:
-# 180·3), 실패 프레임 재시도 시간은 약 절반이었다(로컬 CPU, zxing 만 629→329ms).
-# 단일 사진 판독(/api/decode)은 기존 3회를 그대로 쓴다.
+# 못 읽은 프레임의 배율 재시도. 3.0 펴기·읽기는 CPU 작업이라 1080p 에서 실패 프레임을 약 2배 오래
+# 붙잡는데(로컬 CPU 250→490ms) 벤치마크 v1·v2 + 실제 사진 206장에서 살린 사진이 없었다(정답 188).
+# 저해상도에서는 크롭이 작아 비용이 작고 3.0 으로만 읽히는 사진이 있다 — 정답 720p 127→139,
+# 540p 82→89. 그래서 긴 변이 1920 보다 작은 입력에만 쓴다. 단일 사진 판독은 항상 3회다.
 RETRY_SCALES = (1.0, 1.5)
+LOW_RES_RETRY_SCALES = (1.0, 1.5, 3.0)
+FULL_RES_LONG_SIDE = 1920
+
+
+def retry_scales_for(image: np.ndarray) -> tuple[float, ...]:
+    return LOW_RES_RETRY_SCALES if max(image.shape[:2]) < FULL_RES_LONG_SIDE else RETRY_SCALES
 
 
 class StreamFrameInfo(FrameInfo):
@@ -131,7 +136,7 @@ class StreamController:
                     if image is None:
                         raise InputError(400, "JPEG를 읽지 못했습니다.")
                     started = time.perf_counter()
-                    result = run(image, retry_scales=RETRY_SCALES)
+                    result = run(image, retry_scales=retry_scales_for(image))
                     pipeline_ms = (time.perf_counter() - started) * 1000
                     frame = Frame(info.frame_id, manifest.captured_at_ms, image)
                     events = session.tracker.observe(frame, result)
