@@ -228,3 +228,76 @@ def test_retry_stops_at_the_first_success(
     assert result.ok
     assert seen == [1.0]
     assert result.decode.retry_count == 0
+
+
+# ---------------------------------------------------------------- 넓혀 읽기
+
+
+def _noise(height: int, width: int) -> np.ndarray:
+    gray = np.random.default_rng(5).integers(0, 256, size=(height, width), dtype=np.uint8)
+    return np.repeat(gray[:, :, None], 3, axis=2)
+
+
+def _detect_at(monkeypatch: pytest.MonkeyPatch, bbox, crop: np.ndarray) -> None:
+    found = DetectedBarcode(crop, 0.0, 0.9, bbox)
+    monkeypatch.setattr("wemeet.sw.pipeline.detect", lambda image: found)
+    monkeypatch.setattr("wemeet.sw.pipeline.estimate_geometry", _fake_estimate_geometry)
+
+
+def test_wider_region_reads_a_barcode_the_crop_cut_off(
+    monkeypatch: pytest.MonkeyPatch, clean_barcode_bgr: np.ndarray
+) -> None:
+    """크롭으로는 어떤 시도도 못 읽어도, 박스 1.5배 범위에 바코드가 온전하면 읽는다."""
+    height, width = clean_barcode_bgr.shape[:2]
+    bbox = (width // 6, height // 6, width * 2 // 3, height * 2 // 3)  # 1.5배 = 사진 전체
+    _detect_at(monkeypatch, bbox, _noise(60, 150))
+
+    result = run(clean_barcode_bgr)
+
+    assert result.decode.text == "WEMEET0001"
+    assert result.decode.failure_reason is None
+    assert result.decode.retry_count == 2  # 앞선 시도를 다 쓴 뒤다
+    assert "wider" in result.decode.stage_ms
+
+
+def test_wider_region_is_the_box_times_one_and_a_half_clipped_to_the_frame(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = []
+    real_decode = pipeline.decode
+
+    def _spy(image, **kwargs):
+        calls.append((image.image_gray_uint8.shape, kwargs))
+        return real_decode(image, **kwargs)
+
+    monkeypatch.setattr("wemeet.sw.pipeline.decode", _spy)
+    frame = _noise(600, 1000)
+
+    _detect_at(monkeypatch, (400, 200, 200, 100), _noise(60, 150))
+    result = run(frame, retry_scales=(1.0,))
+    assert calls[-1] == ((150, 300), {"enhance": False})  # 대비 보정 없이 한 번
+    assert result.decode.failure_reason == "decode_failed"  # 못 읽으면 원래 실패 그대로
+
+    _detect_at(monkeypatch, (0, 0, 200, 100), _noise(60, 150))  # 화면 모서리
+    run(frame, retry_scales=(1.0,))
+    assert calls[-1][0] == (125, 250)
+
+
+def test_wider_region_does_not_run_when_something_already_read(
+    monkeypatch: pytest.MonkeyPatch, clean_barcode_bgr: np.ndarray
+) -> None:
+    _detect_at(monkeypatch, (0, 0, 50, 50), clean_barcode_bgr)
+
+    result = run(clean_barcode_bgr)
+
+    assert result.ok
+    assert "wider" not in result.decode.stage_ms
+
+
+def test_wider_region_needs_an_original_box(monkeypatch: pytest.MonkeyPatch) -> None:
+    _detect_at(monkeypatch, None, _noise(60, 150))
+
+    result = run(_noise(600, 1000), retry_scales=(1.0,))
+
+    assert result.decode.failure_reason == "decode_failed"
+    assert "wider" not in result.decode.stage_ms

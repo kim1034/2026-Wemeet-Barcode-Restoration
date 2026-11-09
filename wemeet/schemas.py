@@ -115,7 +115,7 @@ class DecodeResult:
     text: str | None  # 판독 실패 시 None
     retry_count: int  # 0 ~ 3
     stage_ms: dict[str, float] = field(default_factory=dict)
-    # 키: detect / decode_first / estimate / warp / decode / retry
+    # 키: detect / decode_first / estimate / warp / decode / retry / wider
     # 예: {"detect": 95.0, "decode_first": 22.0, "estimate": 140.0,
     #      "warp": 18.0, "decode": 26.0}
 

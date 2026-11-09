@@ -867,8 +867,10 @@ import { resultPresentation } from "/assets/result-state.mjs";
 
     setStep(byKey.decode, "active", "보정 이미지 판독 중…");
     await wait(100);
-    const decodeMs = (ms.decode || 0) + (ms.retry || 0);
-    if (body.ok) {
+    const decodeMs = (ms.decode || 0) + (ms.retry || 0) + (ms.wider || 0);
+    if (body.ok && ms.wider != null) {
+      setStep(byKey.decode, "done", "보정으로 못 읽어 바코드 주변까지 넓혀 읽음", decodeMs);
+    } else if (body.ok) {
       setStep(byKey.decode, "done", body.retry_count ? "재시도 " + body.retry_count + "회 끝에 성공" : "첫 시도에서 성공", decodeMs);
     } else {
       setStep(byKey.decode, "fail", "재시도 " + body.retry_count + "회 모두 실패", decodeMs);

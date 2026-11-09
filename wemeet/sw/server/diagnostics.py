@@ -22,7 +22,8 @@ def batch_diagnostics(body: dict) -> dict:
                 "stage_ms": {
                     stage: round(ms, 1)
                     for stage, ms in attempt["stage_ms"].items()
-                    if stage in {"detect", "decode_first", "estimate", "warp", "decode", "retry"}
+                    if stage
+                    in {"detect", "decode_first", "estimate", "warp", "decode", "retry", "wider"}
                 },
             }
         )
