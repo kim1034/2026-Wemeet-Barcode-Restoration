@@ -264,13 +264,6 @@
             <button type="button" class="btn-run" id="camCaptureBtn" disabled><span id="camCaptureText">자동 판독 시작</span></button>
           </div>
           <div class="cam-upload">
-            <label>수집 방식 <select id="captureMode">
-              <option value="stream">판독 먼저 · 매 프레임 판독 (GPU)</option>
-              <option value="barcode">바코드 추적 · 물품 구간별 판독</option>
-              <option value="fixed">기준선 · 고정 1초 / 최대 8장</option>
-              <option value="motion">실험 · 움직임 덩어리 추적</option>
-            </select></label>
-            <label><input type="checkbox" id="activityFilter" checked> 장면 변화가 있는 구간만 판독</label>
             <span id="captureStatus" role="status" aria-live="polite">판독 먼저 · 매 프레임 판독 · 읽히는 즉시 성공으로 표시합니다</span>
           </div>
           <div class="cam-foot"><span id="captureStats">처리 0 · 대기 0 · 건너뜀 0 (물품 수가 아닌 촬영 구간 수)</span></div>
@@ -379,8 +372,6 @@
 </main>
 
 <script type="module">
-import { createContinuousCapture } from "/assets/continuous.mjs";
-import { createTrackingCapture } from "/assets/tracking.mjs";
 import { createStreamCapture } from "/assets/stream.mjs";
 import { cameraOptions, loadCamera, preferredCamera, saveCamera } from "/assets/camera.mjs";
 import { resultPresentation } from "/assets/result-state.mjs";
@@ -599,19 +590,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
       $("camFootRight").textContent = "마지막 수신 " + ev.time;
     },
   };
-  let autoCapture = createStreamCapture(captureCallbacks);
-  $("activityFilter").disabled = true;
-  $("captureMode").addEventListener("change", () => {
-    const resume = autoEnabled;
-    autoCapture.stop();
-    const mode = $("captureMode").value;
-    autoCapture = mode === "fixed" ? createContinuousCapture(captureCallbacks)
-      : mode === "stream" ? createStreamCapture(captureCallbacks)
-      : createTrackingCapture({ ...captureCallbacks, source: mode });
-    $("activityFilter").disabled = mode !== "fixed";
-    autoCapture.setFiltering($("activityFilter").checked);
-    if (resume) autoCapture.start();
-  });
+  const autoCapture = createStreamCapture(captureCallbacks);
   function recordEvent(ev) {
     EVENTS.unshift(ev);
     EVENTS.splice(10); // Images and barcode values stay in bounded browser memory only.
@@ -1030,7 +1009,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
     autoCapture.recalibrate();
     $("captureStatus").textContent = "빈 배경을 다시 등록했습니다. 바코드를 화면 안으로 움직여 주세요.";
   });
-  $("activityFilter").addEventListener("change", (event) => autoCapture.setFiltering(event.target.checked));
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && autoEnabled) {
       autoCapture.stop();
