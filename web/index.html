@@ -130,8 +130,9 @@
   .detail-link .car { transition: transform 0.15s; }
   .detail-link.is-open .car { transform: rotate(90deg); }
 
-  /* ---------- processing detail (collapsed) ---------- */
-  .detail-body { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+  /* ---------- processing detail (always shown) ---------- */
+  .detail-title { margin: 16px 0 0; font-size: 13px; font-weight: 600; color: var(--ink2); }
+  .detail-body { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
   .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
   @media (max-width: 480px) { .compare { grid-template-columns: 1fr; } }
   .cmp-pane { display: flex; flex-direction: column; gap: 6px; }
@@ -316,11 +317,8 @@
             <div><span>전송 상태</span><b id="mSend">연동 필요</b></div>
           </div>
 
-          <button type="button" class="detail-link" id="detailToggle" aria-expanded="false">
-            <svg class="ic car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-            원본·보정 결과 / 처리 상세
-          </button>
-          <div class="detail-body" id="detailBody" hidden></div>
+          <h3 class="detail-title">원본·보정 결과 / 처리 상세</h3>
+          <div class="detail-body" id="detailBody"></div>
         </section>
       </div>
     </div>
@@ -732,6 +730,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
       $("copyBtn").hidden = true;
       $("resultPath").textContent = "";
       $("mSym").textContent = "—"; $("mTime").textContent = "—"; $("mMs").textContent = "—";
+      showDetail();
       return;
     }
     $("resultSrcId").textContent = latest.id;
@@ -751,18 +750,19 @@ import { resultPresentation } from "/assets/result-state.mjs";
     if (latest.burst) {
       $("mSend").textContent = "촬영 구간 응답 수신";
     }
-    closeDetail();
+    showDetail();
   }
 
   // ================================================================
-  // 처리 상세 (접힘 기본값): 실서버 응답 / 샘플 시나리오 분기
+  // 처리 상세 (항상 펼침): 새 결과가 오면 원본·보정 이미지와 단계를 바로 다시 그린다
   // ================================================================
-  let detailOpen = false;
-  function closeDetail() {
-    detailOpen = false;
-    $("detailBody").hidden = true;
-    $("detailToggle").setAttribute("aria-expanded", "false");
-    $("detailToggle").classList.remove("is-open");
+  function showDetail() {
+    const body = $("detailBody");
+    const latest = EVENTS[0];
+    if (!latest || !latest.real) { body.innerHTML = '<div class="empty-hint">확정된 결과가 없습니다.</div>'; return; }
+    body.innerHTML = "";
+    body.appendChild(buildDetailBodyReal(latest.real, latest));
+    playDetailReal(body, latest.real);
   }
   function stepsSkeleton() {
     return '<ol class="steps">' +
@@ -876,21 +876,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
       setStep(byKey.decode, "fail", "재시도 " + body.retry_count + "회 모두 실패", decodeMs);
     }
   }
-
-  $("detailToggle").addEventListener("click", () => {
-    detailOpen = !detailOpen;
-    $("detailToggle").setAttribute("aria-expanded", String(detailOpen));
-    $("detailToggle").classList.toggle("is-open", detailOpen);
-    const body = $("detailBody");
-    body.hidden = !detailOpen;
-    if (detailOpen) {
-      const latest = EVENTS[0];
-      if (!latest) { body.innerHTML = '<div class="empty-hint">확정된 결과가 없습니다.</div>'; return; }
-      body.innerHTML = "";
-      body.appendChild(buildDetailBodyReal(latest.real, latest));
-      playDetailReal(body, latest.real);
-    }
-  });
 
   // ================================================================
   // 카메라 패널 — 실시간 카메라(getUserMedia) + 사진 업로드, 두 입력 모두 /api/decode 로 보낸다
