@@ -69,12 +69,14 @@
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
 
   /* ---------- live view layout (68:32) ---------- */
-  .live-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 400px); gap: 16px; align-items: stretch; }
+  /* 왼쪽(카메라·판독 로그)은 카메라 비율에 맞춘 높이, 오른쪽(집계·최근 결과)은 왼쪽 열 끝까지 늘어난다. */
+  .live-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); gap: 16px; align-items: stretch; }
   @media (max-width: 1080px) { .live-layout { grid-template-columns: minmax(0, 1fr); } }
   .col-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .live-layout > .col-stack { display: flex; flex-direction: column; }
-  .live-layout > .col-stack > .panel { display: flex; flex-direction: column; flex: 1; }
-  .live-layout > .col-stack > .panel .video-box { flex: 1; aspect-ratio: auto; min-height: 320px; }
+  .live-layout > .col-stack > .panel { display: flex; flex-direction: column; flex: none; }
+  .live-layout > .col-stack > .panel.grow { flex: 1; }
+  .live-layout > .col-stack > .panel .video-box { aspect-ratio: var(--cam-ratio, 16 / 9); max-height: 75vh; }
 
   .cam-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
   .cam-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
@@ -171,7 +173,6 @@
   table.hist tbody tr:last-child td { border-bottom: none; }
 
   /* ---------- 판독 집계 (판독 로그와 같은 기준으로 센다) ---------- */
-  .live-layout > .col-stack > .panel.tally { flex: none; }
   .tally-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px 14px; }
   .tally-cell { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid; border-radius: var(--radius); min-width: 0; }
   .tally-cell span { font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -297,6 +298,13 @@
             <span id="camFootRight" class="mono">마지막 수신 —</span>
           </div>
         </div>
+        <div class="panel grow">
+          <div class="hist-head">
+            <h2>판독 로그</h2>
+            <span class="log-hint">최신 항목이 왼쪽 · 바코드 하나당 한 칸</span>
+          </div>
+          <div class="read-log" id="readLog" role="list"><div class="log-empty">아직 판독한 바코드가 없습니다</div></div>
+        </div>
         <section class="panel" id="burstPanel" hidden>
           <div class="cam-head"><h2>선택한 프레임</h2><span id="burstSummary"></span></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px">
@@ -316,7 +324,7 @@
             <div class="tally-cell fail"><span>검출 후 실패</span><b class="mono num" id="tallyFail">0</b></div>
           </div>
         </section>
-        <section class="panel result-card">
+        <section class="panel result-card grow">
           <div class="result-src">최근 판독 결과 · <span class="mono" id="resultSrcId">#—</span></div>
           <div class="proc-row" id="procRow"><span class="pdot"></span><span>새 캡처 처리 중 · <span id="procMs">0</span>ms 경과</span></div>
 
@@ -346,13 +354,6 @@
       </div>
     </div>
 
-    <div class="panel" style="margin-top:16px">
-      <div class="hist-head">
-        <h2>판독 로그</h2>
-        <span class="log-hint">최신 항목이 왼쪽 · 바코드 하나당 한 칸</span>
-      </div>
-      <div class="read-log" id="readLog" role="list"><div class="log-empty">아직 판독한 바코드가 없습니다</div></div>
-    </div>
   </section>
 
   <!-- ======================= 판독 이력 ======================= -->
@@ -1052,8 +1053,14 @@ import { resultPresentation } from "/assets/result-state.mjs";
       $("videoBadgeText").textContent = "영상 수신 중단";
       $("camFootLeft").textContent = "카메라가 분리되었거나 다른 프로그램이 사용 중입니다. 다시 시작해 주세요.";
     });
-    video.addEventListener("loadedmetadata", () => { $("videoDim").textContent = video.videoWidth + "×" + video.videoHeight; }, { once: true });
-    if (video.videoWidth) $("videoDim").textContent = video.videoWidth + "×" + video.videoHeight;
+    // 영상 칸을 실제 카메라 비율로 맞춘다 (빈 검은 여백이 생기지 않게).
+    const fitVideoBox = () => {
+      if (!video.videoWidth) return;
+      $("videoDim").textContent = video.videoWidth + "×" + video.videoHeight;
+      $("videoBox").style.setProperty("--cam-ratio", video.videoWidth + " / " + video.videoHeight);
+    };
+    video.addEventListener("loadedmetadata", fitVideoBox, { once: true });
+    fitVideoBox();
     $("videoBadge").className = "video-badge live";
     $("videoBadgeText").textContent = "LIVE";
     setCamStatus("ok", "카메라 연결됨 · LIVE");
