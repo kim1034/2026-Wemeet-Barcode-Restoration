@@ -1,0 +1,62 @@
+{
+  "status": "passed",
+  "gpu_inference": false,
+  "tasks": {
+    "scene-resnet18-c3-1280-legacy": {
+      "n": 100,
+      "detected_crop_pixel_matches": 92,
+      "native_pipeline_text_matches": 100,
+      "warp_passthrough_count": 0,
+      "source_completion_sha256": "b27af2b84dccb94d861e892eafaacd1bd814143dec8f0cc82703a9bc4735499c"
+    },
+    "scene-mobilenetv3-small-1280-legacy": {
+      "n": 100,
+      "detected_crop_pixel_matches": 92,
+      "native_pipeline_text_matches": 100,
+      "warp_passthrough_count": 0,
+      "source_completion_sha256": "1f9fb9cc2c7ca85ebf19abf81378696d3db516756780b0eaf7519452aff1098e"
+    },
+    "scene-mobilenetv3-small-1600-legacy": {
+      "n": 100,
+      "detected_crop_pixel_matches": 99,
+      "native_pipeline_text_matches": 100,
+      "warp_passthrough_count": 0,
+      "source_completion_sha256": "90e3024531dfc46b4bef6c9e0e23af952625e71ff63e8400398abcdd8c6b038d"
+    },
+    "scene-mobilenetv3-small-1920-legacy": {
+      "n": 100,
+      "detected_crop_pixel_matches": 99,
+      "native_pipeline_text_matches": 100,
+      "warp_passthrough_count": 0,
+      "source_completion_sha256": "c256ca03423d1b031ae54458d4a3d42c07b0607d7e9866f8a7e39853a35f49c3"
+    },
+    "scene-resnet18-c3-1280-clahe": {
+      "n": 100,
+      "detected_crop_pixel_matches": 92,
+      "native_pipeline_text_matches": 100,
+      "warp_passthrough_count": 0,
+      "source_completion_sha256": "b72298fde6837bcce55dfbe7ef2c7cdbd84dd4b4b26711304cc5d29e892661f7"
+    },
+    "scene-mobilenetv3-small-1280-clahe": {
+      "n": 100,
+      "detected_crop_pixel_matches": 92,
+      "native_pipeline_text_matches": 100,
+      "warp_passthrough_count": 0,
+      "source_completion_sha256": "1847b4289099c62e5858c7a8a735b86095d21286a9edbbe1f5badddc84ca3de9"
+    },
+    "scene-mobilenetv3-small-1600-clahe": {
+      "n": 100,
+      "detected_crop_pixel_matches": 99,
+      "native_pipeline_text_matches": 100,
+      "warp_passthrough_count": 0,
+      "source_completion_sha256": "c583a7a199fffb3a26dac7f303571d4e0b09e68a2529ceac9a7e2008d82a5224"
+    },
+    "scene-mobilenetv3-small-1920-clahe": {
+      "n": 100,
+      "detected_crop_pixel_matches": 99,
+      "native_pipeline_text_matches": 100,
+      "warp_passthrough_count": 0,
+      "source_completion_sha256": "8db581c7ced6519e3ef1ed8268c68116979f88dcc9695c365adcf8b597baf8b3"
+    }
+  }
+}

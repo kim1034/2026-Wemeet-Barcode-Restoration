@@ -1,0 +1,18 @@
+[Unit]
+Description=WeMeet controlled MobileNet ResNet GPU4-7 training and comparison
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jnuadmin/endtoend/kangmin/etc/2026-Wemeet-Barcode-Restoration
+ExecStart=/bin/bash /home/jnuadmin/endtoend/kangmin/etc/2026-Wemeet-Barcode-Restoration/scripts/controlled_campaign/run_gpu4567.sh
+Restart=no
+KillMode=control-group
+TimeoutStopSec=60
+UMask=0027
+StandardOutput=append:/home/jnuadmin/endtoend/kangmin/etc/2026-Wemeet-Barcode-Restoration/runs/stage2-controlled-v2/campaign-gpu4567-20261026/logs/service.log
+StandardError=inherit
+
+[Install]
+WantedBy=default.target
