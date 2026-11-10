@@ -170,6 +170,17 @@
   table.hist td { padding: 11px 20px; border-bottom: 1px solid var(--line); vertical-align: middle; }
   table.hist tbody tr:last-child td { border-bottom: none; }
 
+  /* ---------- 판독 집계 (판독 로그와 같은 기준으로 센다) ---------- */
+  .live-layout > .col-stack > .panel.tally { flex: none; }
+  .tally-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px 14px; }
+  .tally-cell { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid; border-radius: var(--radius); min-width: 0; }
+  .tally-cell span { font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tally-cell b { font-size: 22px; font-weight: 600; }
+  .tally-cell.ok { border-color: var(--good); background: var(--good-bg); }
+  .tally-cell.ok b { color: var(--good); }
+  .tally-cell.fail { border-color: var(--bad); background: var(--bad-bg); }
+  .tally-cell.fail b { color: var(--bad); }
+
   /* ---------- 판독 로그 (최신이 왼쪽에서 들어온다) ---------- */
   .log-hint { font-size: 12px; color: var(--ink2); }
   .read-log { display: flex; gap: 10px; overflow-x: auto; padding: 14px 20px 16px; }
@@ -297,6 +308,14 @@
       </div>
 
       <div class="col-stack">
+        <section class="panel tally" aria-label="판독 집계">
+          <div class="cam-head"><h2>판독 집계</h2><button type="button" class="btn-ghost" id="tallyReset">초기화</button></div>
+          <div class="tally-grid">
+            <div class="tally-cell ok"><span>1차 디코딩</span><b class="mono num" id="tallyFirst">0</b></div>
+            <div class="tally-cell ok"><span>2차 디코딩</span><b class="mono num" id="tallySecond">0</b></div>
+            <div class="tally-cell fail"><span>검출 후 실패</span><b class="mono num" id="tallyFail">0</b></div>
+          </div>
+        </section>
         <section class="panel result-card">
           <div class="result-src">최근 판독 결과 · <span class="mono" id="resultSrcId">#—</span></div>
           <div class="proc-row" id="procRow"><span class="pdot"></span><span>새 캡처 처리 중 · <span id="procMs">0</span>ms 경과</span></div>
@@ -611,15 +630,29 @@ import { resultPresentation } from "/assets/result-state.mjs";
   // 판독 로그: 바코드(추적 구간) 하나당 한 칸을 맨 왼쪽에 넣는다. 크롭이 없는 결과(검출 안 됨)는 넣지 않는다.
   // 크롭 사진과 번호는 브라우저 메모리에만 두고, LOG_MAX 칸을 넘으면 오래된 것부터 지운다.
   const LOG_MAX = 30;
+  // 집계는 로그 칸 수와 별개로 초기화할 때까지 계속 센다 (로그는 30칸에서 오래된 것이 지워진다).
+  const tally = { first: 0, second: 0, fail: 0 };
+  function renderTally() {
+    $("tallyFirst").textContent = tally.first;
+    $("tallySecond").textContent = tally.second;
+    $("tallyFail").textContent = tally.fail;
+  }
+  $("tallyReset").addEventListener("click", () => {
+    tally.first = tally.second = tally.fail = 0;
+    renderTally();
+  });
   function addLog(ev) {
     const real = ev.real || {};
     const crop = real.images && real.images.crop;
     if (!crop) return;
     const ok = ev.barcode != null;
     // 1차 = 보정 없이 바로 읽음, 2차 = 기하 추정·보정을 거쳐 읽음.
+    const first = ok && (real.stage_ms || {}).estimate == null;
     const stage = ok
-      ? ((real.stage_ms || {}).estimate == null ? "1차 디코딩" : "2차 디코딩")
+      ? (first ? "1차 디코딩" : "2차 디코딩")
       : (ev.burst && ev.burst.status === "conflict" ? "서로 다른 번호" : "끝까지 못 읽음");
+    tally[!ok ? "fail" : first ? "first" : "second"] += 1;
+    renderTally();
     const item = document.createElement("div");
     item.className = "log-item " + (ok ? "ok" : "fail");
     item.setAttribute("role", "listitem");
