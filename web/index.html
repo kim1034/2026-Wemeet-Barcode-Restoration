@@ -49,7 +49,6 @@
   .brand .mark { width: 22px; height: 22px; border-radius: var(--radius); background: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 2px; flex: none; }
   .brand .mark i { display: block; width: 2px; height: 10px; background: var(--panel); }
   .brand h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; flex: none; }
-  .brand .loc { font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .top-status { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; flex: none; }
   .status-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--ink2); white-space: nowrap; }
   .status-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink2); flex: none; }
@@ -57,7 +56,6 @@
   .status-chip.ok { color: var(--good); }
   .status-chip.err .dot { background: var(--bad); }
   .status-chip.err { color: var(--bad); }
-  @media (max-width: 720px) { .brand .loc { display: none; } }
 
   /* ---------- nav tabs ---------- */
   .tabs { background: var(--panel); border-bottom: 1px solid var(--line); height: 44px; display: flex; align-items: stretch; padding-inline: 20px; gap: 4px; overflow-x: auto; }
@@ -212,7 +210,6 @@
     <div class="brand">
       <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
       <h1>노리드 판독기</h1>
-      <span class="loc">물류검사장 · LINE 03</span>
     </div>
     <div class="top-status">
       <span class="status-chip" id="camStatus"><span class="dot"></span><span>카메라 미연결 · 사진 업로드로 판독</span></span>
