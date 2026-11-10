@@ -165,11 +165,25 @@
   /* ---------- history table ---------- */
   .hist-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); }
   .hist-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
-  .link-more { font-size: 13px; font-weight: 500; color: var(--primary); text-decoration: none; cursor: pointer; background: none; border: none; }
   table.hist { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   table.hist th { text-align: left; font-weight: 500; font-size: 12px; color: var(--ink2); padding: 9px 20px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   table.hist td { padding: 11px 20px; border-bottom: 1px solid var(--line); vertical-align: middle; }
   table.hist tbody tr:last-child td { border-bottom: none; }
+
+  /* ---------- 판독 로그 (최신이 왼쪽에서 들어온다) ---------- */
+  .log-hint { font-size: 12px; color: var(--ink2); }
+  .read-log { display: flex; gap: 10px; overflow-x: auto; padding: 14px 20px 16px; }
+  .log-empty { color: var(--ink2); font-size: 13px; padding: 8px 0; }
+  .log-item { flex: none; width: 184px; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid; border-radius: var(--radius); animation: log-in .25s ease-out; }
+  .log-item.ok { border-color: var(--good); background: var(--good-bg); }
+  .log-item.fail { border-color: var(--bad); background: var(--bad-bg); }
+  .log-item img { display: block; width: 100%; height: 72px; object-fit: contain; background: var(--panel); border-radius: 2px; }
+  .log-item .log-text { font-size: 13.5px; font-weight: 600; word-break: break-all; }
+  .log-item.ok .log-text { color: var(--good); }
+  .log-item.fail .log-text { color: var(--bad); }
+  .log-item .log-meta { display: flex; justify-content: space-between; gap: 6px; font-size: 11.5px; color: var(--ink2); }
+  @keyframes log-in { from { opacity: 0; transform: translateX(-14px); } }
+  @media (prefers-reduced-motion: reduce) { .log-item { animation: none; } }
   .r-id { font-family: "IBM Plex Mono", monospace; color: var(--primary); }
   .r-barcode { font-family: "IBM Plex Mono", monospace; }
   .r-empty { padding: 60px 20px; text-align: center; color: var(--ink2); font-size: 13.5px; }
@@ -315,15 +329,10 @@
 
     <div class="panel" style="margin-top:16px">
       <div class="hist-head">
-        <h2>최근 판독 이력</h2>
-        <button type="button" class="link-more" data-goto="history">전체 이력 →</button>
+        <h2>판독 로그</h2>
+        <span class="log-hint">최신 항목이 왼쪽 · 바코드 하나당 한 칸</span>
       </div>
-      <div style="overflow-x:auto">
-        <table class="hist" id="liveHistTable">
-          <thead><tr><th>촬영 시각</th><th>촬영 ID</th><th>바코드</th><th>판독 결과</th><th>처리 시간</th></tr></thead>
-          <tbody id="liveHistBody"></tbody>
-        </table>
-      </div>
+      <div class="read-log" id="readLog" role="list"><div class="log-empty">아직 판독한 바코드가 없습니다</div></div>
     </div>
   </section>
 
@@ -597,6 +606,48 @@ import { resultPresentation } from "/assets/result-state.mjs";
     if (reviewSelectedId && !EVENTS.some((item) => item.id === reviewSelectedId)) reviewSelectedId = null;
     renderHistories();
     renderConfirmed();
+    addLog(ev);
+  }
+  // 판독 로그: 바코드(추적 구간) 하나당 한 칸을 맨 왼쪽에 넣는다. 크롭이 없는 결과(검출 안 됨)는 넣지 않는다.
+  // 크롭 사진과 번호는 브라우저 메모리에만 두고, LOG_MAX 칸을 넘으면 오래된 것부터 지운다.
+  const LOG_MAX = 30;
+  function addLog(ev) {
+    const real = ev.real || {};
+    const crop = real.images && real.images.crop;
+    if (!crop) return;
+    const ok = ev.barcode != null;
+    // 1차 = 보정 없이 바로 읽음, 2차 = 기하 추정·보정을 거쳐 읽음.
+    const stage = ok
+      ? ((real.stage_ms || {}).estimate == null ? "1차 디코딩" : "2차 디코딩")
+      : (ev.burst && ev.burst.status === "conflict" ? "서로 다른 번호" : "끝까지 못 읽음");
+    const item = document.createElement("div");
+    item.className = "log-item " + (ok ? "ok" : "fail");
+    item.setAttribute("role", "listitem");
+    const img = document.createElement("img");
+    img.src = crop;
+    img.alt = "바코드 크롭 " + ev.id;
+    const text = document.createElement("div");
+    text.className = "log-text mono";
+    text.textContent = ok ? ev.barcode : "디코딩 실패";
+    const meta = (left, right) => {
+      const row = document.createElement("div");
+      row.className = "log-meta";
+      const a = document.createElement("span"), b = document.createElement("span");
+      a.textContent = left;
+      b.textContent = right;
+      b.className = "mono num";
+      row.append(a, b);
+      return row;
+    };
+    item.append(img, text,
+      meta(stage, Math.round(real.total_ms || 0) + "ms"),
+      meta("판독 시각", ev.time.slice(0, 8)));
+    const box = $("readLog");
+    const empty = box.querySelector(".log-empty");
+    if (empty) empty.remove();
+    box.prepend(item);
+    while (box.children.length > LOG_MAX) box.lastElementChild.remove();
+    box.scrollLeft = 0;
   }
   function startAutomatic() {
     if (!mediaStream) return;
@@ -678,14 +729,10 @@ import { resultPresentation } from "/assets/result-state.mjs";
       "</tr>";
   }
   function renderHistories() {
-    const liveBody = $("liveHistBody"), fullBody = $("fullHistBody");
-    if (EVENTS.length === 0) {
-      liveBody.innerHTML = '<tr><td colspan="5" class="r-empty">아직 판독 이력이 없습니다</td></tr>';
-      fullBody.innerHTML = '<tr><td colspan="5" class="r-empty">아직 판독 이력이 없습니다</td></tr>';
-    } else {
-      liveBody.innerHTML = EVENTS.slice(0, 6).map(rowHtml).join("");
-      fullBody.innerHTML = EVENTS.map(rowHtml).join("");
-    }
+    const fullBody = $("fullHistBody");
+    fullBody.innerHTML = EVENTS.length === 0
+      ? '<tr><td colspan="5" class="r-empty">아직 판독 이력이 없습니다</td></tr>'
+      : EVENTS.map(rowHtml).join("");
     $("histCount").textContent = EVENTS.length + "건";
     renderReviewBadge();
     renderReviewList();
@@ -1197,10 +1244,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
     const b = e.target.closest(".tab");
     if (!b) return;
     goto(b.dataset.view);
-  });
-  document.addEventListener("click", (e) => {
-    const b = e.target.closest(".link-more[data-goto]");
-    if (b) goto(b.dataset.goto);
   });
   function goto(view) {
     ["live", "history", "review", "settings"].forEach((v) => { $("view-" + v).hidden = v !== view; });
