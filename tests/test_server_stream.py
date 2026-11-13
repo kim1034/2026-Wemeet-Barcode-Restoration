@@ -178,4 +178,6 @@ def test_stream_module_is_served_and_is_the_default_capture_mode(client):
     assert client.get("/assets/stream.mjs").status_code == 200
     assert client.get("/assets/camera.mjs").status_code == 200
     page = client.get("/").text
-    assert page.index('value="stream"') < page.index('value="barcode"')
+    # 수집 방식은 판독 먼저(매 프레임) 하나로 고정했다 — 선택 칸이 없다.
+    assert "createStreamCapture(captureCallbacks)" in page
+    assert 'id="captureMode"' not in page

@@ -115,7 +115,8 @@ def test_tracking_off_does_not_replace_baseline_and_jpegs_never_spool(client, mo
     monkeypatch.setattr("wemeet.sw.tracking.sources.detect", lambda _: None)
     assert post(client, *payload(0)).status_code == 200
     assert client.get("/assets/tracking.mjs").status_code == 200
-    assert 'value="fixed"' in client.get("/").text
+    # 화면의 수집 방식 선택 칸은 없앴다(판독 먼저 고정). 고정 1초 경로는 서버 API 로만 남는다.
+    assert 'id="captureMode"' not in client.get("/").text
     assert client.post("/api/decode", content=b"bad").status_code == 400
 
 
