@@ -1,4 +1,9 @@
-"""Stage 2 geometry inference backed by the ResNet18-C3 checkpoint.
+"""Stage 2 geometry inference backed by the MobileNetV3-Small checkpoint.
+
+기본 가중치는 MobileNetV3-Small M/seed42/epoch90 이다
+(docs/experiments/2026-10-27-mobilenet-followup). 같은 조건의 ResNet18-C3 보다
+정답률이 높아 바꿨다. 예전 ResNet18-C3 가중치도 ``WEMEET_GEOMETRY_WEIGHTS`` 로
+지정하면 그대로 읽는다 — 가중치 안의 키로 구조를 알아낸다.
 
 The public contract is deliberately small: :func:`estimate_geometry` receives
 the ``DetectedBarcode`` produced by Stage 1 and returns only normalized control
@@ -24,9 +29,11 @@ import numpy as np
 
 from wemeet.schemas import DetectedBarcode, GeometryField
 
-DEFAULT_WEIGHTS = Path("downloads/geometry/resnet18-c3/model_state_dict.pt")
+DEFAULT_WEIGHTS = Path(
+    "downloads/geometry/mobilenetv3-small/controlled-v2-20261026/model_state_dict.pt"
+)
 DEFAULT_HF_REPO = "123metro/barcode-weights"
-DEFAULT_HF_FILENAME = "geometry/resnet18-c3/model_state_dict.pt"
+DEFAULT_HF_FILENAME = "geometry/mobilenetv3-small/controlled-v2-20261026/model_state_dict.pt"
 DEFAULT_HF_REVISION = "main"
 INPUT_HEIGHT = 160
 INPUT_WIDTH = 384
@@ -89,16 +96,27 @@ def _load_payload(path: Path):
         return torch.load(path, map_location="cpu", weights_only=False)
 
 
-@lru_cache(maxsize=2)
-def _load_model_cached(path: str, device_name: str):
+def _build_model(state: Mapping):
+    """가중치 키로 구조를 고른다: 공통 head(adapter) 모델이면 백본을 채널 수로 가린다."""
+    if "adapter.weight" in state:
+        from wemeet.ai.geometry.controlled import BACKBONES, ControlledGeometry
+
+        # MobileNetV3-Small features[:9] 는 48채널, ResNet18 layer3 는 256채널을 낸다.
+        channels = int(state["adapter.weight"].shape[1])
+        return ControlledGeometry(BACKBONES[1] if channels == 48 else BACKBONES[0])
     from wemeet.ai.geometry.model import ResNet18C3
 
-    model = ResNet18C3(pretrained=False)
+    return ResNet18C3(pretrained=False)
+
+
+@lru_cache(maxsize=2)
+def _load_model_cached(path: str, device_name: str):
     payload = _load_payload(Path(path))
     if isinstance(payload, Mapping) and "model" in payload:
         payload = payload["model"]
     if not isinstance(payload, Mapping):
         raise ValueError(f"가중치 파일 형식이 state_dict가 아닙니다: {path}")
+    model = _build_model(payload)
     model.load_state_dict(payload, strict=True)
     model.to(device_name)
     model.eval()
@@ -114,7 +132,7 @@ def load_model(
     weights: str | Path | None = None,
     device: str | None = None,
 ):
-    """Load and cache ResNet18-C3 for inference."""
+    """Load and cache the geometry model for inference."""
     selected = _select_device(device)
     path = resolve_weights(weights)
     return _load_model_cached(str(path), str(selected))
@@ -149,9 +167,9 @@ def estimate_geometry(target: DetectedBarcode) -> GeometryField:
 
     predicted = np.asarray(predicted, dtype=np.float64)
     if predicted.shape != (48, 2) or not np.isfinite(predicted).all():
-        raise ValueError(f"ResNet18-C3 출력이 비정상입니다: shape={predicted.shape}")
+        raise ValueError(f"기하 모델 출력이 비정상입니다: shape={predicted.shape}")
     if predicted.min() < -0.5 or predicted.max() > 1.5:
-        raise ValueError("ResNet18-C3 출력이 허용된 정규화 좌표 범위를 벗어났습니다")
+        raise ValueError("기하 모델 출력이 허용된 정규화 좌표 범위를 벗어났습니다")
 
     from wemeet.ai.geometry.model import destination_grid
 
