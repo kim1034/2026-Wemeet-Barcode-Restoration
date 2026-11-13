@@ -80,9 +80,13 @@ def _rectify_and_decode(
     detected: DetectedBarcode,
     field: GeometryField,
     stage_ms: dict[str, float],
-    scales: tuple[float, ...],
+    scales: tuple[float, ...] = _RETRY_OUT_SCALES,
 ) -> tuple[RectifiedBarcode, DecodeResult]:
-    """배율을 바꿔 가며 `scales` 개수만큼 편다. 마지막 시도의 (보정 결과, 판독 결과)."""
+    """배율을 바꿔 가며 `scales` 개수만큼 편다. 마지막 시도의 (보정 결과, 판독 결과).
+
+    `scales` 기본값은 예전 고정 3회(1/1.5/3배)다. AI 평가 스크립트
+    (scripts/evaluate_stage2_v1.py 등)가 이 함수를 세 인자로 부르므로 기본값을 둔다.
+    """
     rectified, result = None, None
     for attempt, out_scale in enumerate(scales):
         rectified = _timed(stage_ms, "warp", apply_field, detected, field, out_scale=out_scale)
