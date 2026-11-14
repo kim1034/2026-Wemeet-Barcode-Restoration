@@ -12,6 +12,7 @@
 | [2026-09-09-control-points](2026-09-09-control-points/README.md) | 제어점 격자 개수 확정 — `6×3` → **`16×3`**. 표본 정의를 `n_x` 에서 떼어내 순환을 끊고, 좌표 오차 σ 를 축으로 넣어 상한 곡선을 처음 쟀다. 최적 격자가 σ 의 함수임을 보이고 최대 후회로 확정. `n_y` 도 σ 에 대해 뒤집힌다 (`16×7` 은 σ=0 에서 1위, σ=4 에서 14.3%). 확정값은 3단계 20ms 예산을 17% 넘는다 |
 | [2026-09-15-stage2-backbone](2026-09-15-stage2-backbone/README.md) | Stage 2 v1 기준 백본 `ResNet18-C3`와 `MobileNetV3-Small`·`EfficientNet-B0` 3-way 비교 설계. 같은 spatial Geometry Head·`16×3` 제어점·TPS 경로에서 구제율, pixel error, latency, model cost를 비교한다 |
 | [2026-10-02-detection-imgsz-1920](2026-10-02-detection-imgsz-1920/README.md) | Stage 1 `DEFAULT_IMGSZ` 960→1920 — 저해상도 막대(1.6~2.2px)가 960 축소에서 1px 밑으로 뭉개져 탐지가 실패함을 실측(69→99/100), 전체 판독 52→89/100. 수용장 미스매치 우려 검토, 속도(CPU) 트레이드오프, `eval/benchmark-v2` 기록(1280~1600 제안)과의 차이점 정리 |
+| [2026-10-26-stage2-efficientnet-b0](2026-10-26-stage2-efficientnet-b0/README.md) | Stage 2 백본 ResNet18-C3 대비 EfficientNet-B0-C3, 조건 고정 1:1 비교 (seed 42, 동일 split). 구제율 71.13%→78.67%(+7.53%p, 버킷별 균일), 좌표 오차·params(−61%)·CPU 지연(약 3.2배 빠름) 모두 개선됐으나 오독도 0.47%→0.73%로 함께 늘어 본 코드 반영은 보류, seed 추가 확인 필요 |
 
 ## 규칙
 

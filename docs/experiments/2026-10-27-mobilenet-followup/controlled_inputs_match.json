@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "checks": {
+    "backbone_detector_and_crop_legacy": 100,
+    "backbone_detector_and_crop_clahe": 100,
+    "decoder_mode_inputs_and_geometry_crop-validation": 2976,
+    "decoder_mode_inputs_and_geometry_crop-benchmark": 1500,
+    "decoder_mode_inputs_and_geometry_scene-resnet18-c3-1280": 100,
+    "decoder_mode_inputs_and_geometry_scene-mobilenetv3-small-1280": 100,
+    "decoder_mode_inputs_and_geometry_scene-mobilenetv3-small-1600": 100,
+    "decoder_mode_inputs_and_geometry_scene-mobilenetv3-small-1920": 100
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "protocol": "mobilenet-followup-20261027",
+  "upstream_commit": "f449b9c34df3a42c5c324a0629b0dbee3308f1b3",
+  "prior_protocol_sha256": "b817c735dec3becae633ed9fbfc52918131744c308bae922351f596cdd3f8ecc",
+  "renderer_fingerprint": "663d83eff4221bced892ee296ae8855551c4d4e37d9b289169d8d141132abb6a",
+  "scene_dataset_revision": "41bd506fa5e9a5aac33f202d2f9ce98acc77d4f3",
+  "policies": [
+    "early_exit",
+    "always_rectify",
+    "agreement"
+  ],
+  "agreement_rule": "D0 plus 3 distinct warp scales; at least 2 identical nonempty (text,format) observations and no conflicting nonempty result; no GT input",
+  "decoder": "zxing-cpp only, native first-valid candidate; enhance false/true separately",
+  "warp_scales": [
+    1.0,
+    1.5,
+    3.0
+  ],
+  "detector_sizes": [
+    1280,
+    1600,
+    1920
+  ],
+  "detector_clahe": true,
+  "geometry_confidence": "availability only; never a calibrated score",
+  "gpu_uuids": {
+    "6": "GPU-e784131f-b03a-7638-3dd1-eb87207208fb",
+    "7": "GPU-33fb8c54-a63e-6079-3ac3-792f7999fa11"
+  },
+  "timing": {
+    "warmup": 50,
+    "repeats": 3,
+    "threads": 1,
+    "serial_all_tasks": true
+  },
+  "selection": "No new model/checkpoint selection. Policy tradeoffs reported separately; benchmark-v2 is a development regression set.",
+  "packages": {
+    "torch": "2.8.0+cu126",
+    "torchvision": "0.23.0+cu126",
+    "numpy": "2.5.1",
+    "opencv-python": "5.0.0.93",
+    "zxing-cpp": "3.1.1",
+    "wandb": "0.28.1",
+    "ultralytics": "8.4.190"
+  },
+  "checkpoints": {
+    "mobilenetv3-small": {
+      "sha256": "1129538deba96ca23b8e31b2be12a18e030d75d495a480aeb7dd695584306e96",
+      "selected_epoch": 90,
+      "seed": 42,
+      "preset": "M",
+      "training_run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/ypolniyl"
+    },
+    "resnet18-c3": {
+      "sha256": "8dbcd37040b965df1e90efc5b249b13ee8b5106277012342c40260a7697343ad",
+      "selected_epoch": 90,
+      "seed": 42,
+      "preset": "M",
+      "training_run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/btfvvkwr"
+    }
+  },
+  "detector": {
+    "sha256": "223ef1b248a71db19f216967a14b312c9fcf2ba8657d91421539a6b7c96f3024",
+    "hf_revision": "36f3902c866fcc1bc4acf752f520efc4a6b2d5b1"
+  }
+}

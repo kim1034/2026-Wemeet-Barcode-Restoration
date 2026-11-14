@@ -1,0 +1,361 @@
+{
+  "status": "passed",
+  "tasks": 22,
+  "accuracy_tasks": 12,
+  "timing_tasks": 10,
+  "preserved_files": 86,
+  "scene_files": 301,
+  "raw_decisions_rates_transitions_quantiles_checked": true,
+  "inputs_sha256": "5d65c1487d9c3cb3fffc2244f5d684f45925450017c62830bf33ab3e1e3b9189",
+  "execution_lock_sha256": "590cdda6f33c2d68dd52ac764c1f776c0242c49c1f6a76ecc94c8cba67bfae8c",
+  "sources": {
+    "crop-validation-legacy": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/z57vfgpx",
+      "completion_sha256": "e814d6758d6ee055312a670134d38352e181dcbe6fc76d2facf26cf1a5525454",
+      "files": {
+        "results.done.json": "dc734c0d1c7d23cb1872c326f293356399a5efdbd2611b1c4d740a78901dd651",
+        "hardware_end.json": "5ab007b64ff82f1c2747326e799fdf9b8783b45e733e9a2279eb8386b8d97a07",
+        "hardware_start.json": "27ab162536aa9cf5b58753d6d00a96164e67031bf785fcd8dcfc3189af2f9226",
+        "summary.json": "646005071cdeb12f908de7d89c16622e67ab06431dc859a474cba92efa6fa37c",
+        "per_sample.jsonl": "73ab9a803fcda1e39b3f9e33a67f4d57dcb155e5771010da3ca71dca1ecacf01",
+        "progress.json": "4a7178e11a3496ac80fc11a63ac8ff1cba93462c3c26fa45f4b21ecefe0f927c",
+        "task.json": "84493d68910fadd55c94afb598786e9f9ec00bf591d0b1609a032229697bf1ba"
+      },
+      "gpu": 6
+    },
+    "crop-benchmark-legacy": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/ocanwzzf",
+      "completion_sha256": "86cb912ca586a64a2ae2a439c4eeffbaf604890429e48059c932b5e7edb03b22",
+      "files": {
+        "results.done.json": "52ee1246d4001f293223957e071d2b42bf14015fcf6318cdc225610538fa1713",
+        "hardware_end.json": "4e5ca0a5faa0730e852d53ce0cfae9043edbe4e27de78dcb5c4c1cd4ae52fedc",
+        "hardware_start.json": "48e94ea32a5e4ffb79c275216b6fd0fa6168b619223bf598119d4405ccb4ca53",
+        "summary.json": "d8307e82bd03d61ef9b8a782f2852632f4b87e71a5243d5d774b696d94c41cd7",
+        "per_sample.jsonl": "f6db7120b49461be83bc732f2377e853744c839001d061d55bc23fc9b6642ee3",
+        "progress.json": "bc454c155f8b0a18619373ab2d306964ead9e3bb107e340d3fb2d962154bedc3",
+        "task.json": "800695392b16671e3c46e4c866c51c0965fcaead09b15e41bc9a98f92bcebf1a"
+      },
+      "gpu": 7
+    },
+    "scene-resnet18-c3-1280-legacy": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/k0wl3rfl",
+      "completion_sha256": "b27af2b84dccb94d861e892eafaacd1bd814143dec8f0cc82703a9bc4735499c",
+      "files": {
+        "results.done.json": "06d9892c60e2ad5a8990031e11933264f1cda6c4bcb40cd4fb5ef05f34e53531",
+        "hardware_end.json": "c575d95aa0496fff67709fde053015ded2c3bafb456d6aeed445d99106d7d670",
+        "hardware_start.json": "70676fe1c7ca54f61bf729cba5b355045ac2ff3cd9ba19cf5af5c60218169e85",
+        "summary.json": "a438649e2a99c3bb5216ff53f6f9fdf261790bf12564c0d8230c245ec08a8850",
+        "per_sample.jsonl": "ad76286ce9f559954a06e88a65dec173acd237ab9cffd641cfded33b22f8acea",
+        "progress.json": "e5506c6690c4cdad348cb4ae29ca09b936a6b2760c37987d80a1c85d48b30e4b",
+        "task.json": "a7f463811cf9a9b29433b4beb11c9d859a89dc9d15423893daeb71d9f0fb5d60"
+      },
+      "gpu": 6
+    },
+    "scene-mobilenetv3-small-1280-legacy": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/ympn947r",
+      "completion_sha256": "1f9fb9cc2c7ca85ebf19abf81378696d3db516756780b0eaf7519452aff1098e",
+      "files": {
+        "results.done.json": "73f55a9127e2755e5823874af189986858d3cdb72c5234740b7c61a7d0620c1d",
+        "hardware_end.json": "d04cbaa81fa6bfbb97d001648af0bb9f0dfe4e710313fea45ab7a770db311558",
+        "hardware_start.json": "068af719d58429268241562f23230840df67442212ce2d96fb5380f286800888",
+        "summary.json": "96ef7d3373512ae48b4c5d5e60b33a7c9c096f242aa8adfa05768461f41606f5",
+        "per_sample.jsonl": "542f33544935e866a61cba4dc70e189faf9baadd57cd78bc99f1a4a3d09d49db",
+        "progress.json": "549abd9ed9b0a9b2ce350005271c3e1b1a65fe7ed0b6d0340803152101f7522b",
+        "task.json": "84b8e87b1e8ece2c903e2de2808a6dbde1c606108e56fd8ac3262eec035984e7"
+      },
+      "gpu": 7
+    },
+    "scene-mobilenetv3-small-1600-legacy": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/2rzr9ovj",
+      "completion_sha256": "90e3024531dfc46b4bef6c9e0e23af952625e71ff63e8400398abcdd8c6b038d",
+      "files": {
+        "results.done.json": "605b93654e07e50cfc0ea10dd6460e0302e4a1a2dc72dca2dfe87732b2076d35",
+        "hardware_end.json": "be7418754c372d8e120c5805a7c3eda2448eaad4468a4894ce35a626e303aadf",
+        "hardware_start.json": "75749e02de1ce3ee9d95413fb48a0d9dcbcf3eba552c7d62b3358f2370e52645",
+        "summary.json": "44573d4753b33431b0a5ea0d46cc5c477e1005a9d4df21d9fe12f7ee8d634828",
+        "per_sample.jsonl": "e29ef9c15319401550ae328834fe4d31b304f682ac7f7349835de0a7043b6b41",
+        "progress.json": "e63277edae9669336a4cbf97769c91b9f2de4c854a1ce80883ae994bd59bc061",
+        "task.json": "fe98d68cbb2bd2fefa0fa6179fa52d2a574d5e0809adfef8288800f3d10203d0"
+      },
+      "gpu": 6
+    },
+    "scene-mobilenetv3-small-1920-legacy": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/20orgz5e",
+      "completion_sha256": "c256ca03423d1b031ae54458d4a3d42c07b0607d7e9866f8a7e39853a35f49c3",
+      "files": {
+        "results.done.json": "b93157c26d8490179f9944ed425682fd41098867acc4c9063f4f6fc45f415ca7",
+        "hardware_end.json": "fd0f2104f7e7051e1de1a7ad5dffc4c7480809275f95eb6a0d195f91bd4566a1",
+        "hardware_start.json": "3f36d6d9f827651b2ff994cf2384629b60e38a999d9bbb6639387c4d44a0f66a",
+        "summary.json": "11284cec510ecb92d78c85f08bfc84b1262778f51b28b1293c8a9bc4db6c0b43",
+        "per_sample.jsonl": "8e15e05ae0a7e9186f30ebac49d249a7f8740ea95dc447a45371b7e7ae84a9e8",
+        "progress.json": "addc95711e6f8ddfb9166350ecefa5e9cadf16fbdda4dbbff846eb83dd367ad7",
+        "task.json": "8a4823e5676db55c776363fe84967d1af0184d660280e7e61b097b0287988d2e"
+      },
+      "gpu": 7
+    },
+    "crop-validation-clahe": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/3tjm6v63",
+      "completion_sha256": "e8d06e38e2ab2bea97694bca5474ec39f7e8be95ce2b4b65e92b279686aee090",
+      "files": {
+        "results.done.json": "9d6c3c7d7793900ef466a068762f0b8fa8b4a9571462164fa8162f2da40c399b",
+        "hardware_end.json": "f0b17b0d52f554ac1f11c5bbdd2d644d220f29487389af27df660801265b6f7f",
+        "hardware_start.json": "06017da4eeef88e575e05382d0203163b78ed9f2e6251f418fa24396b2f81740",
+        "summary.json": "eebebdf7bb97a41316d53eb27d590231d38c819cf6fea50817795feacc7b060c",
+        "per_sample.jsonl": "743e10a625b0a9f6908ac5756320174f55364d100c416c03f78064f272fca2a6",
+        "progress.json": "9bf2c85c4bfda1697aa05d633ca4d24eb674192ea753fe6a7c1705ca501947d1",
+        "task.json": "22cd7aafef5ae4a6e02fff5eae6ae0cd6b9c01ee71587eb5305b6d738d455ba8"
+      },
+      "gpu": 6
+    },
+    "crop-benchmark-clahe": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/jus1fj03",
+      "completion_sha256": "a5ac8d7e24ed40fc396dca8066ec694e6b3a4b19c129a6cb8cf2cc9f85397a8a",
+      "files": {
+        "results.done.json": "c174e827da335ac5d815e466a2ae0981016261c5ecaba854354815ff522d3ee6",
+        "hardware_end.json": "af678598bf2b63341db486fabb075c0b1207f209835482d5f0ad907003f7754f",
+        "hardware_start.json": "2e3898120cfb7a33871bfc11dacc7bb7aeface58f92c8bfbe07a2280a9758fba",
+        "summary.json": "57a648dfc3071544b9913cc24349d46b5e87828d59361901172276f98d1f3ea6",
+        "per_sample.jsonl": "333b69be568981d7d3b8dabcf0a0ab9c95b5873823f2c81cba7f7ae207188392",
+        "progress.json": "defb50bd21bb4a012c669b11a9ec9b29a16f7a444bc0b48978635b3daf2d915e",
+        "task.json": "eecc8ac1c3c80fdd696d3bd13c0ee944e229ab89d611151bc0ed12a232d2b85d"
+      },
+      "gpu": 7
+    },
+    "scene-resnet18-c3-1280-clahe": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/adkme6mk",
+      "completion_sha256": "b72298fde6837bcce55dfbe7ef2c7cdbd84dd4b4b26711304cc5d29e892661f7",
+      "files": {
+        "results.done.json": "a0c4444246b231e343551c7c80053d9d87254bd5c3c7ca8eec02b892843d336e",
+        "hardware_end.json": "1fd465b3d4c1cc7f24479a457cd6677a58df68d83c04d47761c81785c493e035",
+        "hardware_start.json": "c4e79a2cb9cfb8f9c1b02f240e143a1dea9a8e34df041f136c54c8e52ee9918a",
+        "summary.json": "71a5c48717f1a374fea496e2e34d32fbd6da141c51782e5190a29033aa903686",
+        "per_sample.jsonl": "74fd04d75b387d34aaf9988e011e7ed9d2c8398e3d1692e4081747e280d3bf8f",
+        "progress.json": "72b8b93041d5367ade483b7907e120e03c7d72db3bf0dc09d7532e0b1c363281",
+        "task.json": "c98ce5d4e6c90f771f655aa9baaa9ae587b1b34e7fa2594a248caa084a71f029"
+      },
+      "gpu": 6
+    },
+    "scene-mobilenetv3-small-1280-clahe": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/p3qc0lkm",
+      "completion_sha256": "1847b4289099c62e5858c7a8a735b86095d21286a9edbbe1f5badddc84ca3de9",
+      "files": {
+        "results.done.json": "7663f54305b7dc964e8a5b8d2b2082e4ba5d98ed95ef33e08ac967a180d045a7",
+        "hardware_end.json": "bdbe2370865ed80b37b4da960561f5a8399347ea8809d447f53d4a8c0f076bf1",
+        "hardware_start.json": "7df80f6f8de5259b1dd3a5f2f0c53c8bd345c520648663ecea219b55055c2973",
+        "summary.json": "37e762490157c2ac846dbe72729dd5fd2264c4637ddbd85a0e840591bbf82386",
+        "per_sample.jsonl": "160e233de82f60643367f637c9d96a5522d20a4f0160565c18ab29dc44e6f6b0",
+        "progress.json": "e496140ec14e3dd060cd0563f9d7b6b62768fa360714f97dedd3a584fef92cd6",
+        "task.json": "3f2db4a118f477b412fa61d4f9574c37447670c9aed035b89a1ab7314878fbe8"
+      },
+      "gpu": 7
+    },
+    "scene-mobilenetv3-small-1600-clahe": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/iaknpims",
+      "completion_sha256": "c583a7a199fffb3a26dac7f303571d4e0b09e68a2529ceac9a7e2008d82a5224",
+      "files": {
+        "results.done.json": "d5c1d944c6b071234dabd079ea30bc9f66eeb3f523925f450c21e0a520e5ae13",
+        "hardware_end.json": "13baafd527cfb57fac8481cd36ba095c5c857767ad0fb1adce2711dc93f3b17d",
+        "hardware_start.json": "4ddf2fc4e857f85667ff4479c17cc192e4b7c00c2d8d0976657e4dc282d38ce9",
+        "summary.json": "9496341047d8cbe0522041a43c4cab5e80162eb3cf28c62d6199b4601e2f88d1",
+        "per_sample.jsonl": "3a5410b3ce2e302919d0aca36db39e1fbcbf9b505daa94ec5000629faf4ee9c0",
+        "progress.json": "a0b33cb7f39de73e2748b4da4dd45704bb45f893595cf42f618ad58f6aacd5e5",
+        "task.json": "91740ac9fe346abded094b495e8eaba104f062d1743b8e89a8580a43b19159ba"
+      },
+      "gpu": 6
+    },
+    "scene-mobilenetv3-small-1920-clahe": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/qrsc91f5",
+      "completion_sha256": "8db581c7ced6519e3ef1ed8268c68116979f88dcc9695c365adcf8b597baf8b3",
+      "files": {
+        "results.done.json": "277115c3cc808936d428031e785cdc66acfd841d9c72367bbca20c37ea58e0f5",
+        "hardware_end.json": "c1b7e4423e0c9c5d6181b14d0fca90f8c6dc3bb3623789f0e09423224a65a660",
+        "hardware_start.json": "c4aaaafd8a01dd301455ccc6b1d8beeff940c8ded6dec0c93eb2f22a6f030543",
+        "summary.json": "699ef55f5b7de3f2528998419c15fcacaebb9479edc21e8a1256f24dbf0cc892",
+        "per_sample.jsonl": "fe08ee8823901a7e39d6088730768317295e577dbaacc41013bfc4db0332077e",
+        "progress.json": "706c90f76db3278a45f6d82c75fd5f12b3bda210e2c573c96e316840c9f89ad6",
+        "task.json": "97cbb584bd783973e5ca994eaa7618bdd14ed032eaee0a3c50fe5b9fba3ef650"
+      },
+      "gpu": 7
+    },
+    "crop-benchmark-legacy-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/tirizmfn",
+      "completion_sha256": "ccd69486831be091e6dfdadc8b4254b20a6593395df771323ce06412a2921012",
+      "files": {
+        "results.done.json": "48951b16b277ee54b15f534fda62b1bc89de431f0ea2bff23ed73e4a4d191b02",
+        "hardware_end.json": "8fcf516d2d128385fc766ee4499ef817e5cac5a6fca39a58cfb155c51a7ef8e1",
+        "hardware-agreement-start.json": "ec130ef384a5ec6df344c308eaf98b2b669408bfd0f8eecefa66f1700cbdfef6",
+        "hardware-agreement-end.json": "dca6413127c1ea483c82263673f9b98ff34469af0f120426296e4089107a5982",
+        "summary.json": "4aa4eeff5f3f5cbe02d61bf2310c09d6901dec8680257ba73ff1c841e5f0d06a",
+        "hardware-early_exit-start.json": "c8088e758b45632235e49c5a63fa47f67519a1243b6b1cc686a9cc68c7471bb3",
+        "progress.json": "178faae3aedfa60617bae2efc29c7132d3949809ea7ee8eabb03cc770f4224e9",
+        "hardware-early_exit-end.json": "52eef2ca4d9af9957d1329554d8fa4b783307305b57aafdeba0451c5fa473075",
+        "task.json": "284d5deb2057a09046b53c6133824d88dd18e08a1db9f8f64adcae4a1718aff9",
+        "hardware-always_rectify-end.json": "411828991f4aa286ce06a3353dd1b69fe35f01c518ce7b61b73bfe4316b9df56",
+        "hardware-always_rectify-start.json": "1ad2fb9a85aa9f08888a7bb997b369f328ca4785db839f19110fa06fb918c6a9"
+      },
+      "gpu": 6
+    },
+    "scene-resnet18-c3-1280-legacy-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/9ucsgmcy",
+      "completion_sha256": "b05735b951c373090abc020e6234587c04c345e90f4283f992d0845d27f5e041",
+      "files": {
+        "results.done.json": "2b825c618e585c4726f658defcf217ed2f7d2da79eb5652c0228e994e0c68b68",
+        "hardware_end.json": "4ba4fddf4c957c116cea6db50d743e216e5e1b3d30fd9fd50975f35ef69e2475",
+        "hardware-agreement-start.json": "24fa1c984bf753b88c47c27defe84b4fd800a37078633319d99e39aa11696b91",
+        "hardware-agreement-end.json": "a04fa7fa508eaf18b070ed59dbf9cd6517671f6cea6965ffe0d32c257bcdd897",
+        "summary.json": "8c17f4a52debedd28bb672c49d205bc7a026cb351edc10d9a54790e5f1d2bd36",
+        "hardware-early_exit-start.json": "b5a95207554b9e1a188f62ca795c986ce537a8c410b18e5feb7a986ce6eea07c",
+        "progress.json": "5aa2c15322655ae81e609277bc6895598cf16ae7f838dfc138ea31efec9589dd",
+        "hardware-early_exit-end.json": "d32193a4ba96b6d33c39a64304f9476609e08f3ff885a3e377705cc465fc55b1",
+        "task.json": "272ddcbfaa4691e572424a496c8045da1bb9dcb577ea4edc123bfe4b96c403f0",
+        "hardware-always_rectify-end.json": "3df8d0edb7f511bccea08e2c67a7ca84042da18e80e9d4eb37f643865a1782ea",
+        "hardware-always_rectify-start.json": "415ff778e6a258f34916cf007933c6d690f173f17e777baa00de598409b1fe30"
+      },
+      "gpu": 7
+    },
+    "scene-mobilenetv3-small-1280-legacy-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/4dwcjc5m",
+      "completion_sha256": "6525d121392174777cf1541c82334af76fd9015e8fd0c3fdf4242e314d82880e",
+      "files": {
+        "results.done.json": "5090f2e2ff240e47756b79a35f7c86f0e0c790484eb1f6c18aba4ddd6981acad",
+        "hardware_end.json": "77cf9a4e78bd704e396550f0b5245f76a08b000f9e79c1a016596b45a3833557",
+        "hardware-agreement-start.json": "7a52808253d2fcaf2ae431b57a25f29194cf6c3deec85f2c4e6e079a8a4e8593",
+        "hardware-agreement-end.json": "abbab52f6288c24e08baa1dfdbafda0fd42dad90e661394b6f821cb8fc3c6cdf",
+        "summary.json": "26f15005a312b4ad6c26d4a1e21b56155925fea4d8428c9a0297eca0e93195cf",
+        "hardware-early_exit-start.json": "011f2df9dc0a79b2f2b8a399b54d516b104ebd6ffd5e345597c062e9c8eedd6d",
+        "progress.json": "adb69f0428cbc70032245b3d84de1ea6a1edf8dfafb6938ee625c9bd4a4b5b22",
+        "hardware-early_exit-end.json": "7b9482525c8dfe607134aa8e7a31cf7e3213c64fabff0bcba63736624956a469",
+        "task.json": "2f969135733ab22d451508d14496912e1f6b252cf5943a6d4d56fe56830e0ccc",
+        "hardware-always_rectify-end.json": "d6651e0805c94e9298ec484ce19b386179d44e333104384f6fa0cf38f8854fb9",
+        "hardware-always_rectify-start.json": "ea496b902a2e527563c9fa18d2848f9d188e1bb6fdd72ab8c8238d2928e714e3"
+      },
+      "gpu": 6
+    },
+    "scene-mobilenetv3-small-1600-legacy-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/9u06gpqu",
+      "completion_sha256": "bd84102f62c4a4974a35d268f9f524dbdd963cfc2c4949892f92586356f7c9d2",
+      "files": {
+        "results.done.json": "2620772bbf93b4bac6c502ae7301a599844c4e24e83fac25927ae56b0d502ff1",
+        "hardware_end.json": "898d95773528ba9367e90150b6280382042b9311225467749dd79d1f5d220e62",
+        "hardware-agreement-start.json": "7ac136d19c6f2f1fa1874c395e3d1b8c5b6ee55e13db50c09febb9493998fd99",
+        "hardware-agreement-end.json": "cdd712cf05f40562b3afa12a64e8559f56a8f6428899bd73d47892b3481f8ab2",
+        "summary.json": "f31491ef1f1d75c9b8bc4772dc7ad76c370f3493525fffd2fa5deb2c34e0b054",
+        "hardware-early_exit-start.json": "0ed1fc1f57459ecc3a90f814a603325b6f16a8933255db146ed5b4acfb6dfe15",
+        "progress.json": "be6af784e45176a142cd68af27a6c2825042b624b9e34a826ffe3f1578d64f39",
+        "hardware-early_exit-end.json": "c8a6c140a603a5262f7cd8b5b2b252831b4a40884e5ccc8d2ece9f63850af4c1",
+        "task.json": "5603356d677c6d5e218d9e9d3dd0032e920f5ee37e4e8f9ec5caaa089f821733",
+        "hardware-always_rectify-end.json": "3b004040d739e2a2d61d1973e6aa27344c4adc9a276d9e141844d269e5778012",
+        "hardware-always_rectify-start.json": "3aeec66ff70b491fa62127fc18b1ace6b07ce6d8528e49b79c70f230b351e942"
+      },
+      "gpu": 7
+    },
+    "scene-mobilenetv3-small-1920-legacy-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/rhjdfxfd",
+      "completion_sha256": "91df1bc73ef11c98005824eea5485161f57adfe18ad70c5b2bbd0d056202881a",
+      "files": {
+        "results.done.json": "12a03c2189a5b6f881c1398fae1fc10f9c59a6c793776c78b823379c302415f3",
+        "hardware_end.json": "07718b9447b62c1e18563682944dbe32e34101de8f438b922de666cf44527dc1",
+        "hardware-agreement-start.json": "a009fff47d748bd9d28464772f1ecef72bb041672d518f15d8cdf141e1624879",
+        "hardware-agreement-end.json": "3869846d0b2b96bcf687a69e9cf600ab85bda2b83863d8e1f11f7513f37c4264",
+        "summary.json": "261a941a4b94b9f83b9bce398af98d8497faf82abba81728ea6d9c80c1635110",
+        "hardware-early_exit-start.json": "bd1ef71cc4e4d17820550735494431d577d08fa4e2b92ec9b57be258e6447847",
+        "progress.json": "24bec4a3a96042e44b9e8d500be9a1a9821d6339b765269e550a529504d1c32c",
+        "hardware-early_exit-end.json": "865755c19f9674d08b3c432e42da03ced52840b519cff4748d45864095e8dbbd",
+        "task.json": "f92761dd5d408d160af4caa2b66cf9796ef1fc2536e1bf033a28543ce420831e",
+        "hardware-always_rectify-end.json": "43c3f4ec6c16443f2961b5ead12c7dbe37e9e6402b9eb50f0149d901bf5ec106",
+        "hardware-always_rectify-start.json": "b2820d388216e2b2179bae0e8ab93ff182098eedf35be0fe45426ea593108592"
+      },
+      "gpu": 6
+    },
+    "crop-benchmark-clahe-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/gpvcax2b",
+      "completion_sha256": "8da73ba3c745f20ca0928196861ddec13c79c6b2c80bdd6ad7f00bbd8614a1b9",
+      "files": {
+        "results.done.json": "4f055a01c0d83421d9e539d34cf7e6077eff5b8f3cb8de663eaf33c91dced36c",
+        "hardware_end.json": "10100ba4c25f4a34976b19f41c91d55557415e5818e79454de935bb7eb460836",
+        "hardware-agreement-start.json": "8941f154d952b9186efb3f6eae54daed336e2aef7c365bfd3f74189ffb155e47",
+        "hardware-agreement-end.json": "6d252de19bf514e2d1c0d575101a86c211c46ad0af058244cdad6ffbff65c34e",
+        "summary.json": "c87a645de8445160ccd59e3b3108743c6cf582a9861b82655da0a1c3a29d5ec9",
+        "hardware-early_exit-start.json": "d87291b82744dd92ad2e20673657fbbfacc234cf7e83e9ee6cf8a865bd6fd02f",
+        "progress.json": "b23769e13796710d500c1fae0e9b761153ee97874ec3947978b1fe002ee7f63c",
+        "hardware-early_exit-end.json": "cb4ce019e952096e287c28dab6233d25e5f8832c98c8ac90b328103f2967791e",
+        "task.json": "f8a1701331ee80b71cbf3c3bf3468ba5175dc1dca9afa4db37f68c9793557150",
+        "hardware-always_rectify-end.json": "43bd121779b03e585bac961346f0e8d505df30fb2e9ecbded36743d59757d13a",
+        "hardware-always_rectify-start.json": "4b4f3597f4fb9b0046493c5aed9e57a52846ed3bb48224e20d1937992a33d932"
+      },
+      "gpu": 7
+    },
+    "scene-resnet18-c3-1280-clahe-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/zokb6wka",
+      "completion_sha256": "c04a06542845d9805820d466eaef2047c91d166f8fdee7cd2fac7824523017b7",
+      "files": {
+        "results.done.json": "ad54167792d70596029d20309fb5deb273c43d5ccda8d495b30063beb6b1079d",
+        "hardware_end.json": "77831db04a0d125c842d6949ef160840ee5b76f5c9d6291b8dd2ee35313be9a6",
+        "hardware-agreement-start.json": "3b12e7257978adb09aba4df014da542c844d99f077c923062fd441423921d55a",
+        "hardware-agreement-end.json": "08e6b372c329497aae8ba1d5ff0392d124e6a8c7be1053ffd4d86b245c4f5845",
+        "summary.json": "ab9bec84a9bb2ce295c0296f4a04a668bd4e1df6d793081bb7c58899d4c5a928",
+        "hardware-early_exit-start.json": "2900e1f29d286452304de6c373a15818e11172893d8684b70c5335ab1f9f79be",
+        "progress.json": "12427b3c91fa2c227c79f1a01166044f750fef5db1eab4c4aaf2a8a2f61c5c25",
+        "hardware-early_exit-end.json": "af812674a2f04ae596049221d748516a6acddbb2768134d977908fb6fb4c448a",
+        "task.json": "2d151d9264c57ba84df09cf48a83fb6661ee80543fb3ea944cbd1f775fe9e67a",
+        "hardware-always_rectify-end.json": "c230bf6e1dbb09157135c929932273566f2280b41caeb3cd1b04413ea601ea42",
+        "hardware-always_rectify-start.json": "69235dcea461d212e434af0c845921517fcab926e49875298e039ca466b77d14"
+      },
+      "gpu": 6
+    },
+    "scene-mobilenetv3-small-1280-clahe-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/epqsky2o",
+      "completion_sha256": "6f41c4c0cddda64ffa88dfe5c0918431456c1e61998444c16d6700bb5ceac0fc",
+      "files": {
+        "results.done.json": "2904dc64a45deca2c40c7f8fca500fcce1e102a3cc5de52edb1c4f6f534525df",
+        "hardware_end.json": "cb896e11339d0ec6387f6455e5c2072fc48e12b6c357e59a39412a1d37910cbb",
+        "hardware-agreement-start.json": "45a4346e93356772dba03442292319992f5d608dc56d95d27c59518be571c126",
+        "hardware-agreement-end.json": "57e839a052890a46ddb7e4b21704a992019106e1c9afbc1b80da1dac28d3f675",
+        "summary.json": "d91b65b1fa7f63717554dcb776ceb746d1c3cc8a1f5754f3db9b01fd057f3df5",
+        "hardware-early_exit-start.json": "b977c4cdf76c5b4e8b3182a14b102d58659579031220c90a8f2a974f7f9ea735",
+        "progress.json": "055aa9f3f79d9268dcab41f372ddfaf9e191db752aef9e53b30dc8a7368e0dde",
+        "hardware-early_exit-end.json": "4877c842fe9bee58addde839d90e3fdea2d7d9a1341ad1ec0d4e32d656f7b9ee",
+        "task.json": "4e1b162d5786d66e6746513c40b833b1573a07bde5ab49682dec4bfc7e69a19b",
+        "hardware-always_rectify-end.json": "5c3f1dfbede0245d489fcdcc2c1087936fa60efa493cb5f7f74875b64d8af243",
+        "hardware-always_rectify-start.json": "9fa023b3c674400ab357367972cf3242af3ae920c6b07d2812590d38f86656d5"
+      },
+      "gpu": 7
+    },
+    "scene-mobilenetv3-small-1600-clahe-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/ff3ptw6o",
+      "completion_sha256": "173a313a8e9b75902912cac08cd60fc797dff64874f4bf7af33ac13a6667d713",
+      "files": {
+        "results.done.json": "332a9d72007160770648f33cee252014ea18215be6d171a74df03f45459f5383",
+        "hardware_end.json": "ce133aed8b2e0d05f725a003a647f80eb0bc2d73552f688dcc78d0255c0e6440",
+        "hardware-agreement-start.json": "fe6b4a3f93e7a62ce804ece5140a1d890ee80700d8a289e7adbcc4e57ec1f3e1",
+        "hardware-agreement-end.json": "157c3a295a729184b0494eaa77b26897bd96207558ab723ae300e32fcb885fec",
+        "summary.json": "9f3bff3893297a75895cb751b706a69585946715d53763569a2c150039b2fe9f",
+        "hardware-early_exit-start.json": "500d843a72ec504f05d0e906941330ae9b1704a092c8bcdfef1768b7d4513e8e",
+        "progress.json": "5a7ee137005f9ea0b6c0a72e1bbca663badd21adf35f2c7f6489b4572d5d9285",
+        "hardware-early_exit-end.json": "aa7431a37bffa2c56194b777b59d4e46d7883f9e7ace457812fe57a057fdaaef",
+        "task.json": "420dd1247f4c8dfc26f4ded782684da0e1a115b62cdc604a1e8958a185904fc4",
+        "hardware-always_rectify-end.json": "41f546f762bf50177ba15878476186e3c45c771e0fe174bb36d00a0715b968e0",
+        "hardware-always_rectify-start.json": "8c93e0bf597450e001997b4552f9932019b94f464c667978b54d17ca2d42f8eb"
+      },
+      "gpu": 6
+    },
+    "scene-mobilenetv3-small-1920-clahe-timing": {
+      "wandb": "https://wandb.ai/kim-1034/wemeet-barcode/runs/bxxhbxai",
+      "completion_sha256": "1b334ba17ce14158bdbf623141a6de05e16ba3e6dc721cde580f63fe043e730a",
+      "files": {
+        "results.done.json": "8f8651533f78b500a06d9bbf8e31cd4865bf887363568f1e44961891cd2974d9",
+        "hardware_end.json": "353e9a8b065f272261517ae45e49c2d9b0f3e5a72ced6f670357f157d201e0df",
+        "hardware-agreement-start.json": "a077e9eb2a6469a9ba199f6549a95e7cdb0c6c48892760ae5de0c7b234ddb8d9",
+        "hardware-agreement-end.json": "eb7e8feac0be01711bba8d1fe4f8a74043935bfc15fccc03766fd88c26c84295",
+        "summary.json": "21edb09b403f36dc39eaaca8fa740995d6028162a609cef1e32cc25c027dfab0",
+        "hardware-early_exit-start.json": "9d6622db5ccca5fd9d3b3d9945818b88c54aa4010ebe085f7cc74d7387320a69",
+        "progress.json": "9eb489152229c23f4a26661bb39632ea7a556fbbe0ce8aa914058840ab1e944e",
+        "hardware-early_exit-end.json": "912c7be05aec2d18a4f5b37d8b17e59852de40f424d7528446fd58ec122a089e",
+        "task.json": "aab9088878c142dbe1d0938fe634d9f65f278b812562fa31ca13f5d73122481c",
+        "hardware-always_rectify-end.json": "f2154ef0bd69829dc33f52578e58d38a461006d3750b9ecf4ac33ccdcdd7ba54",
+        "hardware-always_rectify-start.json": "f27028b76f8cc67cc30e4c672684db3b487da3b950bdd06f4f849ceed759f49a"
+      },
+      "gpu": 7
+    }
+  }
+}

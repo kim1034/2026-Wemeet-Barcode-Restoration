@@ -1,0 +1,167 @@
+{
+  "status": "passed",
+  "preservation_checks": 202,
+  "native_scene_matches": 800,
+  "timing_external_gpu_interference": false,
+  "hardware_observations": 188,
+  "remote": [
+    {
+      "task": "crop-validation-legacy",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/z57vfgpx",
+      "artifact": "crop-validation-legacy:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "crop-benchmark-legacy",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/ocanwzzf",
+      "artifact": "crop-benchmark-legacy:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "scene-resnet18-c3-1280-legacy",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/k0wl3rfl",
+      "artifact": "scene-resnet18-c3-1280-legacy:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "scene-mobilenetv3-small-1280-legacy",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/ympn947r",
+      "artifact": "scene-mobilenetv3-small-1280-legacy:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "scene-mobilenetv3-small-1600-legacy",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/2rzr9ovj",
+      "artifact": "scene-mobilenetv3-small-1600-legacy:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "scene-mobilenetv3-small-1920-legacy",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/20orgz5e",
+      "artifact": "scene-mobilenetv3-small-1920-legacy:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "crop-validation-clahe",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/3tjm6v63",
+      "artifact": "crop-validation-clahe:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "crop-benchmark-clahe",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/jus1fj03",
+      "artifact": "crop-benchmark-clahe:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "scene-resnet18-c3-1280-clahe",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/adkme6mk",
+      "artifact": "scene-resnet18-c3-1280-clahe:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "scene-mobilenetv3-small-1280-clahe",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/p3qc0lkm",
+      "artifact": "scene-mobilenetv3-small-1280-clahe:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "scene-mobilenetv3-small-1600-clahe",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/iaknpims",
+      "artifact": "scene-mobilenetv3-small-1600-clahe:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "scene-mobilenetv3-small-1920-clahe",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/qrsc91f5",
+      "artifact": "scene-mobilenetv3-small-1920-clahe:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 7
+    },
+    {
+      "task": "crop-benchmark-legacy-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/tirizmfn",
+      "artifact": "crop-benchmark-legacy-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "scene-resnet18-c3-1280-legacy-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/9ucsgmcy",
+      "artifact": "scene-resnet18-c3-1280-legacy-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "scene-mobilenetv3-small-1280-legacy-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/4dwcjc5m",
+      "artifact": "scene-mobilenetv3-small-1280-legacy-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "scene-mobilenetv3-small-1600-legacy-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/9u06gpqu",
+      "artifact": "scene-mobilenetv3-small-1600-legacy-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "scene-mobilenetv3-small-1920-legacy-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/rhjdfxfd",
+      "artifact": "scene-mobilenetv3-small-1920-legacy-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "crop-benchmark-clahe-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/gpvcax2b",
+      "artifact": "crop-benchmark-clahe-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "scene-resnet18-c3-1280-clahe-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/zokb6wka",
+      "artifact": "scene-resnet18-c3-1280-clahe-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "scene-mobilenetv3-small-1280-clahe-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/epqsky2o",
+      "artifact": "scene-mobilenetv3-small-1280-clahe-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "scene-mobilenetv3-small-1600-clahe-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/ff3ptw6o",
+      "artifact": "scene-mobilenetv3-small-1600-clahe-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    },
+    {
+      "task": "scene-mobilenetv3-small-1920-clahe-timing",
+      "run": "https://wandb.ai/kim-1034/wemeet-barcode/runs/bxxhbxai",
+      "artifact": "scene-mobilenetv3-small-1920-clahe-timing:v0",
+      "state": "finished",
+      "remote_file_digests_matched": 11
+    }
+  ],
+  "service_released": {
+    "MainPID": "0",
+    "ActiveState": "inactive"
+  }
+}
