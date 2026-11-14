@@ -52,6 +52,11 @@ _RETRY_OUT_SCALES = (1.0, 1.5, 3.0)
 # 교체될 때를 위해 남겨둔다 (docs/stage2-handoff.md 「아직 안 정해진 것 ①」).
 _MIN_GEOMETRY_CONFIDENCE = 0.3
 
+# 모든 시도가 실패하면 검출 박스의 가로·세로를 이만큼 넓힌 범위를 원본에서 한 번 더 읽는다.
+# 크롭(박스 1.2배)에서 막대 끝이나 여백이 잘렸다면 어떤 보정으로도 살릴 수 없기 때문이다.
+# 끝까지 못 읽은 14장에서 1.5배 3장, 2배·3배·사진 전체는 각 1장을 살렸다 (오독 0).
+_WIDER_REGION = 1.5
+
 
 def _timed(stage_ms: dict[str, float], key: str, func, *args, **kwargs):
     """func 를 부르고 걸린 시간을 stage_ms[key] 에 **누적**한다.
@@ -72,11 +77,18 @@ def _with_timing(result: DecodeResult, stage_ms: dict[str, float]) -> DecodeResu
 
 
 def _rectify_and_decode(
-    detected: DetectedBarcode, field: GeometryField, stage_ms: dict[str, float]
+    detected: DetectedBarcode,
+    field: GeometryField,
+    stage_ms: dict[str, float],
+    scales: tuple[float, ...] = _RETRY_OUT_SCALES,
 ) -> tuple[RectifiedBarcode, DecodeResult]:
-    """배율을 바꿔 가며 최대 3회 편다. 마지막 시도의 (보정 결과, 판독 결과)."""
+    """배율을 바꿔 가며 `scales` 개수만큼 편다. 마지막 시도의 (보정 결과, 판독 결과).
+
+    `scales` 기본값은 예전 고정 3회(1/1.5/3배)다. AI 평가 스크립트
+    (scripts/evaluate_stage2_v1.py 등)가 이 함수를 세 인자로 부르므로 기본값을 둔다.
+    """
     rectified, result = None, None
-    for attempt, out_scale in enumerate(_RETRY_OUT_SCALES):
+    for attempt, out_scale in enumerate(scales):
         rectified = _timed(stage_ms, "warp", apply_field, detected, field, out_scale=out_scale)
         result = _timed(stage_ms, "decode" if attempt == 0 else "retry", decode, rectified)
         result.retry_count = attempt
@@ -85,7 +97,41 @@ def _rectify_and_decode(
     return rectified, result
 
 
-def run(image_bgr: np.ndarray) -> PipelineResult:
+def _read_wider(
+    image_bgr: np.ndarray,
+    detected: DetectedBarcode,
+    failed: DecodeResult,
+    stage_ms: dict[str, float],
+) -> DecodeResult:
+    """검출 박스 주변까지 넓혀 원본을 읽는다. 못 읽으면 `failed` 를 그대로 돌려준다.
+
+    다른 시도가 모두 실패한 뒤에만 부르므로 읽히던 이미지의 결과는 바뀔 수 없다. 넓힌 범위에
+    대비 보정은 하지 않는다 (사진 전체로 재 봤을 때 시간만 늘고 더 읽지 못했다).
+    """
+    if detected.bbox_xywh_original is None:
+        return failed
+    x, y, w, h = detected.bbox_xywh_original
+    center_x, center_y = x + w / 2, y + h / 2
+    half_w, half_h = w * _WIDER_REGION / 2, h * _WIDER_REGION / 2
+    height, width = image_bgr.shape[:2]
+    x0, x1 = max(0, int(center_x - half_w)), min(width, int(center_x + half_w))
+    y0, y1 = max(0, int(center_y - half_h)), min(height, int(center_y + half_h))
+    gray = cv2.cvtColor(image_bgr[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY)
+    wider = RectifiedBarcode(image_gray_uint8=gray, source=detected, field=None)
+    result = _timed(stage_ms, "wider", decode, wider, enhance=False)
+    if result.text is None:
+        return failed
+    result.retry_count = failed.retry_count
+    return result
+
+
+def run(
+    image_bgr: np.ndarray, *, retry_scales: tuple[float, ...] = _RETRY_OUT_SCALES
+) -> PipelineResult:
+    """`retry_scales` 는 보정 경로의 출력 배율 순서다 (비워 두지 않는다).
+
+    스트림은 입력 해상도에 따라 배율을 골라 부른다 (`sw/server/stream.py`).
+    """
     stage_ms: dict[str, float] = {}
 
     try:
@@ -120,14 +166,18 @@ def run(image_bgr: np.ndarray) -> PipelineResult:
     except Exception:
         # AI 코드가 예외를 던져도 파이프라인은 멈추지 않는다 — 보정 없이
         # 진행한 1차 결과를 degraded 로 표시해 돌려준다.
+        result = _read_wider(image_bgr, detected, result, stage_ms)
         result.degraded = True
         return PipelineResult(image_bgr, detected, plain, _with_timing(result, stage_ms))
 
     if field.confidence < _MIN_GEOMETRY_CONFIDENCE:
         # 추정을 신뢰할 수 없다. 신뢰할 수 없는 필드로 펴면 오히려 더
         # 안 읽힌다 — 보정을 건너뛰고 1차 결과를 degraded 로 표시한다.
+        result = _read_wider(image_bgr, detected, result, stage_ms)
         result.degraded = True
         return PipelineResult(image_bgr, detected, plain, _with_timing(result, stage_ms))
 
-    rectified, result = _rectify_and_decode(detected, field, stage_ms)
+    rectified, result = _rectify_and_decode(detected, field, stage_ms, retry_scales)
+    if result.text is None:
+        result = _read_wider(image_bgr, detected, result, stage_ms)
     return PipelineResult(image_bgr, detected, rectified, _with_timing(result, stage_ms))

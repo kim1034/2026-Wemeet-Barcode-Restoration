@@ -7,8 +7,14 @@ from fastapi.testclient import TestClient
 
 import wemeet.sw.server as server
 from wemeet.schemas import DetectedBarcode, GeometryField
+from wemeet.sw.server.runtime import InferenceRuntime
 
 client = TestClient(server.app)
+
+
+@pytest.fixture(autouse=True)
+def ready_runtime(monkeypatch):
+    monkeypatch.setattr(server, "runtime", InferenceRuntime(ready=True))
 
 
 def _png(image_bgr: np.ndarray) -> bytes:

@@ -1,0 +1,216 @@
+{
+  "method": "assumed-cost virtual single-slot replay; actual decoding; no network/camera timing",
+  "assumed_cost_ms": {
+    "detection": 1000,
+    "pipeline_attempt": 2000,
+    "selection_per_candidate": 39
+  },
+  "evaluation_budget": "wall budget disabled during replay; live 9s budget unchanged",
+  "cpu_time_note": "process CPU seconds summed across CPU threads; excludes JPEG/network; not wall throughput",
+  "latency_note": "simulated first result minus item exit; negative means before exit",
+  "source_scenes": 3,
+  "independent_field_samples": 0,
+  "seed": 2026,
+  "fps": 8,
+  "detection_interval_ms": 2000,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "jpeg_quality": 90,
+  "baseline": {
+    "items": 6,
+    "frames": 312,
+    "duration_s": 39,
+    "correct_read_items": 5,
+    "correct_confirmed_items": 5,
+    "wrong_confirmed_results": 0,
+    "provisional_results": 0,
+    "missing_items": 1,
+    "duplicate_results": 2,
+    "unassigned_results": 1,
+    "statuses": {
+      "confirmed": 7,
+      "unread": 1
+    },
+    "simulated_delay_from_exit_p50_ms": 3710.0,
+    "observed_batch_wall_ms_p50": 1222.9,
+    "observed_detector_wall_ms_p50": null,
+    "observed_call_wall_ms_max": 1291.1,
+    "timing_outlier": false,
+    "simulated_slot_busy_s": 34.13,
+    "measured_process_cpu_s": 39.83,
+    "observed_tracking_wall_ms": 0.0,
+    "replay_wall_s_including_jpeg": 12.36,
+    "simulated_input_frames_per_slot_second": 9.14,
+    "queue_drops": 17,
+    "detection_calls": 0,
+    "detection_skipped_busy": 0,
+    "per_item": [
+      {
+        "item": 0,
+        "results": 2,
+        "missing": false,
+        "correct_read": true,
+        "correct_confirmed": true,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 1,
+        "first_result_relative_to_exit_ms": 585
+      },
+      {
+        "item": 1,
+        "results": 2,
+        "missing": false,
+        "correct_read": true,
+        "correct_confirmed": true,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 1,
+        "first_result_relative_to_exit_ms": 2835
+      },
+      {
+        "item": 2,
+        "results": 1,
+        "missing": false,
+        "correct_read": true,
+        "correct_confirmed": true,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": 5085
+      },
+      {
+        "item": 3,
+        "results": 1,
+        "missing": false,
+        "correct_read": true,
+        "correct_confirmed": true,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": 3710
+      },
+      {
+        "item": 4,
+        "results": 1,
+        "missing": false,
+        "correct_read": true,
+        "correct_confirmed": true,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": 3835
+      },
+      {
+        "item": 5,
+        "results": 0,
+        "missing": true,
+        "correct_read": false,
+        "correct_confirmed": false,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": null
+      }
+    ],
+    "observed_input_replay_fps": 25.24
+  },
+  "tracking": {
+    "items": 6,
+    "frames": 312,
+    "duration_s": 39,
+    "correct_read_items": 3,
+    "correct_confirmed_items": 3,
+    "wrong_confirmed_results": 0,
+    "provisional_results": 0,
+    "missing_items": 3,
+    "duplicate_results": 0,
+    "unassigned_results": 0,
+    "statuses": {
+      "confirmed": 3
+    },
+    "simulated_delay_from_exit_p50_ms": 6819.0,
+    "observed_batch_wall_ms_p50": 1011.9,
+    "observed_detector_wall_ms_p50": 259.9,
+    "observed_call_wall_ms_max": 1045.9,
+    "timing_outlier": false,
+    "simulated_slot_busy_s": 29.46,
+    "measured_process_cpu_s": 38.61,
+    "observed_tracking_wall_ms": 36.4,
+    "replay_wall_s_including_jpeg": 9.11,
+    "simulated_input_frames_per_slot_second": 10.59,
+    "queue_drops": 0,
+    "detection_calls": 9,
+    "detection_skipped_busy": 11,
+    "per_item": [
+      {
+        "item": 0,
+        "results": 1,
+        "missing": false,
+        "correct_read": true,
+        "correct_confirmed": true,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": 6819
+      },
+      {
+        "item": 1,
+        "results": 0,
+        "missing": true,
+        "correct_read": false,
+        "correct_confirmed": false,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": null
+      },
+      {
+        "item": 2,
+        "results": 1,
+        "missing": false,
+        "correct_read": true,
+        "correct_confirmed": true,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": 6819
+      },
+      {
+        "item": 3,
+        "results": 0,
+        "missing": true,
+        "correct_read": false,
+        "correct_confirmed": false,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": null
+      },
+      {
+        "item": 4,
+        "results": 1,
+        "missing": false,
+        "correct_read": true,
+        "correct_confirmed": true,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": 7319
+      },
+      {
+        "item": 5,
+        "results": 0,
+        "missing": true,
+        "correct_read": false,
+        "correct_confirmed": false,
+        "wrong_confirmed": 0,
+        "provisional": 0,
+        "duplicates": 0,
+        "first_result_relative_to_exit_ms": null
+      }
+    ],
+    "observed_input_replay_fps": 34.25
+  }
+}

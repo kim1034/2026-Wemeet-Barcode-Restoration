@@ -1,4 +1,4 @@
-"""Tests for the lazy ResNet18-C3 geometry inference adapter."""
+"""Tests for the lazy geometry inference adapter (MobileNetV3-Small default, ResNet18-C3 legacy)."""
 
 from __future__ import annotations
 
@@ -38,4 +38,25 @@ def test_estimate_geometry_loads_local_state_dict(tmp_path, monkeypatch) -> None
     # A freshly initialized head is the identity field.
     np.testing.assert_allclose(field.control_points_dst_norm, expected)
     np.testing.assert_allclose(field.control_points_src_norm, expected, atol=1e-6)
+    clear_model_cache()
+
+
+@pytest.mark.parametrize("backbone", ["mobilenetv3-small", "resnet18-c3"])
+def test_estimate_geometry_loads_controlled_state_dict(tmp_path, monkeypatch, backbone) -> None:
+    torch = pytest.importorskip("torch")
+    from wemeet.ai.geometry.controlled import ControlledGeometry
+    from wemeet.ai.geometry.model import destination_grid
+
+    checkpoint = tmp_path / "model_state_dict.pt"
+    torch.save(ControlledGeometry(backbone).state_dict(), checkpoint)
+    monkeypatch.setenv("WEMEET_GEOMETRY_WEIGHTS", str(checkpoint))
+    monkeypatch.setenv("WEMEET_GEOMETRY_DEVICE", "cpu")
+    clear_model_cache()
+
+    from wemeet.ai.geometry import load_model
+
+    assert load_model().backbone_name == backbone
+    field = estimate_geometry(DetectedBarcode(np.zeros((120, 300, 3), dtype=np.uint8), 0.0, 0.9))
+    # The zero-initialized output layer gives the identity field.
+    np.testing.assert_allclose(field.control_points_src_norm, destination_grid().numpy(), atol=1e-6)
     clear_model_cache()
