@@ -3,8 +3,8 @@
  *
  * 어두운 물류장에서 주황 비닐 택배(송장 바코드가 붙은)가 지나가는 컨베이어 라인을
  * 내려다보다가, 판독 카메라 쪽으로 다가가 렌즈 속으로 들어간다. 렌즈가 보는 장면이
- * 그대로 「실시간 영상」 무대로 줄어들면서 작업 화면이 뜬다 — "이 카메라가 보는 것이
- * 저 화면이다" 를 한 번에 보여 준다.
+ * 그대로 무대 안의 실제 영상 자리(16:9)로 줄어들면서 작업 화면이 뜬다 — "이 카메라가
+ * 보는 것이 저기에 나온다" 를 한 번에 보여 준다.
  *
  * 판독 기능과는 아무것도 주고받지 않는다. WebGL 을 못 쓰거나 어디서 실패해도
  * onLand() 를 불러 작업 화면은 그대로 뜬다. 언제 돌지는 index.html 머리에서 정한다.
@@ -593,11 +593,11 @@ const CSS = `
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * @param {{ target: HTMLElement | null, onLand: () => void }} opts
- *   target — 장면이 줄어들어 내려앉을 자리(「실시간 영상」 무대의 영상칸)
+ * @param {{ targetRect: () => ({left:number, top:number, width:number, height:number}) | null, onLand: () => void }} opts
+ *   targetRect — 장면이 줄어들어 내려앉을 자리. 매 프레임 다시 묻는다(그 사이 화면이 움직여도 맞는다)
  *   onLand — 작업 화면을 띄울 때 부른다. 실패해도 반드시 한 번은 불린다.
  */
-export async function runIntro({ target, onLand }) {
+export async function runIntro({ targetRect, onLand }) {
   let landed = false;
   const land = () => {
     if (landed) return;
@@ -687,7 +687,7 @@ export async function runIntro({ target, onLand }) {
     }
 
     function morph(k) {
-      const r = target && target.getBoundingClientRect();
+      const r = targetRect && targetRect();
       if (!r || r.width < 4 || r.height < 4) return;
       const w = lerp(window.innerWidth, r.width, k);
       const h = lerp(window.innerHeight, r.height, k);
@@ -696,8 +696,8 @@ export async function runIntro({ target, onLand }) {
       s.top = lerp(0, r.top, k) + "px";
       s.width = w + "px";
       s.height = h + "px";
-      s.borderRadius = 26 * k + "px";
-      s.boxShadow = `0 ${30 * k}px ${70 * k}px -${30 * k}px rgba(60,40,10,${0.5 * k})`;
+      s.borderRadius = 16 * k + "px";
+      s.boxShadow = `0 ${18 * k}px ${44 * k}px -${16 * k}px rgba(0,0,0,${0.6 * k})`;
       place(w, h);
     }
 

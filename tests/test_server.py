@@ -159,6 +159,21 @@ def test_live_view_is_one_video_stage_with_result_and_log_floating_on_it() -> No
         assert moved in history
 
 
+def test_photo_upload_is_gone_from_the_page() -> None:
+    """현장에서는 카메라만 쓴다 — 사진 선택·판독 요청·자동 판독 단추와 그 안내 문구를 뺐다."""
+    page = client.get("/").text
+
+    for gone in (
+        'id="photoInput"',
+        'id="uploadRunBtn"',
+        'id="camCaptureBtn"',
+        'id="camFootLeft"',
+        "사진 업로드로 판독",
+    ):
+        assert gone not in page
+    assert "<h2>실시간 영상</h2>" in page
+
+
 def test_font_is_pretendard_served_from_our_own_server() -> None:
     """글꼴은 Pretendard 하나, 우리 서버가 내준다 — 망이 끊긴 현장에서도 글자가 그대로여야 한다."""
     page = client.get("/").text

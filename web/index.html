@@ -336,13 +336,12 @@
      실시간 화면 — 무대(stage) 하나 + 떠 있는 섬 둘(hud)
      ===================================================================== */
   .stage {
-    /* 오른쪽 두 섬의 폭. 지난 화면의 판독 로그 폭(1440 화면에서 약 680px)과 같게 잡고,
-       판독 대기 섬도 같은 폭으로 맞춘다. */
-    --hud-w: clamp(520px, 47vw, 760px);
+    /* 오른쪽 두 섬의 폭(판독 대기 · 판독 로그가 같다). 1440 화면에서 약 600px. */
+    --hud-w: clamp(480px, 42vw, 680px);
     --gap: 16px;
     /* 영상이 놓이는 빈 자리 — 두 섬, 위쪽 머리줄, 아래쪽 단추줄을 피한다 */
     --free-top: 70px;
-    --free-bottom: 150px;
+    --free-bottom: 96px;
     --free-right: calc(var(--hud-w) + var(--gap) * 2);
     position: relative; height: calc(100vh - 114px); min-height: 560px;
     border-radius: 26px; overflow: hidden; isolation: isolate;
@@ -371,26 +370,20 @@
   .stage-top .video-dim { position: static; color: rgba(255, 255, 255, 0.45); font-size: 12px; }
   .stage-top .cam-ctrl { margin-left: auto; }
 
-  /* 아래쪽: 수집 상태 자막 · 사진 판독 단추 캡슐 · 숫자 줄 */
+  /* 아래쪽: 수집 상태 자막 · 숫자 줄 */
   .stage-bottom {
     position: absolute; z-index: 3; left: var(--gap); right: var(--free-right); bottom: var(--gap);
     display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
   }
   .stage .video-status { position: static; max-width: 100%; }
-  .stage .cam-upload {
-    padding: 6px; gap: 8px; border-radius: 999px; max-width: 100%;
-    background: rgba(255, 255, 255, 0.08); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-  }
-  .stage .cam-upload .fname { flex: 0 1 auto; max-width: 200px; padding-inline: 4px; color: rgba(255, 255, 255, 0.55); }
   .stage .cam-foot { padding: 0 6px; gap: 3px 16px; flex-wrap: wrap; font-size: 11.5px; color: rgba(255, 255, 255, 0.45); }
 
   /* 어두운 무대 위 단추는 어두운 유리. 오른쪽 두 섬(밝은 판넬) 안의 단추는 건드리지 않는다 */
-  .stage-top .btn-ghost, .stage-top .cam-select, .stage-bottom .btn-ghost {
+  .stage-top .btn-ghost, .stage-top .cam-select {
     color: #f2f3f5; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16);
     -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   }
-  .stage-top .btn-ghost:hover, .stage-bottom .btn-ghost:hover { color: #fff; background: rgba(255, 255, 255, 0.16); border-color: var(--primary); }
+  .stage-top .btn-ghost:hover { color: #fff; background: rgba(255, 255, 255, 0.16); border-color: var(--primary); }
   .stage-top .cam-select option { color: var(--ink); }
 
   /* 오른쪽 두 섬 — 위: 최근 판독 결과(판독 대기), 아래: 판독 로그. 폭이 같다 */
@@ -399,15 +392,24 @@
     display: flex; flex-direction: column; gap: var(--gap);
   }
   .hud .panel {
-    background: rgba(255, 254, 251, 0.93); border-color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 254, 251, 0.975); border-color: rgba(255, 255, 255, 0.7);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 26px 60px -26px rgba(0, 0, 0, 0.7);
   }
-  /* 판독 대기 섬은 남는 높이를 다 쓰고, 판독 뒤 상세가 길어지면 안에서 굴린다 */
-  .hud .result-card {
-    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-    display: flex; flex-direction: column;
-  }
-  .hud .result-card > * { flex-shrink: 0; }
+  /* 판독 대기 섬은 남는 높이를 다 쓴다. 판독 뒤 상세가 섬보다 길어지면 굴리지 않고
+     내용을 통째로 줄여 한눈에 보이게 한다(아래 fitResult). 0.7배 아래로는 줄이지 않고
+     그때만 굴린다 — 글자가 너무 작아지면 읽히지 않는다. */
+  .hud .result-card { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .hud .result-fit { display: flex; flex-direction: column; }
+  .hud .result-fit > * { flex-shrink: 0; }
+  /* 줄이기 전에 먼저 촘촘하게 — 덜 줄여도 들어오게 한다. 빠지는 정보는 없다.
+     원본은 16:9 라 4:3 칸이면 위아래가 빈다 → 칸을 16:10 으로. 기술 정보는 두 칸으로.
+     단계 목록은 줄 간격만 좁힌다. */
+  .hud .cmp-box { aspect-ratio: 16 / 10; }
+  .hud .detail-wrap > .tech-grid { grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+  .hud .tech-grid div { flex-direction: column; justify-content: flex-start; gap: 1px; min-width: 0; }
+  .hud .tech-grid div b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hud .stx { padding-bottom: 6px; }
+  .hud .step:not(:last-child) .ind::after { min-height: 10px; margin-block: 2px; }
   .hud .result-card { padding: 18px 22px; }
   .hud .status-pill { margin-top: 10px; }
   .hud .result-value { margin-top: 8px; }
@@ -432,7 +434,7 @@
   /* 처리 상세는 칸이 넓으면 두 단 — 비교 사진 옆에 단계 목록을 세운다.
      칸 폭(컨테이너 쿼리)으로 정하므로 좁은 추가 확인 화면은 그대로 한 단이다. */
   .result-card { container-type: inline-size; }
-  @container (min-width: 600px) {
+  @container (min-width: 460px) {
     .detail-wrap {
       display: grid; column-gap: 22px; align-items: start;
       grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
@@ -496,9 +498,6 @@
   }
   .btn-run:hover:not(:disabled) { filter: brightness(1.04); transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 22px -8px rgba(223, 106, 44, 0.75); }
   .btn-run:disabled { opacity: 0.4; box-shadow: none; }
-  /* 사진 업로드는 보조 동작 — 주황 단추가 둘 나란히 서면 어느 쪽이 본 동작인지 흐려진다 */
-  #uploadRunBtn { background: rgba(255, 255, 255, 0.92); color: var(--primary); box-shadow: inset 0 0 0 1px rgba(223, 106, 44, 0.55); }
-  #uploadRunBtn .spin { border-color: rgba(223, 106, 44, 0.3); border-top-color: var(--primary); }
 
   /* --- 최근 판독 결과 --- */
   .result-card { padding: 22px 24px; }
@@ -571,7 +570,7 @@
       <button type="button" class="tab" data-view="settings" role="tab" aria-current="false">장비 설정</button>
     </nav>
     <div class="top-status">
-      <span class="status-chip" id="camStatus"><span class="dot"></span><span>카메라 미연결 · 사진 업로드로 판독</span></span>
+      <span class="status-chip" id="camStatus"><span class="dot"></span><span>카메라 미연결</span></span>
       <span class="status-chip ok" id="svcStatus"><span class="dot"></span><span>서버 연결 확인 중…</span></span>
     </div>
   </div>
@@ -586,7 +585,6 @@
     <div class="stage" id="camPanel">
       <div class="video-box" id="videoBox">
         <video id="camVideo" autoplay playsinline muted hidden></video>
-        <canvas id="origCanvas" width="960" height="540" hidden></canvas>
         <div class="video-ghost" id="videoGhost">
           <div class="frame">
             <svg class="ic" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a1 1 0 0 1 1-1h2M4 16v2a1 1 0 0 0 1 1h2M20 8V6a1 1 0 0 0-1-1h-2M20 16v2a1 1 0 0 1-1 1h-2"/></svg>
@@ -598,7 +596,7 @@
 
       <div class="stage-top">
         <div class="video-badge" id="videoBadge"><span class="dot"></span><span id="videoBadgeText">카메라 미연결</span></div>
-        <h2>CAM-01 · 실시간 영상</h2>
+        <h2>실시간 영상</h2>
         <span class="video-dim mono" id="videoDim"></span>
         <div class="cam-ctrl">
           <select id="camSelect" class="cam-select" aria-label="카메라 선택" hidden></select>
@@ -613,22 +611,15 @@
 
       <div class="stage-bottom">
         <div class="video-status"><span id="captureStatus" role="status" aria-live="polite">판독 먼저 · 매 프레임 판독 · 읽히는 즉시 성공으로 표시합니다</span></div>
-        <div class="cam-upload">
-          <label class="btn-ghost" for="photoInput">사진 선택</label>
-          <input type="file" id="photoInput" accept="image/*" hidden>
-          <span class="fname mono" id="pickedFileName">선택된 사진 없음</span>
-          <button type="button" class="btn-run" id="uploadRunBtn" disabled><span class="spin"></span><span id="uploadRunText">판독 요청 보내기</span></button>
-          <button type="button" class="btn-run" id="camCaptureBtn" disabled><span id="camCaptureText">자동 판독 시작</span></button>
-        </div>
         <div class="cam-foot">
           <span id="captureStats">처리 0 · 대기 0 · 건너뜀 0 (물품 수가 아닌 촬영 구간 수)</span>
-          <span id="camFootLeft">연결된 카메라 없음 · 사진 업로드로 판독</span>
           <span id="camFootRight" class="mono">마지막 수신 —</span>
         </div>
       </div>
 
       <div class="hud">
         <section class="panel result-card">
+          <div class="result-fit">
           <div class="result-src">최근 판독 결과 · <span class="mono" id="resultSrcId">#—</span></div>
           <div class="proc-row" id="procRow"><span class="pdot"></span><span>새 캡처 처리 중 · <span id="procMs">0</span>ms 경과</span></div>
 
@@ -654,6 +645,7 @@
 
           <h3 class="detail-title">원본·보정 결과 / 처리 상세</h3>
           <div class="detail-body" id="detailBody"></div>
+          </div>
         </section>
         <div class="panel log-panel">
           <div class="hist-head">
@@ -851,11 +843,8 @@ import { resultPresentation } from "/assets/result-state.mjs";
   // ================================================================
   let seq = 4182;
   const EVENTS = [];
-  let running = false;
   let reviewSelectedId = null;
   let serverOnline = false;
-  let pickedFile = null;
-  let originalImg = null;
   const modelNames = { detection: "—", geometry: "—" };
   let autoEnabled = false;
   let captureError = "";
@@ -1266,7 +1255,8 @@ import { resultPresentation } from "/assets/result-state.mjs";
   }
 
   // ================================================================
-  // 카메라 패널 — 실시간 카메라(getUserMedia) + 사진 업로드, 두 입력 모두 /api/decode 로 보낸다
+  // 카메라 패널 — 실시간 카메라(getUserMedia) 영상을 자동으로 판독한다.
+  // 사진 업로드 판독은 뺐다 — 현장에서는 카메라만 쓴다.
   // ================================================================
   let mediaStream = null;
   let camPaused = false;
@@ -1278,12 +1268,12 @@ import { resultPresentation } from "/assets/result-state.mjs";
     el.className = "status-chip " + state;
     el.querySelector("span:last-child").textContent = text;
   }
-  function footIdleText() {
-    return mediaStream ? "실시간 카메라 · 자동 판독은 1초 단위로 최대 8장 수집" : "연결된 카메라 없음 · 사진 업로드로 판독";
+  // 카메라 오류 안내는 영상 위 수집 상태 자막에 띄운다
+  function camNote(text) {
+    $("captureStatus").textContent = text;
   }
   function showOnly(which) {
     $("videoGhost").hidden = which !== "ghost";
-    $("origCanvas").hidden = which !== "photo";
     $("camVideo").hidden = which !== "live";
   }
   function setVideoIdle() {
@@ -1295,14 +1285,10 @@ import { resultPresentation } from "/assets/result-state.mjs";
   function syncButtons() {
     const live = !!mediaStream;
     $("camStartBtn").hidden = live;
-    $("camStartBtn").disabled = cameraStarting || running;
-    $("camSelect").disabled = cameraStarting || running;
+    $("camStartBtn").disabled = cameraStarting;
+    $("camSelect").disabled = cameraStarting;
     $("camStopBtn").hidden = !live && !cameraStarting;
     $("pauseBtn").hidden = !live;
-    $("camCaptureBtn").disabled = !live;
-    $("camCaptureText").textContent = autoEnabled ? "자동 판독 중지" : "자동 판독 시작";
-    $("uploadRunBtn").disabled = running || autoEnabled || !pickedFile;
-    $("photoInput").disabled = running || autoEnabled;
   }
 
   // 카메라 목록 — 내장/외장(USB·USB-C) 카메라를 고르고, 마지막에 고른 카메라를 다음에도 쓴다.
@@ -1333,7 +1319,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
     });
   }
   async function startCamera(deviceId) {
-    if (running || cameraStarting) return;
+    if (cameraStarting) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCamStatus("err", "카메라 사용 불가 · localhost 또는 HTTPS에서만 동작");
       return;
@@ -1362,7 +1348,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
       const none = err && (err.name === "NotFoundError" || err.name === "OverconstrainedError");
       setCamStatus("err", denied ? "카메라 권한 거부됨" : none ? "카메라를 찾지 못함" : "카메라 연결 실패");
       setVideoIdle();
-      $("camFootLeft").textContent = denied ? "브라우저에서 카메라 권한을 허용한 뒤 다시 시작하세요." : footIdleText();
+      if (denied) camNote("브라우저에서 카메라 권한을 허용한 뒤 다시 시작하세요.");
       return;
     }
     if (generation !== cameraGeneration) { stream.getTracks().forEach((track) => track.stop()); return; }
@@ -1382,7 +1368,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
       showOnly("ghost");
       $("videoBadge").className = "video-badge";
       $("videoBadgeText").textContent = "영상 수신 중단";
-      $("camFootLeft").textContent = "카메라가 분리되었거나 다른 프로그램이 사용 중입니다. 다시 시작해 주세요.";
+      camNote("카메라가 분리되었거나 다른 프로그램이 사용 중입니다. 다시 시작해 주세요.");
     });
     // 영상 칸을 실제 카메라 비율로 맞춘다 (빈 검은 여백이 생기지 않게).
     const fitVideoBox = () => {
@@ -1396,7 +1382,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
     $("videoBadgeText").textContent = "LIVE";
     setCamStatus("ok", "카메라 연결됨 · LIVE");
     $("pauseLabel").textContent = "빈 배경 다시 등록";
-    $("camFootLeft").textContent = footIdleText();
     syncButtons();
     listCameras();
     startAutomatic();
@@ -1410,8 +1395,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
     camPaused = false;
     if (!silent) {
       setVideoIdle();
-      setCamStatus("", "카메라 미연결 · 사진 업로드로 판독");
-      $("camFootLeft").textContent = footIdleText();
+      setCamStatus("", "카메라 미연결");
     }
     syncButtons();
   }
@@ -1437,96 +1421,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
     }
   });
   window.addEventListener("pagehide", () => stopCamera(true));
-
-  function onFile(f) {
-    if (running || autoEnabled) return;
-    stopCamera(true);
-    setCamStatus("", "카메라 미연결 · 사진 업로드로 판독");
-    pickedFile = f;
-    $("pickedFileName").textContent = f.name;
-    if (originalImg) URL.revokeObjectURL(originalImg.src);
-    const img = new Image();
-    img.onload = () => {
-      originalImg = img;
-      showOnly("photo");
-      drawOriginalReal($("origCanvas"), img);
-      $("videoBadge").className = "video-badge";
-      $("videoBadgeText").textContent = "업로드된 사진 · 실시간 아님";
-      $("videoDim").textContent = img.naturalWidth + "×" + img.naturalHeight;
-    };
-    img.src = URL.createObjectURL(f);
-    $("camFootLeft").textContent = footIdleText();
-    syncButtons();
-  }
-  $("photoInput").addEventListener("change", (e) => {
-    const f = e.target.files && e.target.files[0];
-    if (f) onFile(f);
-    e.target.value = "";
-  });
-  $("videoBox").addEventListener("dragover", (e) => e.preventDefault());
-  $("videoBox").addEventListener("drop", (e) => {
-    e.preventDefault();
-    const f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f && f.type.startsWith("image/")) onFile(f);
-  });
-
-  function setRealBusy(b, spinBtn) {
-    running = b;
-    ["uploadRunBtn", "camCaptureBtn"].forEach((id) => $(id).classList.toggle("loading", b && id === spinBtn));
-    $("uploadRunText").textContent = b && spinBtn === "uploadRunBtn" ? "처리 중…" : "판독 요청 보내기";
-    syncButtons();
-  }
-  function failReal(message) {
-    $("procRow").classList.remove("show");
-    $("camFootLeft").textContent = message;
-    setRealBusy(false);
-  }
-
-  async function submitForDecode(blob, spinBtn) {
-    if (running) return;
-    setRealBusy(true, spinBtn);
-    $("procRow").classList.add("show");
-    $("camFootLeft").textContent = "서버로 전송 중…";
-
-    const t0 = performance.now();
-    const timer = setInterval(() => { $("procMs").textContent = Math.round(performance.now() - t0); }, 80);
-
-    let resp;
-    try {
-      resp = await fetch("/api/decode", {
-        method: "POST",
-        headers: { "Content-Type": blob.type || "application/octet-stream" },
-        body: blob,
-      });
-    } catch (err) {
-      clearInterval(timer);
-      setSvcStatus(false);
-      failReal("서버에 연결하지 못했습니다. 저장소 폴더에서 uv run uvicorn wemeet.sw.server:app 으로 서버를 켰는지 확인하세요.");
-      return;
-    }
-    let body = null;
-    try { body = await resp.json(); } catch (e) { body = null; }
-    clearInterval(timer);
-    if (!resp.ok || !body) {
-      failReal((body && body.error) || ("서버 오류 · HTTP " + resp.status));
-      return;
-    }
-    setSvcStatus(true);
-    $("procMs").textContent = Math.round(body.total_ms);
-
-    const ev = eventFromReal(body, blob);
-    recordEvent(ev);
-
-    $("camFootLeft").textContent = footIdleText();
-    $("camFootRight").textContent = "마지막 수신 " + ev.time;
-    $("procRow").classList.remove("show");
-    setRealBusy(false);
-  }
-
-  // 사진 업로드 경로
-  $("uploadRunBtn").addEventListener("click", () => { if (pickedFile) submitForDecode(pickedFile, "uploadRunBtn"); });
-
-  $("camCaptureBtn").addEventListener("click", () => autoEnabled ? stopAutomatic() : startAutomatic());
 
   $("copyBtn").addEventListener("click", () => {
     const text = $("bigValue").textContent;
@@ -1633,6 +1527,41 @@ import { resultPresentation } from "/assets/result-state.mjs";
 })();
 </script>
 
+<script>
+// 판독 대기 섬 — 내용이 섬 높이보다 길면 통째로 줄여(zoom) 굴리지 않고 한눈에 보이게 한다.
+// 화면 높이가 낮은 노트북에서도 다 보이게 하려는 것. 0.7배 아래로는 줄이지 않는다.
+// 좁은 화면(섬을 쌓는 배치)에서는 줄이지 않는다 — 그때는 섬이 내용만큼 길어진다.
+(function fitResult() {
+  var card = document.querySelector(".hud .result-card");
+  var inner = card && card.querySelector(".result-fit");
+  if (!card || !inner || !window.ResizeObserver) return;
+  var MIN = 0.7;
+  var busy = false;
+  function fit() {
+    if (busy) return;
+    busy = true;
+    inner.style.zoom = "";
+    var cs = getComputedStyle(card);
+    if (cs.overflowY !== "visible") {
+      var avail = card.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      var z = 1;
+      // 줄이면 같은 폭에 글자가 덜 접혀 높이가 또 바뀐다 — 몇 번 다시 잰다
+      for (var i = 0; i < 4; i++) {
+        var need = inner.getBoundingClientRect().height;
+        if (need <= avail + 0.5) break;
+        z = Math.max(MIN, z * (avail / need) * 0.995);
+        inner.style.zoom = String(z);
+        if (z === MIN) break;
+      }
+    }
+    busy = false;
+  }
+  new ResizeObserver(fit).observe(card);
+  new MutationObserver(fit).observe(inner, { childList: true, subtree: true, characterData: true });
+  fit();
+})();
+</script>
+
 <script type="module">
 // 첫 화면 인트로 — 판독과는 아무것도 주고받지 않는다. 불러오지 못하거나 중간에
 // 실패해도 land() 가 불려 작업 화면은 그대로 뜬다.
@@ -1647,8 +1576,19 @@ if (root.classList.contains("intro-playing")) {
     setTimeout(() => els.forEach((el) => { el.style.transitionDelay = ""; }), 1800);
   };
   setTimeout(land, 12000); // 무엇이 걸려도 12초 뒤에는 작업 화면을 띄운다
+  // 내려앉을 자리 — 무대 안에서 실제 영상이 나오는 16:9 칸(두 섬 왼쪽 빈 자리 가운데).
+  // 첫 버전처럼 "촬영 장면이 여기로 들어온다" 가 한눈에 보이게 무대 전체가 아니라 이 칸으로 줄인다.
+  const videoArea = () => {
+    const box = [document.getElementById("videoGhost"), document.getElementById("camVideo"), document.getElementById("videoBox")]
+      .map((el) => el && el.getBoundingClientRect())
+      .find((r) => r && r.width > 4 && r.height > 4);
+    if (!box) return null;
+    const w = Math.min(box.width, (box.height * 16) / 9);
+    const h = (w * 9) / 16;
+    return { left: box.left + (box.width - w) / 2, top: box.top + (box.height - h) / 2, width: w, height: h };
+  };
   import("/assets/intro.mjs")
-    .then(({ runIntro }) => runIntro({ target: document.getElementById("videoBox"), onLand: land }))
+    .then(({ runIntro }) => runIntro({ targetRect: videoArea, onLand: land }))
     .catch(land);
 }
 </script>
