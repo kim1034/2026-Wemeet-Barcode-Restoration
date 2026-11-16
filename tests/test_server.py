@@ -141,14 +141,49 @@ def test_page_loads_three_js_only_from_local_assets() -> None:
     assert "cdn.jsdelivr" not in page and "unpkg.com" not in page
 
 
-def test_live_view_holds_only_video_log_and_latest_result() -> None:
-    """실시간 화면에는 세 섬만 둔다. 판독 집계와 선택한 프레임은 판독 이력 화면으로 옮겼다."""
+def test_live_view_is_one_video_stage_with_result_and_log_floating_on_it() -> None:
+    """실시간 화면은 무대(영상) 하나 위에 섬 둘(판독 대기 · 판독 로그)이 떠 있다.
+    판독 집계와 선택한 프레임은 판독 이력 화면으로 옮겼다."""
     page = client.get("/").text
     live = page[page.index('id="view-live"') : page.index('id="view-history"')]
     history = page[page.index('id="view-history"') : page.index('id="view-review"')]
+    stage = live[live.index('class="stage"') :]
+    hud = stage[stage.index('class="hud"') :]
 
-    for kept in ('id="videoBox"', 'id="readLog"', 'class="panel result-card'):
-        assert kept in live
+    assert 'id="videoBox"' in stage
+    # 위 섬이 판독 대기(최근 판독 결과), 아래 섬이 판독 로그
+    assert hud.index('class="panel result-card"') < hud.index('class="panel log-panel"')
+    assert 'id="readLog"' in hud
     for moved in ('id="tallyFirst"', 'id="burstPanel"'):
         assert moved not in live
         assert moved in history
+
+
+def test_font_is_pretendard_served_from_our_own_server() -> None:
+    """글꼴은 Pretendard 하나, 우리 서버가 내준다 — 망이 끊긴 현장에서도 글자가 그대로여야 한다."""
+    page = client.get("/").text
+    response = client.get("/fonts/Pretendard.woff2")
+
+    assert "fonts.googleapis" not in page and "IBM Plex" not in page
+    assert 'url("/fonts/Pretendard.woff2")' in page
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "font/woff2"
+    assert response.content[:4] == b"wOF2"
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["../index.html", "../../pyproject.toml", "없는글꼴.woff2", "Pretendard.ttf"],
+    ids=["escapes-one-level", "escapes-to-repo-root", "missing", "wrong-extension"],
+)
+def test_font_route_serves_nothing_but_woff2_inside_web_fonts(name: str) -> None:
+    """이름을 그대로 경로에 붙이면 web/ 밖의 파일이 나간다. 404 로 막는다."""
+    assert client.get("/fonts/" + name).status_code == 404
+
+
+def test_font_route_strips_the_directory_part_itself() -> None:
+    """위 테스트는 httpx 가 `../` 를 먼저 정리해 버려 통과할 수도 있다.
+    경로를 깎는 일이 핸들러 안에서 일어나는지 직접 불러 확인한다."""
+    assert server.font("../../pyproject.toml").status_code == 404
+    assert server.font("/etc/passwd").status_code == 404
+    assert server.font("web/fonts/Pretendard.woff2").status_code == 200
