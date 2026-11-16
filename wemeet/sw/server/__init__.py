@@ -180,6 +180,9 @@ def javascript(filename: str):
         "tracking.mjs",
         "stream.mjs",
         "camera.mjs",
+        # 첫 화면 인트로. three.js 는 CDN 이 아니라 web/ 에 둔다 — 망이 끊긴 현장에서도 뜬다
+        "intro.mjs",
+        "three.module.min.js",
     }:
         return _error(404, "파일을 찾지 못했습니다.")
     # Avoid Windows MIME registry overrides and stale cached modules during experiments.

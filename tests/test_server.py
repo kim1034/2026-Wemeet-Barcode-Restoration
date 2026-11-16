@@ -123,3 +123,32 @@ def test_decode_rejects_oversized_input_with_413(monkeypatch: pytest.MonkeyPatch
     response = _post(b"x" * 11, "application/octet-stream")
 
     assert response.status_code == 413
+
+
+@pytest.mark.parametrize("name", ["intro.mjs", "three.module.min.js"])
+def test_intro_scripts_are_served_from_our_own_server(name: str) -> None:
+    """첫 화면 인트로는 CDN 이 아니라 우리 서버에서 받는다 — 망이 끊긴 현장에서도 떠야 한다."""
+    response = client.get("/assets/" + name)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+
+
+def test_page_loads_three_js_only_from_local_assets() -> None:
+    page = client.get("/").text + client.get("/assets/intro.mjs").text
+
+    assert '"/assets/three.module.min.js"' in page
+    assert "cdn.jsdelivr" not in page and "unpkg.com" not in page
+
+
+def test_live_view_holds_only_video_log_and_latest_result() -> None:
+    """실시간 화면에는 세 섬만 둔다. 판독 집계와 선택한 프레임은 판독 이력 화면으로 옮겼다."""
+    page = client.get("/").text
+    live = page[page.index('id="view-live"') : page.index('id="view-history"')]
+    history = page[page.index('id="view-history"') : page.index('id="view-review"')]
+
+    for kept in ('id="videoBox"', 'id="readLog"', 'class="panel result-card'):
+        assert kept in live
+    for moved in ('id="tallyFirst"', 'id="burstPanel"'):
+        assert moved not in live
+        assert moved in history

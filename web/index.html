@@ -4,27 +4,56 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>노리드 판독기</title>
+<script>
+  // 첫 화면 인트로를 돌릴지 그리기 전에 정한다 — 화면이 한 번 그려진 뒤 덮으면 깜빡인다.
+  // 탭 하나에 한 번만 돈다. 주소에 ?intro 를 붙이면 다시 돈다(시연용).
+  // 움직임 줄이기를 켠 사용자에게는 돌지 않는다.
+  (function () {
+    var force = /[?&]intro\b/.test(location.search);
+    var seen = false;
+    try { seen = sessionStorage.getItem("pimm.intro") === "seen"; } catch (e) {}
+    var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (force || (!seen && !reduce)) {
+      document.documentElement.classList.add("intro-playing");
+      try { sessionStorage.setItem("pimm.intro", "seen"); } catch (e) {}
+      // three.js(690KB)를 화면 스크립트와 나란히 미리 받아 둔다 — 빈 바탕이 덜 머문다
+      ["/assets/intro.mjs", "/assets/three.module.min.js"].forEach(function (href) {
+        var l = document.createElement("link");
+        l.rel = "modulepreload";
+        l.href = href;
+        document.head.appendChild(l);
+      });
+    }
+  })();
+</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   body { margin: 0; }
   img { max-width: 100%; }
   [hidden] { display: none !important; }
   :root {
-    --bg: #f3f5f7;
+    /* PIMM 발표자료의 색 — 주황이 행동색, 먹색이 글자. 판넬은 반투명 유리(--glass)로
+       띄우고 뒤 배경에 색 번짐을 깔아, 판넬이 배경 위에 떠 있는 깊이를 만든다. */
+    --bg: #eceef2;
     --panel: #ffffff;
-    --video-bg: #171b20;
-    --ink: #20262d;
-    --ink2: #59636e;
-    --line: #d9dee4;
-    --primary: #2458a0;
-    --primary-bg: #eaf1f9;
-    --good: #166534;
-    --good-bg: #edf7f0;
-    --warn: #8a5708;
-    --warn-bg: #fff5e4;
-    --bad: #b42318;
-    --bad-bg: #fef0ee;
-    --radius: 4px;
+    --glass: rgba(255, 255, 255, 0.52);
+    --glass-strong: rgba(255, 255, 255, 0.7);
+    --glass-edge: rgba(255, 255, 255, 0.85);
+    --video-bg: #14171c;
+    --ink: #16181d;
+    --ink2: #646b75;
+    --line: rgba(20, 28, 40, 0.09);
+    --primary: #df6a2c;
+    --primary-bg: rgba(223, 106, 44, 0.1);
+    --good: #15803d;
+    --good-bg: rgba(21, 128, 61, 0.09);
+    --warn: #b45309;
+    --warn-bg: rgba(180, 83, 9, 0.1);
+    --bad: #c2321f;
+    --bad-bg: rgba(194, 50, 31, 0.08);
+    --radius: 10px;
+    --island: 22px;
+    --float: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(20, 28, 40, 0.04), 0 22px 50px -22px rgba(20, 28, 40, 0.28);
     color-scheme: light;
   }
   * { box-sizing: border-box; }
@@ -227,6 +256,240 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes blink { 50% { opacity: 0.3; } }
+
+  /* =====================================================================
+     떠 있는 섬(island) 화면
+     ---------------------------------------------------------------------
+     회색 한 장이던 바탕에 색 번짐과 점 격자를 깔고, 판넬을 반투명 유리로 띄운다.
+     판넬 뒤가 비쳐 보이고 그림자가 아래로 길게 떨어져서, 바탕 위에 떠 있는 깊이가
+     생긴다. 줄(선)은 최대한 걷고 여백으로 나눈다.
+     ===================================================================== */
+
+  /* 바탕은 html 에 깐다. body 가 배경을 칠하면 아래 점 격자(z-index:-1)를 덮는다 */
+  html {
+    background:
+      radial-gradient(1000px 640px at 4% -8%, rgba(239, 151, 95, 0.48), transparent 62%),
+      radial-gradient(860px 620px at 102% 4%, rgba(112, 140, 192, 0.40), transparent 60%),
+      radial-gradient(720px 520px at 58% 46%, rgba(255, 196, 160, 0.30), transparent 64%),
+      radial-gradient(1000px 760px at 30% 118%, rgba(223, 106, 44, 0.26), transparent 62%),
+      radial-gradient(800px 600px at 96% 104%, rgba(140, 160, 200, 0.30), transparent 62%),
+      linear-gradient(180deg, #f2f3f6 0%, #e6e9ee 100%);
+    background-color: var(--bg);
+    background-attachment: fixed;
+  }
+  /* flow-root: 떠 있는 머리줄의 위쪽 여백(14px)이 body 밖으로 새면 body 가 그만큼
+     내려가 쓸데없는 세로 굴림막대가 생긴다 */
+  body { background: transparent; display: flow-root; }
+  /* 아주 옅은 점 격자 — 빈 바탕이 평평해 보이지 않게 */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: radial-gradient(rgba(20, 28, 40, 0.10) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse at 50% 30%, #000 0%, transparent 75%);
+  }
+
+  /* --- 판넬 = 섬 --- */
+  .panel {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(26px) saturate(170%);
+    backdrop-filter: blur(26px) saturate(170%);
+    border: 1px solid var(--glass-edge);
+    border-radius: var(--island);
+    box-shadow: var(--float);
+  }
+
+  /* --- 머리줄 = 떠 있는 바. 탭은 가운데 알약 모양 선택칸 --- */
+  .topbar {
+    position: sticky; top: 14px; z-index: 30;
+    width: calc(100% - 40px); max-width: 1720px; margin: 14px auto 0; min-height: 62px;
+    background: var(--glass-strong);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    backdrop-filter: blur(26px) saturate(180%);
+    border: 1px solid var(--glass-edge); border-bottom: 1px solid var(--glass-edge);
+    border-radius: 20px; box-shadow: var(--float);
+  }
+  .topbar-inner { padding: 10px 12px 10px 20px; }
+  .brand { align-items: center; gap: 12px; flex: 1 1 0; }
+  .brand .mark { width: auto; height: auto; background: none; border-radius: 0; padding: 4px 10px; position: relative; }
+  .brand .mark::before, .brand .mark::after { content: ""; position: absolute; top: 0; bottom: 0; width: 6px; border: 2px solid var(--primary); }
+  .brand .mark::before { left: 0; border-right: none; }
+  .brand .mark::after { right: 0; border-left: none; }
+  .brand .wm { font-size: 14px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; color: var(--ink); }
+  .brand .wm em, .brand .wm b { font-style: normal; color: var(--primary); }
+  .brand h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.03em; }
+  .top-status { flex: 1 1 0; justify-content: flex-end; gap: 8px; }
+  .status-chip { padding: 6px 11px; border-radius: 999px; background: rgba(255, 255, 255, 0.65); border: 1px solid var(--line); font-size: 12px; }
+
+  .tabs {
+    height: auto; flex: none; padding: 4px; gap: 2px; border: none; border-radius: 999px;
+    background: rgba(20, 28, 40, 0.06); box-shadow: inset 0 1px 2px rgba(20, 28, 40, 0.06);
+  }
+  .tab { height: 34px; padding: 0 16px; border-radius: 999px; border-bottom: none; font-size: 13.5px; transition: background .15s, color .15s, box-shadow .15s; }
+  .tab:hover { color: var(--ink); background: rgba(255, 255, 255, 0.5); }
+  .tab[aria-current="page"] {
+    color: var(--ink); background: #fff;
+    box-shadow: 0 1px 2px rgba(20, 28, 40, 0.08), 0 6px 14px -6px rgba(20, 28, 40, 0.22);
+  }
+  /* 지금 화면은 주황 점으로 — 발표자료의 강조 방식 그대로 */
+  .tab[aria-current="page"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+  @media (max-width: 1180px) {
+    .topbar-inner { justify-content: center; }
+    .brand, .top-status { flex: 1 1 auto; }
+    .tabs { order: 3; width: 100%; justify-content: center; }
+  }
+
+  .page { padding: 18px 20px 24px; max-width: 1760px; }
+  .col-stack { gap: 18px; }
+  /* 실시간 화면의 세 섬(영상·판독 로그·최근 판독 결과)이 한 화면에 들어오게 한다.
+     영상 열의 폭을 화면 높이에서 거꾸로 구한다 — 높이를 자르면 영상 양옆에 검은 띠가
+     생기지만, 폭을 줄이면 16:9 가 그대로 유지된다. --live-chrome 은 영상을 뺀 세로
+     (머리줄·영상 판넬의 단추줄·판독 로그 한 줄)를 실제로 재서 맞춘 값이다. */
+  .live-layout {
+    --live-chrome: 532px;
+    gap: 18px;
+    grid-template-columns: minmax(0, clamp(560px, calc((100vh - var(--live-chrome)) * 16 / 9 + 24px), 1180px)) minmax(380px, 1fr);
+  }
+  .live-layout > .col-stack > .panel .video-box { max-height: none; }
+  @media (max-width: 1080px) { .live-layout { grid-template-columns: minmax(0, 1fr); } }
+  /* 높이는 왼쪽 열(영상 + 판독 로그)이 정한다. 최근 판독 결과는 판독 뒤 상세가 길어지는데,
+     그 길이가 줄 높이를 밀어 올리면 판독 로그가 화면 밖으로 밀린다. 오른쪽 열은 크기를
+     내세우지 않고(contain: size) 왼쪽 높이만큼 늘어나 넘치는 만큼은 안에서 굴린다. */
+  @media (min-width: 1081px) {
+    .live-layout > .col-stack:last-child { contain: size; }
+    .live-layout .result-card { overflow-y: auto; overscroll-behavior: contain; }
+  }
+
+  /* 처리 상세는 칸이 넓으면 두 단 — 비교 사진 옆에 단계 목록을 세운다.
+     칸 폭(컨테이너 쿼리)으로 정하므로 좁은 추가 확인 화면은 그대로 한 단이다. */
+  .result-card { container-type: inline-size; }
+  @container (min-width: 600px) {
+    .detail-wrap {
+      display: grid; column-gap: 22px; align-items: start;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+      grid-template-areas: "note note" "cmp steps" "tech steps" "dl steps";
+      grid-template-rows: auto auto auto 1fr;
+    }
+    .detail-wrap > .cand-note { grid-area: note; }
+    .detail-wrap > .compare { grid-area: cmp; margin-bottom: 14px; }
+    .detail-wrap > .steps { grid-area: steps; margin-bottom: 0; }
+    .detail-wrap > .tech-grid { grid-area: tech; grid-template-columns: 1fr; }
+    .detail-wrap > .dl-row { grid-area: dl; }
+    .meta-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
+  /* --- 판넬 안쪽: 선을 걷고 여백으로 나눈다 --- */
+  .cam-head { border-bottom: none; padding: 12px 14px 10px 20px; }
+  .cam-head h2, .hist-head h2 { font-size: 14.5px; font-weight: 700; letter-spacing: -0.02em; }
+  .hist-head { border-bottom: none; padding: 16px 20px 6px; }
+  .cam-upload { border-top: none; padding: 12px 18px 4px; }
+  /* 숫자 줄 셋을 한 줄에 — 좁으면 저절로 내려간다 */
+  .cam-foot { flex-wrap: wrap; gap: 3px 16px; padding: 6px 20px 14px; font-size: 11.5px; }
+  .cam-foot #camFootRight { margin-left: auto; }
+  .video-status {
+    position: absolute; left: 14px; bottom: 14px; max-width: calc(100% - 28px); z-index: 2;
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; line-height: 1.4; color: #e9ebee;
+    background: rgba(10, 12, 16, 0.5); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  /* 영상은 섬 안에 박힌 화면처럼 — 가장자리에서 띄우고 모서리를 둥글린다 */
+  .panel > .video-box {
+    margin: 0 12px; border-radius: 16px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 14px 34px -16px rgba(10, 14, 20, 0.7);
+  }
+  .video-badge { top: 14px; left: 16px; padding: 5px 10px; border-radius: 999px; background: rgba(10, 12, 16, 0.45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .video-badge.live .dot { background: var(--primary); box-shadow: 0 0 0 3px rgba(223, 106, 44, 0.3); }
+  .video-dim { top: 18px; right: 18px; }
+  /* 대기 화면은 점선 대신 주황 조준 괄호 — 인트로가 내려앉는 자리와 같은 표식이다 */
+  .video-ghost .frame { border: none; position: relative; width: min(62%, 400px); }
+  .video-ghost .frame::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(var(--primary) 0 0) left top / 2px 30px no-repeat,
+      linear-gradient(var(--primary) 0 0) left top / 30px 2px no-repeat,
+      linear-gradient(var(--primary) 0 0) right top / 2px 30px no-repeat,
+      linear-gradient(var(--primary) 0 0) right top / 30px 2px no-repeat,
+      linear-gradient(var(--primary) 0 0) left bottom / 2px 30px no-repeat,
+      linear-gradient(var(--primary) 0 0) left bottom / 30px 2px no-repeat,
+      linear-gradient(var(--primary) 0 0) right bottom / 2px 30px no-repeat,
+      linear-gradient(var(--primary) 0 0) right bottom / 30px 2px no-repeat;
+  }
+
+  /* --- 단추: 알약 --- */
+  .btn-ghost, .cam-select {
+    border-radius: 999px; background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(20, 28, 40, 0.1);
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .btn-ghost { padding: 8px 14px; }
+  .btn-ghost:hover { background: #fff; border-color: var(--primary); color: var(--primary); }
+  .btn-run {
+    border-radius: 999px; padding: 10px 18px;
+    background: linear-gradient(180deg, #ec7c40 0%, #df6a2c 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 18px -8px rgba(223, 106, 44, 0.7);
+    transition: transform .15s, box-shadow .15s, filter .15s;
+  }
+  .btn-run:hover:not(:disabled) { filter: brightness(1.04); transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 22px -8px rgba(223, 106, 44, 0.75); }
+  .btn-run:disabled { opacity: 0.4; box-shadow: none; }
+  /* 사진 업로드는 보조 동작 — 주황 단추가 둘 나란히 서면 어느 쪽이 본 동작인지 흐려진다 */
+  #uploadRunBtn { background: rgba(255, 255, 255, 0.75); color: var(--primary); box-shadow: inset 0 0 0 1px rgba(223, 106, 44, 0.55); }
+  #uploadRunBtn .spin { border-color: rgba(223, 106, 44, 0.3); border-top-color: var(--primary); }
+
+  /* --- 최근 판독 결과 --- */
+  .result-card { padding: 22px 24px; }
+  .result-src { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #9aa0a8; }
+  .status-pill { align-self: flex-start; padding: 5px 13px 5px 10px; border-radius: 999px; font-size: 13.5px; margin-top: 14px; }
+  .status-pill.good { background: var(--good-bg); }
+  .status-pill.warn { background: var(--warn-bg); }
+  .status-pill.idle { background: rgba(20, 28, 40, 0.06); }
+  .result-value .v { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; }
+  .result-value .v.muted { font-size: 21px; font-weight: 600; letter-spacing: -0.03em; color: #8a919a; }
+  .copy-btn { border-radius: 999px; padding: 6px 12px; }
+  .r-divider { background: linear-gradient(90deg, transparent, var(--line) 12%, var(--line) 88%, transparent); }
+  .meta-grid div span { font-size: 11px; color: #8a919a; }
+  .meta-grid div b { font-size: 14.5px; letter-spacing: -0.02em; }
+  .detail-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #9aa0a8; }
+  .detail-body { border-top: none; }
+  .cmp-box { border-radius: 12px; }
+
+  /* --- 판독 로그: 작은 섬들이 왼쪽에서 들어온다 --- */
+  .read-log { padding: 10px 20px 18px; gap: 12px; }
+  .log-item {
+    width: 172px; gap: 5px;
+    position: relative; overflow: hidden; padding: 8px; border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.75);
+    box-shadow: 0 10px 22px -14px rgba(20, 28, 40, 0.38);
+  }
+  .log-item::before { content: ""; position: absolute; left: 12px; right: 12px; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--good); }
+  .log-item.ok { border-color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.75); }
+  .log-item.fail { border-color: rgba(255, 255, 255, 0.9); background: rgba(255, 245, 243, 0.8); }
+  .log-item.fail::before { background: var(--bad); }
+  .log-item img { height: 58px; border-radius: 10px; background: #fff; }
+  .log-item .log-text { font-size: 13px; }
+
+  /* --- 판독 집계 / 이력 / 추가 확인 --- */
+  .tally-grid { padding: 8px 18px 18px; gap: 10px; }
+  .tally-cell { border: none; border-radius: 16px; padding: 12px 14px; }
+  .tally-cell b { font-size: 26px; }
+  table.hist th { border-bottom: 1px solid var(--line); color: #8a919a; }
+  table.hist td { border-bottom: 1px solid var(--line); }
+  table.hist tbody tr:hover td { background: rgba(255, 255, 255, 0.5); }
+  .review-list-head { border-bottom: none; }
+  .review-row { border-bottom: 1px solid var(--line); }
+  .review-row:hover { background: rgba(255, 255, 255, 0.55); }
+  .stub { border-radius: var(--island); }
+
+  /* =====================================================================
+     첫 화면 인트로 (web/intro.mjs)
+     인트로가 도는 동안 작업 화면은 감춰 두고, 장면이 「실시간 영상」 칸으로
+     내려앉을 때 섬들이 차례로 떠오른다. 영상 판넬은 자리를 지킨다 — 장면이
+     정확히 그 위로 내려앉아야 하기 때문이다.
+     ===================================================================== */
+  html.intro-playing::before { content: ""; position: fixed; inset: 0; z-index: 999; background: #eceef1; }
+  .topbar, #view-live .panel { transition: opacity .7s ease, transform .9s cubic-bezier(.2, .8, .2, 1); }
+  html.intro-playing .topbar { opacity: 0; transform: translateY(-14px); }
+  html.intro-playing #view-live .panel { opacity: 0; transform: translateY(22px) scale(.985); }
+  html.intro-playing #view-live #camPanel { transform: none; }
 </style>
 </head>
 <body>
@@ -234,9 +497,15 @@
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">
-      <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="mark" aria-hidden="true"><span class="wm">P<em>I</em>MM<b>.</b></span></span>
       <h1>노리드 판독기</h1>
     </div>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="화면 전환">
+      <button type="button" class="tab" data-view="live" role="tab" aria-current="page">실시간 판독</button>
+      <button type="button" class="tab" data-view="history" role="tab" aria-current="false">판독 이력</button>
+      <button type="button" class="tab" data-view="review" role="tab" aria-current="false">추가 확인 <span class="badge" id="reviewBadge">0</span></button>
+      <button type="button" class="tab" data-view="settings" role="tab" aria-current="false">장비 설정</button>
+    </nav>
     <div class="top-status">
       <span class="status-chip" id="camStatus"><span class="dot"></span><span>카메라 미연결 · 사진 업로드로 판독</span></span>
       <span class="status-chip ok" id="svcStatus"><span class="dot"></span><span>서버 연결 확인 중…</span></span>
@@ -244,19 +513,12 @@
   </div>
 </header>
 
-<nav class="tabs" id="tabs" role="tablist" aria-label="화면 전환">
-  <button type="button" class="tab" data-view="live" role="tab" aria-current="page">실시간 판독</button>
-  <button type="button" class="tab" data-view="history" role="tab" aria-current="false">판독 이력</button>
-  <button type="button" class="tab" data-view="review" role="tab" aria-current="false">추가 확인 <span class="badge" id="reviewBadge">0</span></button>
-  <button type="button" class="tab" data-view="settings" role="tab" aria-current="false">장비 설정</button>
-</nav>
-
 <main>
   <!-- ======================= 실시간 판독 ======================= -->
   <section class="page" id="view-live">
     <div class="live-layout">
       <div class="col-stack">
-        <div class="panel">
+        <div class="panel" id="camPanel">
           <div class="cam-head">
             <h2>CAM-01 · 실시간 영상</h2>
             <div class="cam-ctrl">
@@ -281,6 +543,8 @@
                 <span>카메라 시작 후 바코드를 움직이면 자동으로 판독합니다</span>
               </div>
             </div>
+            <!-- 수집 상태는 영상 위 자막으로 — 따로 한 줄을 차지하면 영상이 그만큼 작아진다 -->
+            <div class="video-status"><span id="captureStatus" role="status" aria-live="polite">판독 먼저 · 매 프레임 판독 · 읽히는 즉시 성공으로 표시합니다</span></div>
           </div>
           <div class="cam-upload">
             <label class="btn-ghost" for="photoInput">사진 선택</label>
@@ -289,11 +553,8 @@
             <button type="button" class="btn-run" id="uploadRunBtn" disabled><span class="spin"></span><span id="uploadRunText">판독 요청 보내기</span></button>
             <button type="button" class="btn-run" id="camCaptureBtn" disabled><span id="camCaptureText">자동 판독 시작</span></button>
           </div>
-          <div class="cam-upload">
-            <span id="captureStatus" role="status" aria-live="polite">판독 먼저 · 매 프레임 판독 · 읽히는 즉시 성공으로 표시합니다</span>
-          </div>
-          <div class="cam-foot"><span id="captureStats">처리 0 · 대기 0 · 건너뜀 0 (물품 수가 아닌 촬영 구간 수)</span></div>
           <div class="cam-foot">
+            <span id="captureStats">처리 0 · 대기 0 · 건너뜀 0 (물품 수가 아닌 촬영 구간 수)</span>
             <span id="camFootLeft">연결된 카메라 없음 · 사진 업로드로 판독</span>
             <span id="camFootRight" class="mono">마지막 수신 —</span>
           </div>
@@ -305,25 +566,9 @@
           </div>
           <div class="read-log" id="readLog" role="list"><div class="log-empty">아직 판독한 바코드가 없습니다</div></div>
         </div>
-        <section class="panel" id="burstPanel" hidden>
-          <div class="cam-head"><h2>선택한 프레임</h2><span id="burstSummary"></span></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px">
-            <figure style="margin:0"><figcaption id="representativeCaption">최종 대표 프레임</figcaption><img id="selectedFrame" alt="최종 판독에 사용한 원본 프레임" style="width:100%;max-height:240px;object-fit:contain"></figure>
-            <figure style="margin:0"><figcaption id="primaryCaption">최초 선택 프레임</figcaption><img id="firstFrame" alt="처음 선택한 원본 프레임" style="width:100%;max-height:240px;object-fit:contain"></figure>
-          </div>
-          <div style="padding:0 16px 16px"><p id="burstTiming"></p><ol id="attemptList"></ol><small>점수는 해당 후보 안의 상대값입니다. 교차 확인도 정답을 보장하지 않습니다.</small></div>
-        </section>
       </div>
 
       <div class="col-stack">
-        <section class="panel tally" aria-label="판독 집계">
-          <div class="cam-head"><h2>판독 집계</h2><button type="button" class="btn-ghost" id="tallyReset">초기화</button></div>
-          <div class="tally-grid">
-            <div class="tally-cell ok"><span>1차 디코딩</span><b class="mono num" id="tallyFirst">0</b></div>
-            <div class="tally-cell ok"><span>2차 디코딩</span><b class="mono num" id="tallySecond">0</b></div>
-            <div class="tally-cell fail"><span>검출 후 실패</span><b class="mono num" id="tallyFail">0</b></div>
-          </div>
-        </section>
         <section class="panel result-card grow">
           <div class="result-src">최근 판독 결과 · <span class="mono" id="resultSrcId">#—</span></div>
           <div class="proc-row" id="procRow"><span class="pdot"></span><span>새 캡처 처리 중 · <span id="procMs">0</span>ms 경과</span></div>
@@ -357,15 +602,35 @@
   </section>
 
   <!-- ======================= 판독 이력 ======================= -->
+  <!-- 판독 집계와 선택한 프레임은 실시간 화면에서 옮겨 왔다 — 실시간 화면에는
+       영상·판독 로그·최근 판독 결과 셋만 둔다. id 는 그대로라 스크립트는 바뀌지 않는다. -->
   <section class="page" id="view-history" hidden>
-    <div class="panel">
-      <div class="hist-head"><h2>판독 이력 · 전체</h2><span class="mono" style="font-size:12px;color:var(--ink2)" id="histCount">0건</span></div>
-      <div style="overflow-x:auto">
-        <table class="hist" id="fullHistTable">
-          <thead><tr><th>촬영 시각</th><th>촬영 ID</th><th>바코드</th><th>판독 결과</th><th>처리 시간</th></tr></thead>
-          <tbody id="fullHistBody"></tbody>
-        </table>
+    <div class="col-stack">
+      <section class="panel tally" aria-label="판독 집계">
+        <div class="cam-head"><h2>판독 집계</h2><button type="button" class="btn-ghost" id="tallyReset">초기화</button></div>
+        <div class="tally-grid">
+          <div class="tally-cell ok"><span>1차 디코딩</span><b class="mono num" id="tallyFirst">0</b></div>
+          <div class="tally-cell ok"><span>2차 디코딩</span><b class="mono num" id="tallySecond">0</b></div>
+          <div class="tally-cell fail"><span>검출 후 실패</span><b class="mono num" id="tallyFail">0</b></div>
+        </div>
+      </section>
+      <div class="panel">
+        <div class="hist-head"><h2>판독 이력 · 전체</h2><span class="mono" style="font-size:12px;color:var(--ink2)" id="histCount">0건</span></div>
+        <div style="overflow-x:auto">
+          <table class="hist" id="fullHistTable">
+            <thead><tr><th>촬영 시각</th><th>촬영 ID</th><th>바코드</th><th>판독 결과</th><th>처리 시간</th></tr></thead>
+            <tbody id="fullHistBody"></tbody>
+          </table>
+        </div>
       </div>
+      <section class="panel" id="burstPanel" hidden>
+        <div class="cam-head"><h2>선택한 프레임</h2><span id="burstSummary"></span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px">
+          <figure style="margin:0"><figcaption id="representativeCaption">최종 대표 프레임</figcaption><img id="selectedFrame" alt="최종 판독에 사용한 원본 프레임" style="width:100%;max-height:240px;object-fit:contain"></figure>
+          <figure style="margin:0"><figcaption id="primaryCaption">최초 선택 프레임</figcaption><img id="firstFrame" alt="처음 선택한 원본 프레임" style="width:100%;max-height:240px;object-fit:contain"></figure>
+        </div>
+        <div style="padding:0 16px 16px"><p id="burstTiming"></p><ol id="attemptList"></ol><small>점수는 해당 후보 안의 상대값입니다. 교차 확인도 정답을 보장하지 않습니다.</small></div>
+      </section>
     </div>
   </section>
 
@@ -838,6 +1103,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
   function buildDetailBodyReal(body, ev) {
     const det = body.detection, rect = body.rectify;
     const wrap = document.createElement("div");
+    wrap.className = "detail-wrap";
     wrap.innerHTML =
       (ev?.burst ? '<p class="cand-note">아래는 대표 프레임 1장의 처리 결과입니다. 묶음의 교차 확인 결과는 위의 상태와 프레임별 시도에서 확인하세요.</p>' : '') +
       '<div class="compare">' +
@@ -857,7 +1123,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
         "<div><span>API</span><b>" + (ev?.burst ? "POST /api/decode-burst" : "POST /api/decode") + "</b></div>" +
         "<div><span>" + (ev?.burst ? "대표 프레임 처리 시간" : "처리 시간") + "</span><b>" + Math.round(body.total_ms) + "ms</b></div>" +
       "</div>" +
-      (ev && ev.blob ? '<div style="margin-top:12px"><button type="button" class="btn-ghost dlOrig">캡처 원본 저장 (' + Math.round(ev.blob.size / 1024) + 'KB)</button></div>' : "");
+      (ev && ev.blob ? '<div class="dl-row" style="margin-top:12px"><button type="button" class="btn-ghost dlOrig">캡처 원본 저장 (' + Math.round(ev.blob.size / 1024) + 'KB)</button></div>' : "");
     const dl = wrap.querySelector(".dlOrig");
     if (dl) dl.addEventListener("click", () => {
       const ext = (ev.blob.type || "").includes("png") ? "png" : "jpg";
@@ -1300,6 +1566,26 @@ import { resultPresentation } from "/assets/result-state.mjs";
   checkHealth();
   setInterval(checkHealth, 5000);
 })();
+</script>
+
+<script type="module">
+// 첫 화면 인트로 — 판독과는 아무것도 주고받지 않는다. 불러오지 못하거나 중간에
+// 실패해도 land() 가 불려 작업 화면은 그대로 뜬다.
+const root = document.documentElement;
+if (root.classList.contains("intro-playing")) {
+  const land = () => {
+    if (!root.classList.contains("intro-playing")) return;
+    // 머리줄 → 판넬 순서로 조금씩 늦춰 떠오르게 한다
+    const els = [document.querySelector(".topbar"), ...document.querySelectorAll("#view-live .panel")];
+    els.forEach((el, i) => { el.style.transitionDelay = i * 90 + "ms"; });
+    root.classList.remove("intro-playing");
+    setTimeout(() => els.forEach((el) => { el.style.transitionDelay = ""; }), 1800);
+  };
+  setTimeout(land, 12000); // 무엇이 걸려도 12초 뒤에는 작업 화면을 띄운다
+  import("/assets/intro.mjs")
+    .then(({ runIntro }) => runIntro({ target: document.getElementById("videoBox"), onLand: land }))
+    .catch(land);
+}
 </script>
 </body>
 </html>
