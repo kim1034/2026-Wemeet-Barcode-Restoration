@@ -544,11 +544,10 @@
   .dash-sub { display: block; margin-top: 4px; font-size: 12.5px; color: var(--ink2); }
   .dash-ctrl { display: flex; align-items: center; gap: 12px; }
   .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .kpi { padding: 16px 22px 16px; border-left: 1px solid var(--line); min-width: 0; }
+  .kpi { padding: 16px 22px 18px; border-left: 1px solid var(--line); min-width: 0; }
   .kpi:first-child { border-left: none; }
   .kpi > span { display: block; font-size: 12.5px; color: var(--ink2); }
   .kpi b { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-  .kpi small { display: block; margin-top: 2px; min-height: 1.3em; font-size: 11.5px; color: #8f8b82; }
   .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr); gap: 18px; }
   .chart-card, .side-card { padding: 18px 20px 14px; min-width: 0; }
   .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
@@ -717,9 +716,9 @@
         </div>
       </div>
       <section class="panel kpis" aria-label="오늘의 지표">
-        <div class="kpi"><span>처리량</span><b id="kpiTotal">0</b><small></small></div>
-        <div class="kpi"><span>판독률</span><b id="kpiRate">—</b><small id="kpiRateNote"></small></div>
-        <div class="kpi"><span>평균 처리 시간</span><b id="kpiMs">—</b><small id="kpiMsNote"></small></div>
+        <div class="kpi"><span>처리량</span><b id="kpiTotal">0</b></div>
+        <div class="kpi"><span>판독률</span><b id="kpiRate">—</b></div>
+        <div class="kpi"><span>평균 처리 시간</span><b id="kpiMs">—</b></div>
       </section>
       <div class="dash-grid">
         <section class="panel chart-card" aria-labelledby="hourlyTitle">
@@ -1121,15 +1120,16 @@ import { resultPresentation } from "/assets/result-state.mjs";
   }
 
   // 시연 데이터 — 정해 둔 하루 합계를 시간대에 나눠 그린다(화면을 대략 보기 위한 숫자).
-  //   처리 150건 · 판독률 89.3%(134건 읽음, 16건 못 읽음) · 평균 처리 86ms.
-  //   못 읽은 원인 다섯은 비슷하게(4 · 3 · 3 · 3 · 3).
+  //   처리 118건 · 112건 읽음(6건 못 읽음) · 평균 처리 90ms.
+  //   시연에서 실제로 10건을 읽으면(모두 성공 시) 128건 중 122건 = 95.3% 가 된다.
+  //   못 읽은 원인 다섯은 비슷하게(2 · 1 · 1 · 1 · 1).
   //   시간대: 09시부터 지금 시각까지(근무 시간 밖이면 09~18시 하루) 아침·오후에 몰리고
   //   점심에 빠지는 모양으로 나눈다. 몰리는 시간대에 못 읽는 건이 조금 더 나온다.
   //   어느 시각에 보아도 합계는 위 숫자 그대로다. 날짜를 씨앗으로 정해져 새로고침해도 같다.
-  const DEMO_TOTAL = 150;
-  const DEMO_READ = 134;
-  const DEMO_MS = 86;
-  const DEMO_REASONS = { decode: 4, missed: 3, provisional: 3, conflict: 3, error: 3 };
+  const DEMO_TOTAL = 118;
+  const DEMO_READ = 112;
+  const DEMO_MS = 90;
+  const DEMO_REASONS = { decode: 2, missed: 1, provisional: 1, conflict: 1, error: 1 };
   const DEMO_PROFILE = { 9: 0.07, 10: 0.12, 11: 0.13, 12: 0.08, 13: 0.1, 14: 0.13, 15: 0.12, 16: 0.1, 17: 0.09, 18: 0.06 };
   // 정수 n 을 무게대로 나눈다(나머지는 소수점이 큰 쪽부터 1씩) — 합이 정확히 n
   function apportion(n, weights) {
@@ -1180,13 +1180,9 @@ import { resultPresentation } from "/assets/result-state.mjs";
     $("kpiTotal").textContent = fmt(total);
     $("kpiRate").textContent = total ? ((sum("rr") + sum("dr")) / total * 100).toFixed(1) + "%" : "—";
     $("kpiMs").textContent = msN ? fmt(msSum / msN) + "ms" : "—";
-    const realRate = realTotal ? (sum("rr") / realTotal * 100).toFixed(1) + "%" : "—";
-    const realMs = stats.msN ? fmt(stats.msSum / stats.msN) + "ms" : "—";
-    $("kpiRateNote").textContent = demo ? "실제 판독만 " + realRate : "";
-    $("kpiMsNote").textContent = demo ? "실제 판독만 " + realMs : "";
     renderHourly(rows, !!demo);
     renderReasons(demo);
-    renderRate(rows, !!demo);
+    renderRate(rows);
     renderEquip();
   }
 
@@ -1281,18 +1277,12 @@ import { resultPresentation } from "/assets/result-state.mjs";
     }).join("");
   }
 
-  function renderRate(rows, hasDemo) {
+  function renderRate(rows) {
     const box = $("rateChart");
     const rate = (read, tot) => (tot ? (read / tot) * 100 : null);
-    const anyReal = rows.some((r) => r.rr + r.ru > 0);
-    const series = [];
-    if (anyReal || !hasDemo) {
-      series.push({ label: hasDemo ? "실제 판독 포함" : "실제 판독", solid: true,
-        v: rows.map((r) => rate(r.rr + r.dr, r.rr + r.ru + r.dr + r.du)) });
-    }
-    if (hasDemo) series.push({ label: "시연 데이터만", solid: false, v: rows.map((r) => rate(r.dr, r.dr + r.du)) });
-    $("rateLegend").innerHTML = series.map((sr) => legendItem(sr.solid ? "background:#2a2d33;border-radius:50%" :
-      "background:#fff;border-radius:50%;box-shadow:inset 0 0 0 2px #8d929a", sr.label)).join("");
+    // 선 하나 — 시연 데이터와 실제 판독을 합쳐 시간대별 판독률을 낸다. 선이 하나라 범례는 두지 않는다
+    const series = [{ label: "판독률", solid: true, v: rows.map((r) => rate(r.rr + r.dr, r.rr + r.ru + r.dr + r.du)) }];
+    $("rateLegend").innerHTML = "";
     const vals = series.flatMap((sr) => sr.v).filter((v) => v != null);
     if (!vals.length) { box.innerHTML = '<div class="chart-empty">판독 기록이 쌓이면 시간대별 판독률이 그려집니다.</div>'; return; }
     const lo = Math.min(90, Math.floor((Math.min(...vals) - 1) / 5) * 5);
