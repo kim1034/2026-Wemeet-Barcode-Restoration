@@ -540,13 +540,6 @@
   .dash-head h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
   .dash-sub { display: block; margin-top: 4px; font-size: 12.5px; color: var(--ink2); }
   .dash-ctrl { display: flex; align-items: center; gap: 12px; }
-  .switch { position: relative; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
-  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-  .switch .sw { width: 34px; height: 20px; border-radius: 999px; background: rgba(40, 30, 10, 0.18); position: relative; transition: background .15s; }
-  .switch .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: transform .15s; }
-  .switch input:checked + .sw { background: var(--primary); }
-  .switch input:checked + .sw::after { transform: translateX(14px); }
-  .switch input:focus-visible + .sw { outline: 2px solid var(--primary); outline-offset: 2px; }
   .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .kpi { padding: 16px 22px 16px; border-left: 1px solid var(--line); min-width: 0; }
   .kpi:first-child { border-left: none; }
@@ -713,11 +706,10 @@
       <!-- 오늘의 판독 — 시간대별 처리량 · 못 읽은 원인 · 판독률 추이 · 장비 상태 -->
       <div class="dash-head">
         <div>
-          <h2>오늘의 판독</h2>
+          <h2>오늘의 판독 이력</h2>
           <span class="dash-sub" id="dashDay">—</span>
         </div>
         <div class="dash-ctrl">
-          <label class="switch"><input type="checkbox" id="demoToggle" checked><span class="sw" aria-hidden="true"></span>시연 데이터 포함</label>
           <button type="button" class="btn-ghost" id="statsReset">오늘 기록 지우기</button>
         </div>
       </div>
@@ -1073,7 +1065,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
   // ================================================================
   const statStore = (() => { try { return window.localStorage; } catch (e) { return null; } })();
   const STATS_KEY = "pimm.stats.v1";
-  const DEMO_KEY = "pimm.stats.demo";
   const REASONS = [
     ["decode", "디코딩 실패"], ["missed", "미검출"], ["provisional", "교차 확인 전"],
     ["conflict", "서로 다른 번호"], ["error", "처리 오류"],
@@ -1097,7 +1088,8 @@ import { resultPresentation } from "/assets/result-state.mjs";
     try { if (statStore) statStore.setItem(STATS_KEY, JSON.stringify(stats)); } catch (e) { /* 막히면 이 탭에서만 센다 */ }
   }
   let stats = loadStats();
-  let showDemo = (() => { try { return !statStore || statStore.getItem(DEMO_KEY) !== "off"; } catch (e) { return true; } })();
+  // 시연 데이터를 깔지 — 화면의 스위치는 뺐다. 실제 판독만 보려면 false 로.
+  const showDemo = true;
 
   // 한 건을 읽음/못 읽음으로 나누고, 못 읽었으면 원인을 붙인다
   function statOf(ev) {
@@ -1125,15 +1117,31 @@ import { resultPresentation } from "/assets/result-state.mjs";
     if (!$("view-history").hidden) renderDashboard();
   }
 
-  // 시연 데이터 — 날짜를 씨앗으로 정해지는 하루치 예시(09~16시). 새로고침해도 같은 숫자다.
+  // 시연 데이터 — 우리 서비스 규모로 잡은 하루(09~18시). 날짜를 씨앗으로 정해져 새로고침해도 같다.
+  //   처리량: 허브 하루 10만 건 × 노리드율 3%(발표자료의 가정) ≈ 3,000건이 PIMM 으로 온다.
+  //           아침·오후에 몰리고 점심에 빠진다.
+  //   판독률: 약 85% — 일부러 어렵게 만든 벤치마크(92/100)보다 현장은 거칠고, 발표자료의
+  //           목표(노리드 70% 회복)보다는 높게. 몰리는 시간대는 조금 떨어진다.
+  //   처리 시간: 약 300ms — 이 서버(CPU)에서 바로 읽힘 ~230ms, 보정·재시도 450~770ms 실측.
+  //   지금 시각까지만 채운다(지금 시간대는 지난 분만큼). 근무 시간 밖이면 하루치를 다 보인다.
+  const DEMO_PROFILE = { 9: 0.07, 10: 0.12, 11: 0.13, 12: 0.08, 13: 0.1, 14: 0.13, 15: 0.12, 16: 0.1, 17: 0.09, 18: 0.06 };
   function demoStats(day) {
     let seed = [...day].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 7);
     const rand = () => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-    const weights = [["decode", 0.38], ["missed", 0.27], ["provisional", 0.14], ["conflict", 0.11], ["error", 0.10]];
+    const weights = [["decode", 0.44], ["missed", 0.3], ["provisional", 0.16], ["conflict", 0.07], ["error", 0.03]];
     const out = { hours: {}, reasons: {}, msSum: 0, msN: 0 };
-    for (let h = 9; h <= 16; h++) {
-      const total = h === 16 ? 6 + Math.floor(rand() * 8) : 205 + Math.floor(rand() * 55);
-      const unread = Math.round(total * (0.025 + rand() * 0.07));
+    const now = new Date();
+    const hourNow = now.getHours();
+    const working = hourNow >= 9 && hourNow <= 18;
+    const daily = 2850 + Math.floor(rand() * 300);
+    for (let h = 9; h <= 18; h++) {
+      const full = Math.round(daily * DEMO_PROFILE[h] * (0.94 + rand() * 0.12));
+      if (working && h > hourNow) break;
+      const total = working && h === hourNow ? Math.round((full * now.getMinutes()) / 60) : full;
+      if (total <= 0) continue;
+      const load = DEMO_PROFILE[h] / 0.13; // 가장 몰리는 시간대 = 1
+      const rate = 0.875 - 0.04 * load + (rand() - 0.5) * 0.03;
+      const unread = Math.round(total * (1 - rate));
       out.hours[pad2(h)] = { read: total - unread, unread };
       for (let i = 0; i < unread; i++) {
         let r = rand();
@@ -1141,7 +1149,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
         while (k < weights.length - 1 && r > weights[k][1]) { r -= weights[k][1]; k += 1; }
         out.reasons[weights[k][0]] = (out.reasons[weights[k][0]] || 0) + 1;
       }
-      out.msSum += total * (580 + rand() * 150);
+      out.msSum += total * (275 + 45 * load + (rand() - 0.5) * 30);
       out.msN += total;
     }
     return out;
@@ -1150,7 +1158,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
   function renderDashboard() {
     if (stats.day !== dayKey()) { stats = emptyStats(); saveStats(); }
     const demo = showDemo ? demoStats(stats.day) : null;
-    $("demoToggle").checked = showDemo;
     const hours = [...new Set([...Object.keys(stats.hours), ...(demo ? Object.keys(demo.hours) : [])])].sort();
     const rows = hours.map((h) => {
       const r = stats.hours[h] || { read: 0, unread: 0 };
@@ -1164,8 +1171,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
     const msSum = stats.msSum + (demo ? demo.msSum : 0);
     const msN = stats.msN + (demo ? demo.msN : 0);
     const now = new Date();
-    $("dashDay").textContent = (now.getMonth() + 1) + "월 " + now.getDate() + "일 · 실제 판독 " + fmt(realTotal) + "건" +
-      (demo ? " · 시연 데이터 " + fmt(demoTotal) + "건 포함" : "");
+    $("dashDay").textContent = (now.getMonth() + 1) + "월 " + now.getDate() + "일";
     $("kpiTotal").textContent = fmt(total);
     $("kpiRate").textContent = total ? ((sum("rr") + sum("dr")) / total * 100).toFixed(1) + "%" : "—";
     $("kpiMs").textContent = msN ? fmt(msSum / msN) + "ms" : "—";
@@ -1340,11 +1346,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
       row("기하 모델", modelNames.geometry);
   }
 
-  $("demoToggle").addEventListener("change", (e) => {
-    showDemo = e.target.checked;
-    try { if (statStore) statStore.setItem(DEMO_KEY, showDemo ? "on" : "off"); } catch (err) { /* 이 탭에서만 */ }
-    renderDashboard();
-  });
   $("statsReset").addEventListener("click", () => {
     stats = emptyStats();
     saveStats();

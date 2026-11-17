@@ -158,13 +158,16 @@ def test_live_view_is_one_video_stage_with_result_and_log_floating_on_it() -> No
     assert 'id="burstPanel"' in history
 
 
-def test_history_view_is_a_dashboard_with_demo_data_marked_and_switchable() -> None:
-    """판독 이력은 오늘의 통계(지표 3개 · 시간대별 처리량 · 못 읽은 원인 · 판독률 추이 ·
-    장비 상태) 위에 최근 10건 표. 시연 데이터는 끌 수 있고 화면에 따로 표시된다."""
+def test_history_view_is_a_dashboard_titled_with_the_date_only() -> None:
+    """판독 이력은 '오늘의 판독 이력'(날짜만) 아래 지표 3개 · 시간대별 처리량 · 못 읽은 원인 ·
+    판독률 추이 · 장비 상태, 그 아래 최근 10건 표. 시연 데이터 스위치는 뺐다."""
     page = client.get("/").text
     history = page[page.index('id="view-history"') : page.index('id="view-review"')]
 
+    assert "<h2>오늘의 판독 이력</h2>" in history
     for part in (
+        "dashDay",
+        "statsReset",
         "kpiTotal",
         "kpiRate",
         "kpiMs",
@@ -172,10 +175,9 @@ def test_history_view_is_a_dashboard_with_demo_data_marked_and_switchable() -> N
         "reasonList",
         "rateChart",
         "equipList",
-        "demoToggle",
     ):
         assert f'id="{part}"' in history
-    assert "시연 데이터 포함" in history
+    assert 'id="demoToggle"' not in page
     assert "수동 확정" not in page  # 수동 확정 기능이 없으므로 지표도 두지 않는다
     assert "tally" not in page
     # 통계는 숫자만 저장한다 — 바코드 번호나 사진을 저장 키에 넣지 않는다
