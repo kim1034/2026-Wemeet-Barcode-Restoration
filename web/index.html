@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>노리드 판독기</title>
+<!-- three.js 확장(web/vendor)이 "three" 를 찾을 곳 — 인트로와 같은 파일이어야 한 벌로 돈다.
+     어떤 모듈 스크립트보다 먼저 와야 한다. -->
+<script type="importmap">{ "imports": { "three": "/assets/three.module.min.js" } }</script>
 <script>
   // 첫 화면 인트로를 돌릴지 그리기 전에 정한다 — 화면이 한 번 그려진 뒤 덮으면 깜빡인다.
   // 탭 하나에 한 번만 돈다. 주소에 ?intro 를 붙이면 다시 돈다(시연용).
@@ -714,7 +717,7 @@
         </div>
       </div>
       <section class="panel kpis" aria-label="오늘의 지표">
-        <div class="kpi"><span>처리량</span><b id="kpiTotal">0</b><small id="kpiTotalNote"></small></div>
+        <div class="kpi"><span>처리량</span><b id="kpiTotal">0</b><small></small></div>
         <div class="kpi"><span>판독률</span><b id="kpiRate">—</b><small id="kpiRateNote"></small></div>
         <div class="kpi"><span>평균 처리 시간</span><b id="kpiMs">—</b><small id="kpiMsNote"></small></div>
       </section>
@@ -1117,41 +1120,43 @@ import { resultPresentation } from "/assets/result-state.mjs";
     if (!$("view-history").hidden) renderDashboard();
   }
 
-  // 시연 데이터 — 우리 서비스 규모로 잡은 하루(09~18시). 날짜를 씨앗으로 정해져 새로고침해도 같다.
-  //   처리량: 허브 하루 10만 건 × 노리드율 3%(발표자료의 가정) ≈ 3,000건이 PIMM 으로 온다.
-  //           아침·오후에 몰리고 점심에 빠진다.
-  //   판독률: 약 85% — 일부러 어렵게 만든 벤치마크(92/100)보다 현장은 거칠고, 발표자료의
-  //           목표(노리드 70% 회복)보다는 높게. 몰리는 시간대는 조금 떨어진다.
-  //   처리 시간: 약 300ms — 이 서버(CPU)에서 바로 읽힘 ~230ms, 보정·재시도 450~770ms 실측.
-  //   지금 시각까지만 채운다(지금 시간대는 지난 분만큼). 근무 시간 밖이면 하루치를 다 보인다.
+  // 시연 데이터 — 정해 둔 하루 합계를 시간대에 나눠 그린다(화면을 대략 보기 위한 숫자).
+  //   처리 150건 · 판독률 89.3%(134건 읽음, 16건 못 읽음) · 평균 처리 86ms.
+  //   못 읽은 원인 다섯은 비슷하게(4 · 3 · 3 · 3 · 3).
+  //   시간대: 09시부터 지금 시각까지(근무 시간 밖이면 09~18시 하루) 아침·오후에 몰리고
+  //   점심에 빠지는 모양으로 나눈다. 몰리는 시간대에 못 읽는 건이 조금 더 나온다.
+  //   어느 시각에 보아도 합계는 위 숫자 그대로다. 날짜를 씨앗으로 정해져 새로고침해도 같다.
+  const DEMO_TOTAL = 150;
+  const DEMO_READ = 134;
+  const DEMO_MS = 86;
+  const DEMO_REASONS = { decode: 4, missed: 3, provisional: 3, conflict: 3, error: 3 };
   const DEMO_PROFILE = { 9: 0.07, 10: 0.12, 11: 0.13, 12: 0.08, 13: 0.1, 14: 0.13, 15: 0.12, 16: 0.1, 17: 0.09, 18: 0.06 };
+  // 정수 n 을 무게대로 나눈다(나머지는 소수점이 큰 쪽부터 1씩) — 합이 정확히 n
+  function apportion(n, weights) {
+    const sumW = weights.reduce((a, w) => a + w, 0) || 1;
+    const raw = weights.map((w) => (n * w) / sumW);
+    const out = raw.map(Math.floor);
+    let left = n - out.reduce((a, v) => a + v, 0);
+    raw.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { out[i] += 1; left -= 1; } });
+    return out;
+  }
   function demoStats(day) {
     let seed = [...day].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 7);
     const rand = () => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-    const weights = [["decode", 0.44], ["missed", 0.3], ["provisional", 0.16], ["conflict", 0.07], ["error", 0.03]];
-    const out = { hours: {}, reasons: {}, msSum: 0, msN: 0 };
     const now = new Date();
     const hourNow = now.getHours();
     const working = hourNow >= 9 && hourNow <= 18;
-    const daily = 2850 + Math.floor(rand() * 300);
-    for (let h = 9; h <= 18; h++) {
-      const full = Math.round(daily * DEMO_PROFILE[h] * (0.94 + rand() * 0.12));
-      if (working && h > hourNow) break;
-      const total = working && h === hourNow ? Math.round((full * now.getMinutes()) / 60) : full;
-      if (total <= 0) continue;
-      const load = DEMO_PROFILE[h] / 0.13; // 가장 몰리는 시간대 = 1
-      const rate = 0.875 - 0.04 * load + (rand() - 0.5) * 0.03;
-      const unread = Math.round(total * (1 - rate));
-      out.hours[pad2(h)] = { read: total - unread, unread };
-      for (let i = 0; i < unread; i++) {
-        let r = rand();
-        let k = 0;
-        while (k < weights.length - 1 && r > weights[k][1]) { r -= weights[k][1]; k += 1; }
-        out.reasons[weights[k][0]] = (out.reasons[weights[k][0]] || 0) + 1;
-      }
-      out.msSum += total * (275 + 45 * load + (rand() - 0.5) * 30);
-      out.msN += total;
-    }
+    const hours = [];
+    for (let h = 9; h <= (working ? hourNow : 18); h++) hours.push(h);
+    const weight = hours.map((h) => DEMO_PROFILE[h] * (working && h === hourNow ? Math.max(0.15, now.getMinutes() / 60) : 1) * (0.9 + rand() * 0.2));
+    const totals = apportion(DEMO_TOTAL, weight);
+    const unread = apportion(DEMO_TOTAL - DEMO_READ, hours.map((h, i) => totals[i] * (0.6 + DEMO_PROFILE[h] / 0.13)));
+    const out = { hours: {}, reasons: { ...DEMO_REASONS }, msSum: DEMO_MS * DEMO_TOTAL, msN: DEMO_TOTAL };
+    hours.forEach((h, i) => {
+      if (!totals[i]) return;
+      const u = Math.min(unread[i], totals[i]);
+      out.hours[pad2(h)] = { read: totals[i] - u, unread: u };
+    });
     return out;
   }
 
@@ -1177,7 +1182,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
     $("kpiMs").textContent = msN ? fmt(msSum / msN) + "ms" : "—";
     const realRate = realTotal ? (sum("rr") / realTotal * 100).toFixed(1) + "%" : "—";
     const realMs = stats.msN ? fmt(stats.msSum / stats.msN) + "ms" : "—";
-    $("kpiTotalNote").textContent = demo ? "실제 " + fmt(realTotal) + " · 시연 " + fmt(demoTotal) : "";
     $("kpiRateNote").textContent = demo ? "실제 판독만 " + realRate : "";
     $("kpiMsNote").textContent = demo ? "실제 판독만 " + realMs : "";
     renderHourly(rows, !!demo);

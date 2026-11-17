@@ -193,6 +193,25 @@ def javascript(filename: str):
     )
 
 
+@app.get("/vendor/{path:path}", include_in_schema=False)
+def vendor(path: str):
+    """남이 만든 브라우저 모듈(three.js 후처리 확장)을 web/vendor/ 에서 내준다.
+
+    확장들이 서로를 상대 경로(../shaders/…)로 부르므로 폴더 구조째 둔다. 그래서 이름
+    목록으로 막지 않고, 실제 경로가 web/vendor/ 안의 .js 파일인지 확인한다 — `../` 로
+    밖을 가리키면 404 다. 내용이 바뀌지 않는 파일이라 오래 캐시한다.
+    """
+    base = (WEB_INDEX.parent / "vendor").resolve()
+    target = (base / path).resolve()
+    if target.suffix != ".js" or not target.is_relative_to(base) or not target.is_file():
+        return _error(404, "파일을 찾지 못했습니다.")
+    return FileResponse(
+        target,
+        media_type="text/javascript",
+        headers={"Cache-Control": "max-age=31536000, immutable"},
+    )
+
+
 @app.get("/fonts/{name}", include_in_schema=False)
 def font(name: str):
     """글꼴(Pretendard)을 우리 서버에서 내준다 — 망이 끊긴 현장에서도 글자가 그대로여야 한다.

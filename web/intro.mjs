@@ -526,7 +526,8 @@ function buildReader(aniso, glowTex) {
     halo.position.set(Math.cos(a) * 0.101, -0.162, Math.sin(a) * 0.101);
     rig.add(halo);
   }
-  rig.add(instanced(new THREE.CylinderGeometry(0.0055, 0.0055, 0.004, 12), new THREE.MeshBasicMaterial({ color: 0xffb27a, toneMapped: false }), ringLeds));
+  const ringLedMat = new THREE.MeshBasicMaterial({ color: 0xffb27a, toneMapped: false });
+  rig.add(instanced(new THREE.CylinderGeometry(0.0055, 0.0055, 0.004, 12), ringLedMat, ringLeds));
 
   // 렌즈(C 마운트) — 마운트 링 · 초점 링 · 조리개 링 · 앞 경통. 앞 유리는 코팅 반사(무지개빛)
   const lensBody = new THREE.Mesh(
@@ -565,7 +566,8 @@ function buildReader(aniso, glowTex) {
   band.position.y = -0.1835;
   rig.add(band);
   // 주황 테 — 브랜드 표식
-  const accent = new THREE.Mesh(new THREE.TorusGeometry(0.0645, 0.0028, 8, 72), new THREE.MeshBasicMaterial({ color: ORANGE, toneMapped: false }));
+  const accentMat = new THREE.MeshBasicMaterial({ color: ORANGE, toneMapped: false });
+  const accent = new THREE.Mesh(new THREE.TorusGeometry(0.0645, 0.0028, 8, 72), accentMat);
   accent.rotation.x = Math.PI / 2;
   accent.position.y = -0.2835;
   rig.add(accent);
@@ -587,7 +589,7 @@ function buildReader(aniso, glowTex) {
   inner.position.y = -0.2898;
   rig.add(inner);
 
-  return { rig, ledMat };
+  return { rig, ledMat, lights: [pwr, ringLedMat, accentMat] };
 }
 
 // ---------------------------------------------------------------------------
@@ -598,6 +600,10 @@ function buildWorld(renderer) {
   const rand = seeded(20261116);
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(BG, 0.036);
+  // 바탕은 장면에 준다(renderer.setClearColor 로 두지 않는다). 지우는 색은 처음 정할 때의 대상(화면,
+  // sRGB) 기준으로 한 번 계산되는데, 후처리는 선형 버퍼에 그린 뒤 마지막에 sRGB 로 한 번 더
+  // 바꾼다 — 그러면 #0c0e11 이 rgb(54,61,70) 회색으로 뜬다(실측). 장면 바탕은 그릴 때마다 맞게 바뀐다.
+  scene.background = new THREE.Color(BG);
   scene.environment = studioEnvironment(renderer);
   scene.environmentIntensity = 0.6;
 
@@ -621,7 +627,8 @@ function buildWorld(renderer) {
   scene.add(floor);
 
   // 천장 조명 줄과 먼 기둥 — 안개 속으로 사라지며 공간의 깊이를 잡는다
-  const ceilingMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffffff).multiplyScalar(2.2) });
+  // 블룸 문턱(3.0) 아래 — 밝게 보이되 번지지 않는다
+  const ceilingMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffffff).multiplyScalar(0.9) });
   const fixtures = [];
   for (const z of [-7.2, -3.6, 0, 3.6]) for (let x = -20; x <= 20; x += 5) fixtures.push([x, 7.2, z]);
   scene.add(instanced(new THREE.BoxGeometry(3, 0.05, 0.16), ceilingMat, fixtures));
@@ -831,7 +838,7 @@ function buildWorld(renderer) {
   gantry.traverse((o) => (o.castShadow = true));
   scene.add(gantry);
 
-  const { rig, ledMat } = buildReader(aniso, glowTex);
+  const { rig, ledMat, lights } = buildReader(aniso, glowTex);
   rig.position.set(0, RIG_Y, 0);
   scene.add(rig);
 
@@ -889,8 +896,18 @@ function buildWorld(renderer) {
   laser.position.y = BELT_TOP + 0.012;
   scene.add(laser);
 
+  // 블룸(빛 번짐)이 켜지면 스스로 빛나는 것들을 밝혀 번지게 한다. 꺼져 있으면 1배 그대로
+  const glowing = [glow, lineMat, haloMat, ...lights].map((mat) => ({ mat, base: mat.color.clone() }));
+  const ledOn = new THREE.Color(ORANGE);
+  const ledOff = new THREE.Color(0x5a2810);
+  let gain = 1;
+
   let clock = 0;
   return {
+    setGlowGain(k) {
+      gain = k;
+      for (const g of glowing) g.mat.color.copy(g.base).multiplyScalar(k);
+    },
     scene,
     rigPosition: rig.position,
     update(dt) {
@@ -903,7 +920,7 @@ function buildWorld(renderer) {
       laser.position.x = Math.sin(clock * 2.4) * 0.62;
       dust.rotation.y = clock * 0.05;
       dust.position.y = Math.sin(clock * 0.7) * 0.03;
-      ledMat.color.setHex(Math.sin(clock * 7) > 0 ? ORANGE : 0x5a2810);
+      ledMat.color.copy(Math.sin(clock * 7) > 0 ? ledOn : ledOff).multiplyScalar(gain);
     },
     // 렌즈 속으로 들어갈 때 카메라 몸통과 빛기둥을 걷는다 — 안쪽 면이 화면을 가린다
     approach(u, distToRig) {
@@ -994,6 +1011,16 @@ const CSS = `
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 후처리(three.js 확장, web/vendor 에 둔다 — 망 없이 뜬다): 구석의 자연스러운 그늘(GTAO)과
+// 빛 번짐(블룸). 못 불러오면 null — 그때는 후처리 없이 그대로 그린다.
+async function loadPost() {
+  const base = "/vendor/three/addons/postprocessing/";
+  const [a, b, c, d, e] = await Promise.all(
+    ["EffectComposer", "RenderPass", "GTAOPass", "UnrealBloomPass", "OutputPass"].map((n) => import(base + n + ".js")),
+  );
+  return { EffectComposer: a.EffectComposer, RenderPass: b.RenderPass, GTAOPass: c.GTAOPass, UnrealBloomPass: d.UnrealBloomPass, OutputPass: e.OutputPass };
+}
+
 /**
  * @param {{ targetRect: () => ({left:number, top:number, width:number, height:number}) | null, onLand: () => void }} opts
  *   targetRect — 장면이 줄어들어 내려앉을 자리. 매 프레임 다시 묻는다(그 사이 화면이 움직여도 맞는다)
@@ -1015,7 +1042,10 @@ export async function runIntro({ targetRect, onLand }) {
     return false;
   }
   // 송장 숫자와 명판을 Pretendard 로 그리려면 글꼴이 먼저 와 있어야 한다. 늦으면 기다리지 않는다
-  await Promise.race([document.fonts?.load("800 76px Pretendard").catch(() => {}), wait(400)]);
+  const [post] = await Promise.all([
+    Promise.race([loadPost().catch(() => null), wait(1500).then(() => null)]),
+    Promise.race([document.fonts?.load("800 76px Pretendard").catch(() => {}), wait(400)]),
+  ]);
 
   return new Promise((resolve) => {
     const style = document.createElement("style");
@@ -1047,7 +1077,7 @@ export async function runIntro({ targetRect, onLand }) {
     gctx.putImageData(pixels, 0, 0);
     root.querySelector(".pi-grain").style.backgroundImage = `url(${grain.toDataURL()})`;
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, post ? 1.5 : 1.75));
     renderer.setClearColor(BG, 1);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1078,10 +1108,38 @@ export async function runIntro({ targetRect, onLand }) {
       return;
     }
 
+    // 장면 → 구석 그늘(GTAO) → 빛 번짐(블룸) → 톤 매핑. 합성 버퍼는 4배 MSAA 로 계단을 지운다
+    let composer = null;
+    if (post) {
+      try {
+        composer = new post.EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
+        composer.addPass(new post.RenderPass(world.scene, camera));
+        const gtao = new post.GTAOPass(world.scene, camera, 1, 1);
+        gtao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.4, thickness: 1.2, scale: 1.2, samples: 16 });
+        gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+        gtao.blendIntensity = 0.9;
+        composer.addPass(gtao);
+        // 문턱 3.0 — 반사광(1 을 넘는다)이나 판독 조명 아래 흰 송장(≈2.6)까지 번지면 화면이
+        // 뿌옇고 바코드가 하얗게 날아간다. 스스로 빛나는 것(주황 띠·엘이디·판독선)만 14배로
+        // 밝혀 문턱을 넘긴다.
+        composer.addPass(new post.UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.3, 3.0));
+        composer.addPass(new post.OutputPass());
+        world.setGlowGain(14);
+      } catch {
+        composer = null;
+        world.setGlowGain(1);
+      }
+    }
+    const draw = () => (composer ? composer.render() : renderer.render(world.scene, camera));
+
     function resize() {
       bufW = window.innerWidth;
       bufH = window.innerHeight;
       renderer.setSize(bufW, bufH, false);
+      if (composer) {
+        composer.setPixelRatio(renderer.getPixelRatio());
+        composer.setSize(bufW, bufH);
+      }
       camera.aspect = bufW / bufH;
       camera.updateProjectionMatrix();
       if (!morphing) place(bufW, bufH);
@@ -1167,7 +1225,7 @@ export async function runIntro({ targetRect, onLand }) {
         }
       }
 
-      renderer.render(world.scene, camera);
+      draw();
       raf = requestAnimationFrame(frame);
     }
 
@@ -1203,6 +1261,7 @@ export async function runIntro({ targetRect, onLand }) {
             m.dispose();
           }
         });
+        composer?.dispose();
         renderer.dispose();
         renderer.forceContextLoss();
       } catch {
@@ -1229,7 +1288,11 @@ export async function runIntro({ targetRect, onLand }) {
       camera.lookAt(gaze);
       // 셰이더를 먼저 굽는다 — 첫 프레임에 굽느라 멈칫하면 시작이 끊겨 보인다.
       // 굽는 동안은 어두운 가림막이 보이고, 다 구운 뒤에 시계가 간다.
-      renderer.compileAsync(world.scene, camera).then(start, start);
+      const warm = () => {
+        try { draw(); } catch { /* 첫 그림이 실패해도 시작은 한다 */ }
+        start();
+      };
+      renderer.compileAsync(world.scene, camera).then(warm, warm);
     } catch {
       finish();
     }

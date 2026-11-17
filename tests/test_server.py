@@ -231,3 +231,40 @@ def test_font_route_strips_the_directory_part_itself() -> None:
     assert server.font("../../pyproject.toml").status_code == 404
     assert server.font("/etc/passwd").status_code == 404
     assert server.font("web/fonts/Pretendard.woff2").status_code == 200
+
+
+def test_postprocessing_modules_are_served_from_web_vendor() -> None:
+    """인트로의 빛 번짐 · 구석 그늘은 three.js 확장을 우리 서버에서 받는다(망 없이 뜬다)."""
+    page = client.get("/").text
+    for rel in (
+        "postprocessing/EffectComposer.js",
+        "postprocessing/GTAOPass.js",
+        "shaders/GTAOShader.js",
+    ):
+        response = client.get("/vendor/three/addons/" + rel)
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/javascript")
+    # 확장이 부르는 "three" 는 인트로와 같은 파일로 — 모듈 스크립트보다 먼저 정한다
+    assert '"three": "/assets/three.module.min.js"' in page
+    assert page.index('type="importmap"') < page.index('type="module"')
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../index.html",
+        "../../pyproject.toml",
+        "three/addons/postprocessing/없는파일.js",
+        "three/addons/README.md",
+    ],
+    ids=["escapes-one-level", "escapes-to-repo-root", "missing", "not-javascript"],
+)
+def test_vendor_route_serves_only_js_inside_web_vendor(path: str) -> None:
+    assert client.get("/vendor/" + path).status_code == 404
+
+
+def test_vendor_route_resolves_escapes_itself() -> None:
+    """httpx 가 `../` 를 먼저 정리해 버리지 않도록 핸들러를 직접 부른다."""
+    assert server.vendor("../index.html").status_code == 404
+    assert server.vendor("../../pyproject.toml").status_code == 404
+    assert server.vendor("three/addons/postprocessing/Pass.js").status_code == 200
