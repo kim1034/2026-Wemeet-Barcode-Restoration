@@ -214,7 +214,9 @@ def vendor(path: str):
 
 @app.get("/fonts/{name}", include_in_schema=False)
 def font(name: str):
-    """글꼴(Pretendard)을 우리 서버에서 내준다 — 망이 끊긴 현장에서도 글자가 그대로여야 한다.
+    """글꼴(PIMM Sans — Pretendard 수정본)을 우리 서버에서 내준다.
+
+    망이 끊긴 현장에서도 글자가 그대로여야 한다.
 
     이름을 그대로 경로에 붙이지 않는다. 디렉터리를 올라가는 이름(`../`)이 섞이면
     web/ 밖의 파일이 나간다. 받은 이름에서 파일명만 떼어 쓰고, 확장자도 고정한다.

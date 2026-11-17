@@ -89,7 +89,7 @@ function labelTexture(rand, aniso) {
     bar(3, true, 12);
     let d = "880";
     for (let i = 0; i < 10; i++) d += Math.floor(rand() * 10);
-    g.font = "600 25px Pretendard, system-ui, sans-serif";
+    g.font = "600 25px 'PIMM Sans', system-ui, sans-serif";
     g.fillText(`${d[0]}  ${d.slice(1, 7)}  ${d.slice(7)}`, 34, 232);
   }, aniso);
 }
@@ -420,7 +420,7 @@ function buildReader(aniso, glowTex) {
         g.lineWidth = 4;
         g.strokeRect(18, 18, 988, 578);
         g.textBaseline = "middle";
-        g.font = "800 168px Pretendard, system-ui, sans-serif";
+        g.font = "800 168px 'PIMM Sans', system-ui, sans-serif";
         const parts = [["P", "#f4f2ee"], ["I", "#df6a2c"], ["MM", "#f4f2ee"], [".", "#df6a2c"]];
         const total = parts.reduce((sum, [t]) => sum + g.measureText(t).width, 0);
         let px = (1024 - total) / 2 - 40;
@@ -429,13 +429,13 @@ function buildReader(aniso, glowTex) {
           g.fillText(t, px, 300);
           px += g.measureText(t).width;
         }
-        g.font = "600 34px Pretendard, system-ui, sans-serif";
+        g.font = "600 34px 'PIMM Sans', system-ui, sans-serif";
         g.fillStyle = "#8d929a";
         g.fillText("VISION  ·  ID READER", 92, 430);
-        g.font = "500 26px Pretendard, system-ui, sans-serif";
+        g.font = "500 26px 'PIMM Sans', system-ui, sans-serif";
         g.fillStyle = "#62676f";
         g.fillText("1920 × 1080   ·   GigE   ·   IP67", 92, 520);
-        g.font = "700 24px Pretendard, system-ui, sans-serif";
+        g.font = "700 24px 'PIMM Sans', system-ui, sans-serif";
         g.fillStyle = "#8d929a";
         g.fillText("PWR", 812, 168);
         g.fillText("READ", 900, 168);
@@ -552,7 +552,7 @@ function buildReader(aniso, glowTex) {
   // 경통에 새긴 눈금·표기
   const scale = canvasTexture(1024, 32, (g) => {
     g.clearRect(0, 0, 1024, 32);
-    g.font = "600 20px Pretendard, system-ui, sans-serif";
+    g.font = "600 20px 'PIMM Sans', system-ui, sans-serif";
     g.textBaseline = "middle";
     g.fillStyle = "#e8e6e1";
     g.fillText("16mm   1:1.4   ∞   5   2   1   0.5 m      PIMM OPTICS   C-MOUNT", 30, 17);
@@ -967,7 +967,7 @@ const GAZE = new THREE.CatmullRomCurve3(
   "centripetal",
 );
 
-const FONT = 'Pretendard, "Apple SD Gothic Neo", system-ui, sans-serif';
+const FONT = '"PIMM Sans", "Apple SD Gothic Neo", system-ui, sans-serif';
 const CSS = `
 .pimm-intro { position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw; height: 100vh; overflow: hidden;
   background: #0c0e11; cursor: pointer; will-change: left, top, width, height, opacity; }
@@ -1041,10 +1041,10 @@ export async function runIntro({ targetRect, onLand }) {
     land();
     return false;
   }
-  // 송장 숫자와 명판을 Pretendard 로 그리려면 글꼴이 먼저 와 있어야 한다. 늦으면 기다리지 않는다
+  // 송장 숫자와 명판을 PIMM Sans(Pretendard) 로 그리려면 글꼴이 먼저 와 있어야 한다. 늦으면 기다리지 않는다
   const [post] = await Promise.all([
     Promise.race([loadPost().catch(() => null), wait(1500).then(() => null)]),
-    Promise.race([document.fonts?.load("800 76px Pretendard").catch(() => {}), wait(400)]),
+    Promise.race([document.fonts?.load("800 76px 'PIMM Sans'").catch(() => {}), wait(400)]),
   ]);
 
   return new Promise((resolve) => {

@@ -1,4 +1,4 @@
-"""web/fonts/ 의 글꼴(Pretendard)을 다시 만든다.
+"""web/fonts/ 의 글꼴(PIMM Sans — Pretendard 를 깎은 것)을 다시 만든다.
 
 실행: uv run --with "fonttools[woff]" --with brotli python -m scripts.build_web_fonts
 (fonttools 와 brotli 는 글꼴을 깎을 때만 쓴다 — 프로젝트 의존성에는 넣지 않았다.)
@@ -13,6 +13,11 @@
 고친 뒤에는 이 스크립트를 한 번 돌린다.
 
 받아오는 곳은 jsdelivr 이다. 만들 때만 망이 필요하고, 돌릴 때는 필요 없다.
+
+라이선스: Pretendard 는 SIL OFL 1.1 이고 "Pretendard" 가 예약 글꼴 이름(Reserved Font Name)
+이다. 글자를 깎고 굵기 축을 좁힌 것은 OFL 이 말하는 수정본이라 그 이름을 쓸 수 없다 —
+그래서 글꼴 안의 이름을 "PIMM Sans" 로 바꾸고, 원저작권 표기는 그대로 두며, OFL 전문을
+web/fonts/OFL.txt 로 곁에 둔다. 글자 모양은 Pretendard 그대로다.
 """
 
 from __future__ import annotations
@@ -26,6 +31,9 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+FAMILY = "PIMM Sans"  # OFL 예약 이름(Pretendard)을 피한 수정본 이름
+POSTSCRIPT = "PIMMSans"
+OFL_URL = "https://raw.githubusercontent.com/orioncactus/pretendard/v1.3.9/LICENSE"
 WEB = ROOT / "web"
 FONTS = WEB / "fonts"
 
@@ -81,7 +89,7 @@ def build_pretendard(text: str) -> Path:
     from fontTools.ttLib import TTFont
     from fontTools.varLib import instancer
 
-    out = FONTS / "Pretendard.woff2"
+    out = FONTS / "PIMMSans.woff2"
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         source = tmp_dir / "PretendardVariable.woff2"
@@ -104,8 +112,39 @@ def build_pretendard(text: str) -> Path:
         )
         font = TTFont(subset)
         instancer.instantiateVariableFont(font, {"wght": WEIGHT_RANGE}, inplace=True)
+        rename(font)
         font.flavor = "woff2"
         font.save(out)
+    return out
+
+
+def rename(font) -> None:
+    """글꼴 안의 이름에서 예약 이름을 걷어 낸다. 저작권(0)·라이선스 표기는 그대로 둔다."""
+    # 가족·전체·PostScript 이름에 더해, 가변 글꼴의 굵기별 인스턴스 이름(256번 이후)까지 모두
+    for rec in font["name"].names:
+        if rec.nameID in (0, 13, 14):
+            continue
+        name = str(rec)
+        name = name.replace("PretendardVariable", POSTSCRIPT).replace("Pretendard Variable", FAMILY)
+        rec.string = name.replace("Pretendard", FAMILY)
+    left = [
+        str(r) for r in font["name"].names if r.nameID not in (0, 13, 14) and "Pretendard" in str(r)
+    ]
+    if left:
+        raise SystemExit(f"예약 이름이 남았습니다: {left}")
+
+
+def write_license() -> Path:
+    """OFL 전문과 함께, 무엇을 바꾼 수정본인지 머리에 적는다."""
+    ofl = _download(OFL_URL).decode("utf-8")
+    out = FONTS / "OFL.txt"
+    out.write_text(
+        f"{POSTSCRIPT}.woff2 ({FAMILY}) is a Modified Version of Pretendard (v1.3.9)"
+        " by Kil Hyung-jin:\n"
+        "subset to the characters used by this app and limited to weights 400-800.\n"
+        'It is renamed because "Pretendard" is a Reserved Font Name under the OFL.\n\n' + ofl,
+        encoding="utf-8",
+    )
     return out
 
 
@@ -115,7 +154,10 @@ def main() -> None:
     hangul = sum(1 for c in text if "가" <= c <= "힣")
     print(f"글자 {len(text)}자 (한글 {hangul}자)")
     out = build_pretendard(text)
-    print(f"  {out.relative_to(ROOT)}  {out.stat().st_size // 1024} KB")
+    lic = write_license()
+    print(
+        f"  {out.relative_to(ROOT)}  {out.stat().st_size // 1024} KB  (+ {lic.relative_to(ROOT)})"
+    )
 
 
 if __name__ == "__main__":

@@ -30,12 +30,13 @@
   })();
 </script>
 <style>
-  /* 글꼴은 Pretendard 하나 — 숫자·바코드 번호까지 같다. 우리 서버가 내준다(망이 끊긴
+  /* 글꼴은 PIMM Sans 하나(Pretendard 를 이 화면의 글자만 남겨 깎은 것 — OFL 예약 이름이라
+     수정본은 이름을 바꿨다. web/fonts/OFL.txt). 숫자·바코드 번호까지 같다. 우리 서버가 내준다(망이 끊긴
      현장에서도 그대로). 화면에 나오는 글자만 남긴 부분집합이라, 한글 문구를 고치면
      scripts/build_web_fonts.py 를 다시 돌려야 한다. */
   @font-face {
-    font-family: "Pretendard"; font-style: normal; font-weight: 400 800; font-display: swap;
-    src: url("/fonts/Pretendard.woff2") format("woff2-variations"), url("/fonts/Pretendard.woff2") format("woff2");
+    font-family: "PIMM Sans"; font-style: normal; font-weight: 400 800; font-display: swap;
+    src: url("/fonts/PIMMSans.woff2") format("woff2-variations"), url("/fonts/PIMMSans.woff2") format("woff2");
   }
   body { margin: 0; }
   img { max-width: 100%; }
@@ -71,7 +72,7 @@
     min-height: 100vh;
     background: var(--bg);
     color: var(--ink);
-    font-family: Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    font-family: "PIMM Sans", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
     font-size: 14px;
   }
   button, input, label, select { font-family: inherit; }
@@ -805,8 +806,8 @@ import { resultPresentation } from "/assets/result-state.mjs";
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
   }
-  const MONO = 'Pretendard, system-ui, sans-serif';
-  const SANS = 'Pretendard, system-ui, sans-serif';
+  const MONO = '"PIMM Sans", system-ui, sans-serif';
+  const SANS = '"PIMM Sans", system-ui, sans-serif';
   const AI_COLOR = "#2458a0";
 
   // ---------- 실제 서버 이미지 렌더링 ----------
