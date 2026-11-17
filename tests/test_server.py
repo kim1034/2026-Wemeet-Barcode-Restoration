@@ -154,9 +154,36 @@ def test_live_view_is_one_video_stage_with_result_and_log_floating_on_it() -> No
     # 위 섬이 판독 대기(최근 판독 결과), 아래 섬이 판독 로그
     assert hud.index('class="panel result-card"') < hud.index('class="panel log-panel"')
     assert 'id="readLog"' in hud
-    for moved in ('id="tallyFirst"', 'id="burstPanel"'):
-        assert moved not in live
-        assert moved in history
+    assert 'id="burstPanel"' not in live
+    assert 'id="burstPanel"' in history
+
+
+def test_history_view_is_a_dashboard_with_demo_data_marked_and_switchable() -> None:
+    """판독 이력은 오늘의 통계(지표 3개 · 시간대별 처리량 · 못 읽은 원인 · 판독률 추이 ·
+    장비 상태) 위에 최근 10건 표. 시연 데이터는 끌 수 있고 화면에 따로 표시된다."""
+    page = client.get("/").text
+    history = page[page.index('id="view-history"') : page.index('id="view-review"')]
+
+    for part in (
+        "kpiTotal",
+        "kpiRate",
+        "kpiMs",
+        "hourlyChart",
+        "reasonList",
+        "rateChart",
+        "equipList",
+        "demoToggle",
+    ):
+        assert f'id="{part}"' in history
+    assert "시연 데이터 포함" in history
+    assert "수동 확정" not in page  # 수동 확정 기능이 없으므로 지표도 두지 않는다
+    assert "tally" not in page
+    # 통계는 숫자만 저장한다 — 바코드 번호나 사진을 저장 키에 넣지 않는다
+    stats_code = page[
+        page.index("판독 이력 — 오늘의 판독 통계") : page.index("function startAutomatic")
+    ]
+    assert "localStorage" in stats_code
+    assert "barcode" not in stats_code and "images" not in stats_code
 
 
 def test_photo_upload_is_gone_from_the_page() -> None:

@@ -207,15 +207,6 @@
   table.hist td { padding: 11px 20px; border-bottom: 1px solid var(--line); vertical-align: middle; }
   table.hist tbody tr:last-child td { border-bottom: none; }
 
-  /* ---------- 판독 집계 (판독 로그와 같은 기준으로 센다) ---------- */
-  .tally-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px 14px; }
-  .tally-cell { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid; border-radius: var(--radius); min-width: 0; }
-  .tally-cell span { font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tally-cell b { font-size: 22px; font-weight: 600; }
-  .tally-cell.ok { border-color: var(--good); background: var(--good-bg); }
-  .tally-cell.ok b { color: var(--good); }
-  .tally-cell.fail { border-color: var(--bad); background: var(--bad-bg); }
-  .tally-cell.fail b { color: var(--bad); }
 
   /* ---------- 판독 로그 (최신이 왼쪽에서 들어온다) ---------- */
   .log-hint { font-size: 12px; color: var(--ink2); }
@@ -531,10 +522,7 @@
   .log-item img { height: 58px; border-radius: 10px; background: #fff; }
   .log-item .log-text { font-size: 13px; }
 
-  /* --- 판독 집계 / 이력 / 추가 확인 --- */
-  .tally-grid { padding: 8px 18px 18px; gap: 10px; }
-  .tally-cell { border: none; border-radius: 16px; padding: 12px 14px; }
-  .tally-cell b { font-size: 26px; }
+  /* --- 이력 / 추가 확인 --- */
   table.hist th { border-bottom: 1px solid var(--line); color: #8f8b82; }
   table.hist td { border-bottom: 1px solid var(--line); }
   table.hist tbody tr:hover td { background: rgba(255, 255, 255, 0.5); }
@@ -542,6 +530,65 @@
   .review-row { border-bottom: 1px solid var(--line); }
   .review-row:hover { background: rgba(255, 255, 255, 0.55); }
   .stub { border-radius: var(--island); }
+
+  /* =====================================================================
+     판독 이력 — 오늘의 판독(대시보드)
+     읽음은 중립 회색, 못 읽음은 상태색 빨강(늘 이름표와 함께). 시연 데이터는 같은
+     색의 빗금으로 구분한다 — 옅은 색만으로는 실제/시연이 잘 갈리지 않는다.
+     ===================================================================== */
+  .dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 2px 4px 0; }
+  .dash-head h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
+  .dash-sub { display: block; margin-top: 4px; font-size: 12.5px; color: var(--ink2); }
+  .dash-ctrl { display: flex; align-items: center; gap: 12px; }
+  .switch { position: relative; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
+  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch .sw { width: 34px; height: 20px; border-radius: 999px; background: rgba(40, 30, 10, 0.18); position: relative; transition: background .15s; }
+  .switch .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: transform .15s; }
+  .switch input:checked + .sw { background: var(--primary); }
+  .switch input:checked + .sw::after { transform: translateX(14px); }
+  .switch input:focus-visible + .sw { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi { padding: 16px 22px 16px; border-left: 1px solid var(--line); min-width: 0; }
+  .kpi:first-child { border-left: none; }
+  .kpi > span { display: block; font-size: 12.5px; color: var(--ink2); }
+  .kpi b { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .kpi small { display: block; margin-top: 2px; min-height: 1.3em; font-size: 11.5px; color: #8f8b82; }
+  .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr); gap: 18px; }
+  .chart-card, .side-card { padding: 18px 20px 14px; min-width: 0; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .chart-card h3, .side-card h3 { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart .hit { cursor: crosshair; }
+  .chart .bar { transition: opacity .12s; }
+  .chart .tip { position: absolute; z-index: 2; pointer-events: none; padding: 8px 10px; border-radius: 10px; white-space: nowrap;
+    background: rgba(22, 24, 29, 0.92); color: #f2f3f5; font-size: 12px; line-height: 1.55;
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.4); transform: translate(-50%, calc(-100% - 10px)); }
+  .chart .tip b { display: block; font-size: 12.5px; margin-bottom: 2px; }
+  .chart-empty { padding: 64px 0; text-align: center; color: var(--ink2); font-size: 13px; }
+  .reasons { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 15px; }
+  .reasons li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 13px; }
+  .reasons .track { display: flex; gap: 2px; height: 8px; border-radius: 999px; background: rgba(40, 30, 10, 0.08); overflow: hidden; }
+  .reasons .track i { display: block; height: 100%; }
+  .reasons .v { min-width: 64px; text-align: right; font-size: 12px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .reasons .reason-empty { display: block; color: var(--ink2); font-size: 13px; }
+  .equip { margin: 8px 0 0; }
+  .equip div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .equip div:last-child { border-bottom: none; }
+  .equip dt { color: var(--ink2); }
+  .equip dd { margin: 0; display: inline-flex; align-items: center; gap: 7px; font-weight: 600; text-align: right; }
+  .equip .dot { width: 7px; height: 7px; border-radius: 50%; background: #9aa0a8; flex: none; }
+  .equip .dot.good { background: var(--good); }
+  .equip .dot.bad { background: var(--bad); }
+  @media (max-width: 1080px) {
+    .dash-grid { grid-template-columns: minmax(0, 1fr); }
+    .kpis { grid-template-columns: minmax(0, 1fr); }
+    .kpi { border-left: none; border-top: 1px solid var(--line); }
+    .kpi:first-child { border-top: none; }
+  }
 
   /* =====================================================================
      첫 화면 인트로 (web/intro.mjs)
@@ -659,20 +706,46 @@
   </section>
 
   <!-- ======================= 판독 이력 ======================= -->
-  <!-- 판독 집계와 선택한 프레임은 실시간 화면에서 옮겨 왔다 — 실시간 화면에는
-       영상·판독 로그·최근 판독 결과 셋만 둔다. id 는 그대로라 스크립트는 바뀌지 않는다. -->
+  <!-- 판독 이력: 위는 오늘의 통계(대시보드), 아래는 최근 판독 10건과 선택한 프레임.
+       선택한 프레임은 실시간 화면에서 옮겨 왔다(id 는 그대로). -->
   <section class="page" id="view-history" hidden>
     <div class="col-stack">
-      <section class="panel tally" aria-label="판독 집계">
-        <div class="cam-head"><h2>판독 집계</h2><button type="button" class="btn-ghost" id="tallyReset">초기화</button></div>
-        <div class="tally-grid">
-          <div class="tally-cell ok"><span>1차 디코딩</span><b class="mono num" id="tallyFirst">0</b></div>
-          <div class="tally-cell ok"><span>2차 디코딩</span><b class="mono num" id="tallySecond">0</b></div>
-          <div class="tally-cell fail"><span>검출 후 실패</span><b class="mono num" id="tallyFail">0</b></div>
+      <!-- 오늘의 판독 — 시간대별 처리량 · 못 읽은 원인 · 판독률 추이 · 장비 상태 -->
+      <div class="dash-head">
+        <div>
+          <h2>오늘의 판독</h2>
+          <span class="dash-sub" id="dashDay">—</span>
         </div>
+        <div class="dash-ctrl">
+          <label class="switch"><input type="checkbox" id="demoToggle" checked><span class="sw" aria-hidden="true"></span>시연 데이터 포함</label>
+          <button type="button" class="btn-ghost" id="statsReset">오늘 기록 지우기</button>
+        </div>
+      </div>
+      <section class="panel kpis" aria-label="오늘의 지표">
+        <div class="kpi"><span>처리량</span><b id="kpiTotal">0</b><small id="kpiTotalNote"></small></div>
+        <div class="kpi"><span>판독률</span><b id="kpiRate">—</b><small id="kpiRateNote"></small></div>
+        <div class="kpi"><span>평균 처리 시간</span><b id="kpiMs">—</b><small id="kpiMsNote"></small></div>
       </section>
+      <div class="dash-grid">
+        <section class="panel chart-card" aria-labelledby="hourlyTitle">
+          <div class="chart-head"><h3 id="hourlyTitle">시간대별 처리량</h3><div class="legend" id="hourlyLegend"></div></div>
+          <div class="chart" id="hourlyChart"></div>
+        </section>
+        <section class="panel side-card" aria-labelledby="reasonTitle">
+          <h3 id="reasonTitle">못 읽은 원인</h3>
+          <ol class="reasons" id="reasonList"></ol>
+        </section>
+        <section class="panel chart-card" aria-labelledby="rateTitle">
+          <div class="chart-head"><h3 id="rateTitle">판독률 추이</h3><div class="legend" id="rateLegend"></div></div>
+          <div class="chart" id="rateChart"></div>
+        </section>
+        <section class="panel side-card" aria-labelledby="equipTitle">
+          <h3 id="equipTitle">장비 상태</h3>
+          <dl class="equip" id="equipList"></dl>
+        </section>
+      </div>
       <div class="panel">
-        <div class="hist-head"><h2>판독 이력 · 전체</h2><span class="mono" style="font-size:12px;color:var(--ink2)" id="histCount">0건</span></div>
+        <div class="hist-head"><h2>최근 판독 10건</h2><span class="mono" style="font-size:12px;color:var(--ink2)" id="histCount">0건</span></div>
         <div style="overflow-x:auto">
           <table class="hist" id="fullHistTable">
             <thead><tr><th>촬영 시각</th><th>촬영 ID</th><th>바코드</th><th>판독 결과</th><th>처리 시간</th></tr></thead>
@@ -946,21 +1019,11 @@ import { resultPresentation } from "/assets/result-state.mjs";
     renderHistories();
     renderConfirmed();
     addLog(ev);
+    countStat(ev);
   }
   // 판독 로그: 바코드(추적 구간) 하나당 한 칸을 맨 왼쪽에 넣는다. 크롭이 없는 결과(검출 안 됨)는 넣지 않는다.
   // 크롭 사진과 번호는 브라우저 메모리에만 두고, LOG_MAX 칸을 넘으면 오래된 것부터 지운다.
   const LOG_MAX = 30;
-  // 집계는 로그 칸 수와 별개로 초기화할 때까지 계속 센다 (로그는 30칸에서 오래된 것이 지워진다).
-  const tally = { first: 0, second: 0, fail: 0 };
-  function renderTally() {
-    $("tallyFirst").textContent = tally.first;
-    $("tallySecond").textContent = tally.second;
-    $("tallyFail").textContent = tally.fail;
-  }
-  $("tallyReset").addEventListener("click", () => {
-    tally.first = tally.second = tally.fail = 0;
-    renderTally();
-  });
   function addLog(ev) {
     const real = ev.real || {};
     const crop = real.images && real.images.crop;
@@ -971,8 +1034,6 @@ import { resultPresentation } from "/assets/result-state.mjs";
     const stage = ok
       ? (first ? "1차 디코딩" : "2차 디코딩")
       : (ev.burst && ev.burst.status === "conflict" ? "서로 다른 번호" : "끝까지 못 읽음");
-    tally[!ok ? "fail" : first ? "first" : "second"] += 1;
-    renderTally();
     const item = document.createElement("div");
     item.className = "log-item " + (ok ? "ok" : "fail");
     item.setAttribute("role", "listitem");
@@ -1002,6 +1063,300 @@ import { resultPresentation } from "/assets/result-state.mjs";
     while (box.children.length > LOG_MAX) box.lastElementChild.remove();
     box.scrollLeft = 0;
   }
+  // ================================================================
+  // 판독 이력 — 오늘의 판독 통계
+  //
+  // 바코드 번호와 사진은 저장하지 않는다. 시간대별 읽음/못 읽음 건수, 못 읽은 원인별
+  // 건수, 처리 시간 합만 이 브라우저(localStorage)에 남기고 날짜가 바뀌면 새로 센다.
+  // 시연 데이터는 날짜로 정해지는 하루치 예시 숫자다. 화면에 '시연 데이터'로 따로
+  // 표시하고(빗금) 끌 수 있다 — 실제 판독과 섞여 보여도 어느 쪽인지 늘 구분된다.
+  // ================================================================
+  const statStore = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+  const STATS_KEY = "pimm.stats.v1";
+  const DEMO_KEY = "pimm.stats.demo";
+  const REASONS = [
+    ["decode", "디코딩 실패"], ["missed", "미검출"], ["provisional", "교차 확인 전"],
+    ["conflict", "서로 다른 번호"], ["error", "처리 오류"],
+  ];
+  const INK = "#5b616b"; // 읽음 — 중립(평소 상태)
+  const BAD = "#c2412b"; // 못 읽음 — 상태색(위험), 늘 이름표와 같이 쓴다
+  const HATCH_INK = "repeating-linear-gradient(135deg, #e4e5e8 0 3px, #a7abb2 3px 5px)";
+  const HATCH_BAD = "repeating-linear-gradient(135deg, #f4d8d1 0 3px, #d98a79 3px 5px)";
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const dayKey = (d = new Date()) => d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  const fmt = (n) => Math.round(n).toLocaleString("ko-KR");
+  const emptyStats = () => ({ day: dayKey(), hours: {}, reasons: {}, msSum: 0, msN: 0 });
+  function loadStats() {
+    try {
+      const saved = JSON.parse(statStore && statStore.getItem(STATS_KEY));
+      if (saved && saved.day === dayKey() && saved.hours && saved.reasons) return saved;
+    } catch (e) { /* 깨진 기록은 버리고 새로 센다 */ }
+    return emptyStats();
+  }
+  function saveStats() {
+    try { if (statStore) statStore.setItem(STATS_KEY, JSON.stringify(stats)); } catch (e) { /* 막히면 이 탭에서만 센다 */ }
+  }
+  let stats = loadStats();
+  let showDemo = (() => { try { return !statStore || statStore.getItem(DEMO_KEY) !== "off"; } catch (e) { return true; } })();
+
+  // 한 건을 읽음/못 읽음으로 나누고, 못 읽었으면 원인을 붙인다
+  function statOf(ev) {
+    const b = ev.burst;
+    if (b ? b.status === "confirmed" : ev.outcome === "success") return { read: true };
+    if (b && b.status === "provisional") return { read: false, reason: "provisional" };
+    if (b && b.status === "conflict") return { read: false, reason: "conflict" };
+    const why = (ev.real && ev.real.failure_reason) || "";
+    if (why === "not_detected") return { read: false, reason: "missed" };
+    if (/_error$/.test(why) || why === "model_prepare_failed") return { read: false, reason: "error" };
+    return { read: false, reason: "decode" };
+  }
+  function countStat(ev) {
+    if (stats.day !== dayKey()) stats = emptyStats();
+    const h = pad2(new Date().getHours());
+    const slot = stats.hours[h] || (stats.hours[h] = { read: 0, unread: 0 });
+    const s = statOf(ev);
+    if (s.read) slot.read += 1;
+    else {
+      slot.unread += 1;
+      stats.reasons[s.reason] = (stats.reasons[s.reason] || 0) + 1;
+    }
+    if (Number.isFinite(ev.ms) && ev.ms > 0) { stats.msSum += ev.ms; stats.msN += 1; }
+    saveStats();
+    if (!$("view-history").hidden) renderDashboard();
+  }
+
+  // 시연 데이터 — 날짜를 씨앗으로 정해지는 하루치 예시(09~16시). 새로고침해도 같은 숫자다.
+  function demoStats(day) {
+    let seed = [...day].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 7);
+    const rand = () => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    const weights = [["decode", 0.38], ["missed", 0.27], ["provisional", 0.14], ["conflict", 0.11], ["error", 0.10]];
+    const out = { hours: {}, reasons: {}, msSum: 0, msN: 0 };
+    for (let h = 9; h <= 16; h++) {
+      const total = h === 16 ? 6 + Math.floor(rand() * 8) : 205 + Math.floor(rand() * 55);
+      const unread = Math.round(total * (0.025 + rand() * 0.07));
+      out.hours[pad2(h)] = { read: total - unread, unread };
+      for (let i = 0; i < unread; i++) {
+        let r = rand();
+        let k = 0;
+        while (k < weights.length - 1 && r > weights[k][1]) { r -= weights[k][1]; k += 1; }
+        out.reasons[weights[k][0]] = (out.reasons[weights[k][0]] || 0) + 1;
+      }
+      out.msSum += total * (580 + rand() * 150);
+      out.msN += total;
+    }
+    return out;
+  }
+
+  function renderDashboard() {
+    if (stats.day !== dayKey()) { stats = emptyStats(); saveStats(); }
+    const demo = showDemo ? demoStats(stats.day) : null;
+    $("demoToggle").checked = showDemo;
+    const hours = [...new Set([...Object.keys(stats.hours), ...(demo ? Object.keys(demo.hours) : [])])].sort();
+    const rows = hours.map((h) => {
+      const r = stats.hours[h] || { read: 0, unread: 0 };
+      const d = (demo && demo.hours[h]) || { read: 0, unread: 0 };
+      return { h, rr: r.read, ru: r.unread, dr: d.read, du: d.unread };
+    });
+    const sum = (k) => rows.reduce((a, x) => a + x[k], 0);
+    const realTotal = sum("rr") + sum("ru");
+    const demoTotal = sum("dr") + sum("du");
+    const total = realTotal + demoTotal;
+    const msSum = stats.msSum + (demo ? demo.msSum : 0);
+    const msN = stats.msN + (demo ? demo.msN : 0);
+    const now = new Date();
+    $("dashDay").textContent = (now.getMonth() + 1) + "월 " + now.getDate() + "일 · 실제 판독 " + fmt(realTotal) + "건" +
+      (demo ? " · 시연 데이터 " + fmt(demoTotal) + "건 포함" : "");
+    $("kpiTotal").textContent = fmt(total);
+    $("kpiRate").textContent = total ? ((sum("rr") + sum("dr")) / total * 100).toFixed(1) + "%" : "—";
+    $("kpiMs").textContent = msN ? fmt(msSum / msN) + "ms" : "—";
+    const realRate = realTotal ? (sum("rr") / realTotal * 100).toFixed(1) + "%" : "—";
+    const realMs = stats.msN ? fmt(stats.msSum / stats.msN) + "ms" : "—";
+    $("kpiTotalNote").textContent = demo ? "실제 " + fmt(realTotal) + " · 시연 " + fmt(demoTotal) : "";
+    $("kpiRateNote").textContent = demo ? "실제 판독만 " + realRate : "";
+    $("kpiMsNote").textContent = demo ? "실제 판독만 " + realMs : "";
+    renderHourly(rows, !!demo);
+    renderReasons(demo);
+    renderRate(rows, !!demo);
+    renderEquip();
+  }
+
+  // 마우스를 올린 막대·시점의 숫자를 보여 주는 말풍선 — 차트마다 하나
+  function chartTip(box) {
+    let tip = box.querySelector(".tip");
+    if (!tip) { tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; box.appendChild(tip); }
+    return tip;
+  }
+  function niceStep(v) {
+    const p = Math.pow(10, Math.floor(Math.log10(v)));
+    for (const m of [1, 1.25, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
+    return 10 * p;
+  }
+  const legendItem = (swatch, label) => '<span><i style="' + swatch + '"></i>' + label + "</span>";
+
+  function renderHourly(rows, hasDemo) {
+    const box = $("hourlyChart");
+    $("hourlyLegend").innerHTML = legendItem("background:" + INK, "읽음") + legendItem("background:" + BAD, "못 읽음") +
+      (hasDemo ? legendItem("background:" + HATCH_INK, "시연 데이터") : "");
+    const maxTotal = Math.max(0, ...rows.map((r) => r.rr + r.ru + r.dr + r.du));
+    if (!maxTotal) { box.innerHTML = '<div class="chart-empty">아직 판독 기록이 없습니다. 카메라로 판독하면 시간대별로 쌓입니다.</div>'; return; }
+    const W = Math.max(320, box.clientWidth || 640), H = 250;
+    const m = { l: 40, r: 6, t: 10, b: 26 };
+    const step = niceStep(maxTotal / 4), top = step * 4;
+    const ph = H - m.t - m.b, pw = W - m.l - m.r;
+    const band = pw / rows.length, bw = Math.min(64, band * 0.62);
+    const y = (v) => m.t + ph - (v / top) * ph;
+    let svg = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="시간대별 처리량 막대 차트">' +
+      '<defs><pattern id="hatchInk" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#e4e5e8"/><rect width="2" height="5" fill="#a7abb2"/></pattern>' +
+      '<pattern id="hatchBad" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#f4d8d1"/><rect width="2" height="5" fill="#d98a79"/></pattern></defs>';
+    for (let i = 0; i <= 4; i++) {
+      const v = step * i, yy = y(v);
+      svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + yy + '" y2="' + yy + '" stroke="rgba(40,30,10,' + (i ? 0.08 : 0.18) + ')"/>' +
+        '<text x="' + (m.l - 8) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="11" fill="#7a7f87">' + fmt(v) + "</text>";
+    }
+    const topRound = (x, yTop, w, h, r) => {
+      r = Math.min(r, h, w / 2);
+      return '<path d="M' + x + "," + (yTop + h) + "V" + (yTop + r) + "Q" + x + "," + yTop + " " + (x + r) + "," + yTop +
+        "H" + (x + w - r) + "Q" + (x + w) + "," + yTop + " " + (x + w) + "," + (yTop + r) + "V" + (yTop + h) + 'Z"';
+    };
+    rows.forEach((r, i) => {
+      const x = m.l + band * i + (band - bw) / 2;
+      // 아래에서부터: 읽음(실제) · 읽음(시연) · 못 읽음(시연) · 못 읽음(실제). 칸 사이 2px 틈
+      const segs = [[r.rr, INK], [r.dr, "url(#hatchInk)"], [r.du, "url(#hatchBad)"], [r.ru, BAD]].filter((sg) => sg[0] > 0);
+      let base = 0;
+      svg += '<g class="bar" data-i="' + i + '">';
+      segs.forEach(([v, fill], k) => {
+        const y0 = y(base), y1 = y(base + v);
+        const h = Math.max(1, y0 - y1 - (k ? 2 : 0));
+        svg += k === segs.length - 1 ? topRound(x, y0 - (k ? 2 : 0) - h, bw, h, 4) + ' fill="' + fill + '"/>'
+          : '<rect x="' + x + '" y="' + (y0 - (k ? 2 : 0) - h) + '" width="' + bw + '" height="' + h + '" fill="' + fill + '"/>';
+        base += v;
+      });
+      svg += "</g>" +
+        '<text x="' + (m.l + band * i + band / 2) + '" y="' + (H - 7) + '" text-anchor="middle" font-size="12" fill="#5d626a">' + r.h + "시</text>" +
+        '<rect class="hit" data-i="' + i + '" x="' + (m.l + band * i) + '" y="' + m.t + '" width="' + band + '" height="' + ph + '" fill="transparent"/>';
+    });
+    box.innerHTML = svg + "</svg>";
+    const tip = chartTip(box);
+    const bars = box.querySelectorAll(".bar");
+    box.onmousemove = (e) => {
+      const i = e.target.dataset && e.target.dataset.i;
+      if (i == null) return;
+      const r = rows[+i];
+      const tot = r.rr + r.ru + r.dr + r.du;
+      bars.forEach((b) => b.style.opacity = b.dataset.i === i ? "1" : "0.45");
+      tip.innerHTML = "<b>" + r.h + "시 · " + fmt(tot) + "건</b>" +
+        "읽음 " + fmt(r.rr + r.dr) + (hasDemo ? " (실제 " + fmt(r.rr) + ")" : "") + "<br>" +
+        "못 읽음 " + fmt(r.ru + r.du) + (hasDemo ? " (실제 " + fmt(r.ru) + ")" : "");
+      tip.style.left = (m.l + band * (+i) + band / 2) + "px";
+      tip.style.top = y(tot) + "px";
+      tip.hidden = false;
+    };
+    box.onmouseleave = () => { tip.hidden = true; bars.forEach((b) => b.style.opacity = "1"); };
+  }
+
+  function renderReasons(demo) {
+    const real = stats.reasons, fake = (demo && demo.reasons) || {};
+    const items = REASONS.map(([key, label]) => ({ label, r: real[key] || 0, d: fake[key] || 0 }))
+      .sort((a, b) => (b.r + b.d) - (a.r + a.d));
+    const all = items.reduce((a, x) => a + x.r + x.d, 0);
+    if (!all) { $("reasonList").innerHTML = '<li class="reason-empty">못 읽은 건이 없습니다.</li>'; return; }
+    $("reasonList").innerHTML = items.map((x) => {
+      const n = x.r + x.d, pct = n / all * 100;
+      return "<li><span>" + x.label + "</span>" +
+        '<span class="track" title="실제 ' + x.r + "건 · 시연 " + x.d + '건">' +
+          (x.r ? '<i style="width:' + (x.r / all * 100) + "%;background:" + BAD + '"></i>' : "") +
+          (x.d ? '<i style="width:' + (x.d / all * 100) + "%;background:" + HATCH_BAD + '"></i>' : "") +
+        "</span>" +
+        '<span class="v">' + fmt(n) + " · " + Math.round(pct) + "%</span></li>";
+    }).join("");
+  }
+
+  function renderRate(rows, hasDemo) {
+    const box = $("rateChart");
+    const rate = (read, tot) => (tot ? (read / tot) * 100 : null);
+    const anyReal = rows.some((r) => r.rr + r.ru > 0);
+    const series = [];
+    if (anyReal || !hasDemo) {
+      series.push({ label: hasDemo ? "실제 판독 포함" : "실제 판독", solid: true,
+        v: rows.map((r) => rate(r.rr + r.dr, r.rr + r.ru + r.dr + r.du)) });
+    }
+    if (hasDemo) series.push({ label: "시연 데이터만", solid: false, v: rows.map((r) => rate(r.dr, r.dr + r.du)) });
+    $("rateLegend").innerHTML = series.map((sr) => legendItem(sr.solid ? "background:#2a2d33;border-radius:50%" :
+      "background:#fff;border-radius:50%;box-shadow:inset 0 0 0 2px #8d929a", sr.label)).join("");
+    const vals = series.flatMap((sr) => sr.v).filter((v) => v != null);
+    if (!vals.length) { box.innerHTML = '<div class="chart-empty">판독 기록이 쌓이면 시간대별 판독률이 그려집니다.</div>'; return; }
+    const lo = Math.min(90, Math.floor((Math.min(...vals) - 1) / 5) * 5);
+    const W = Math.max(320, box.clientWidth || 640), H = 210;
+    const m = { l: 44, r: 6, t: 12, b: 26 };
+    const ph = H - m.t - m.b, pw = W - m.l - m.r, band = pw / rows.length;
+    const x = (i) => m.l + band * i + band / 2;
+    const y = (v) => m.t + ph - ((v - lo) / (100 - lo)) * ph;
+    let svg = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="시간대별 판독률 선 차트">';
+    for (let v = lo; v <= 100; v += 5) {
+      svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="rgba(40,30,10,0.08)"/>' +
+        '<text x="' + (m.l - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end" font-size="11" fill="#7a7f87">' + v + "%</text>";
+    }
+    rows.forEach((r, i) => { svg += '<text x="' + x(i) + '" y="' + (H - 7) + '" text-anchor="middle" font-size="12" fill="#5d626a">' + r.h + "시</text>"; });
+    svg += '<line class="cross" x1="0" x2="0" y1="' + m.t + '" y2="' + (m.t + ph) + '" stroke="rgba(40,30,10,0.25)" visibility="hidden"/>';
+    // 뒤(시연)부터 그려 실제 선이 위에 오게
+    [...series].reverse().forEach((sr) => {
+      const pts = sr.v.map((v, i) => (v == null ? null : [x(i), y(v)]));
+      let d = "";
+      pts.forEach((pt, i) => { if (pt) d += (d && pts[i - 1] ? "L" : "M") + pt[0].toFixed(1) + "," + pt[1].toFixed(1); });
+      svg += '<path d="' + d + '" fill="none" stroke="' + (sr.solid ? "#2a2d33" : "#8d929a") + '" stroke-width="2"' +
+        (sr.solid ? "" : ' stroke-dasharray="5 4"') + ' stroke-linejoin="round" stroke-linecap="round"/>';
+      pts.forEach((pt) => {
+        if (!pt) return;
+        svg += '<circle cx="' + pt[0] + '" cy="' + pt[1] + '" r="5" fill="' + (sr.solid ? "#2a2d33" : "#fff") + '" stroke="' +
+          (sr.solid ? "#fff" : "#8d929a") + '" stroke-width="2"/>';
+      });
+    });
+    rows.forEach((r, i) => { svg += '<rect class="hit" data-i="' + i + '" x="' + (m.l + band * i) + '" y="' + m.t + '" width="' + band + '" height="' + ph + '" fill="transparent"/>'; });
+    box.innerHTML = svg + "</svg>";
+    const tip = chartTip(box);
+    const cross = box.querySelector(".cross");
+    box.onmousemove = (e) => {
+      const i = e.target.dataset && e.target.dataset.i;
+      if (i == null) return;
+      const lines = series.map((sr) => sr.label + " " + (sr.v[+i] == null ? "—" : sr.v[+i].toFixed(1) + "%"));
+      const top = Math.min(...series.map((sr) => (sr.v[+i] == null ? H : y(sr.v[+i]))));
+      tip.innerHTML = "<b>" + rows[+i].h + "시</b>" + lines.join("<br>");
+      tip.style.left = x(+i) + "px";
+      tip.style.top = Math.min(top, m.t + ph) + "px";
+      tip.hidden = false;
+      cross.setAttribute("x1", x(+i)); cross.setAttribute("x2", x(+i)); cross.setAttribute("visibility", "visible");
+    };
+    box.onmouseleave = () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); };
+  }
+
+  function renderEquip() {
+    const cam = $("camStatus"), svc = $("svcStatus");
+    const tone = (el) => (el.classList.contains("ok") ? "good" : el.classList.contains("err") ? "bad" : "idle");
+    const row = (k, v, t) => "<div><dt>" + k + "</dt><dd>" + (t ? '<span class="dot ' + t + '"></span>' : "") + esc(v) + "</dd></div>";
+    $("equipList").innerHTML =
+      row("카메라", cam.textContent.trim().replace(/^카메라\s*/, "") || "—", tone(cam)) +
+      row("판독 서버", svc.textContent.trim().replace(/^판독 서비스\s*/, "") || "—", tone(svc)) +
+      row("검출 모델", modelNames.detection) +
+      row("기하 모델", modelNames.geometry);
+  }
+
+  $("demoToggle").addEventListener("change", (e) => {
+    showDemo = e.target.checked;
+    try { if (statStore) statStore.setItem(DEMO_KEY, showDemo ? "on" : "off"); } catch (err) { /* 이 탭에서만 */ }
+    renderDashboard();
+  });
+  $("statsReset").addEventListener("click", () => {
+    stats = emptyStats();
+    saveStats();
+    renderDashboard();
+  });
+  let dashResize = 0;
+  window.addEventListener("resize", () => {
+    if ($("view-history").hidden) return;
+    cancelAnimationFrame(dashResize);
+    dashResize = requestAnimationFrame(renderDashboard);
+  });
+
   function startAutomatic() {
     if (!mediaStream) return;
     captureError = "";
@@ -1038,6 +1393,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
     } catch (e) {
       setSvcStatus(false);
     }
+    if (!$("view-history").hidden) renderEquip();
   }
 
   // ================================================================
@@ -1513,6 +1869,7 @@ import { resultPresentation } from "/assets/result-state.mjs";
   function goto(view) {
     ["live", "history", "review", "settings"].forEach((v) => { $("view-" + v).hidden = v !== view; });
     $("tabs").querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-current", t.dataset.view === view ? "page" : "false"));
+    if (view === "history") renderDashboard();
   }
 
   // ================================================================
