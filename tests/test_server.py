@@ -123,3 +123,148 @@ def test_decode_rejects_oversized_input_with_413(monkeypatch: pytest.MonkeyPatch
     response = _post(b"x" * 11, "application/octet-stream")
 
     assert response.status_code == 413
+
+
+@pytest.mark.parametrize("name", ["intro.mjs", "three.module.min.js"])
+def test_intro_scripts_are_served_from_our_own_server(name: str) -> None:
+    """첫 화면 인트로는 CDN 이 아니라 우리 서버에서 받는다 — 망이 끊긴 현장에서도 떠야 한다."""
+    response = client.get("/assets/" + name)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+
+
+def test_page_loads_three_js_only_from_local_assets() -> None:
+    page = client.get("/").text + client.get("/assets/intro.mjs").text
+
+    assert '"/assets/three.module.min.js"' in page
+    assert "cdn.jsdelivr" not in page and "unpkg.com" not in page
+
+
+def test_live_view_is_one_video_stage_with_result_and_log_floating_on_it() -> None:
+    """실시간 화면은 무대(영상) 하나 위에 섬 둘(판독 대기 · 판독 로그)이 떠 있다.
+    판독 집계와 선택한 프레임은 판독 이력 화면으로 옮겼다."""
+    page = client.get("/").text
+    live = page[page.index('id="view-live"') : page.index('id="view-history"')]
+    history = page[page.index('id="view-history"') : page.index('id="view-review"')]
+    stage = live[live.index('class="stage"') :]
+    hud = stage[stage.index('class="hud"') :]
+
+    assert 'id="videoBox"' in stage
+    # 위 섬이 판독 대기(최근 판독 결과), 아래 섬이 판독 로그
+    assert hud.index('class="panel result-card"') < hud.index('class="panel log-panel"')
+    assert 'id="readLog"' in hud
+    assert 'id="burstPanel"' not in live
+    assert 'id="burstPanel"' in history
+
+
+def test_history_view_is_a_dashboard_titled_with_the_date_only() -> None:
+    """판독 이력은 '오늘의 판독 이력'(날짜만) 아래 지표 3개 · 시간대별 처리량 · 못 읽은 원인 ·
+    판독률 추이 · 장비 상태, 그 아래 최근 10건 표. 시연 데이터 스위치는 뺐다."""
+    page = client.get("/").text
+    history = page[page.index('id="view-history"') : page.index('id="view-review"')]
+
+    assert "<h2>오늘의 판독 이력</h2>" in history
+    for part in (
+        "dashDay",
+        "statsReset",
+        "kpiTotal",
+        "kpiRate",
+        "kpiMs",
+        "hourlyChart",
+        "reasonList",
+        "rateChart",
+        "equipList",
+    ):
+        assert f'id="{part}"' in history
+    assert 'id="demoToggle"' not in page
+    assert "수동 확정" not in page  # 수동 확정 기능이 없으므로 지표도 두지 않는다
+    assert "tally" not in page
+    # 통계는 숫자만 저장한다 — 바코드 번호나 사진을 저장 키에 넣지 않는다
+    stats_code = page[
+        page.index("판독 이력 — 오늘의 판독 통계") : page.index("function startAutomatic")
+    ]
+    assert "localStorage" in stats_code
+    assert "barcode" not in stats_code and "images" not in stats_code
+
+
+def test_photo_upload_is_gone_from_the_page() -> None:
+    """현장에서는 카메라만 쓴다 — 사진 선택·판독 요청·자동 판독 단추와 그 안내 문구를 뺐다."""
+    page = client.get("/").text
+
+    for gone in (
+        'id="photoInput"',
+        'id="uploadRunBtn"',
+        'id="camCaptureBtn"',
+        'id="camFootLeft"',
+        "사진 업로드로 판독",
+    ):
+        assert gone not in page
+    assert "<h2>실시간 영상</h2>" in page
+
+
+def test_font_is_pretendard_served_from_our_own_server() -> None:
+    """글꼴은 Pretendard 하나, 우리 서버가 내준다 — 망이 끊긴 현장에서도 글자가 그대로여야 한다."""
+    page = client.get("/").text
+    response = client.get("/fonts/PIMMSans.woff2")
+
+    assert "fonts.googleapis" not in page and "IBM Plex" not in page
+    assert 'url("/fonts/PIMMSans.woff2")' in page
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "font/woff2"
+    assert response.content[:4] == b"wOF2"
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["../index.html", "../../pyproject.toml", "없는글꼴.woff2", "PIMMSans.ttf"],
+    ids=["escapes-one-level", "escapes-to-repo-root", "missing", "wrong-extension"],
+)
+def test_font_route_serves_nothing_but_woff2_inside_web_fonts(name: str) -> None:
+    """이름을 그대로 경로에 붙이면 web/ 밖의 파일이 나간다. 404 로 막는다."""
+    assert client.get("/fonts/" + name).status_code == 404
+
+
+def test_font_route_strips_the_directory_part_itself() -> None:
+    """위 테스트는 httpx 가 `../` 를 먼저 정리해 버려 통과할 수도 있다.
+    경로를 깎는 일이 핸들러 안에서 일어나는지 직접 불러 확인한다."""
+    assert server.font("../../pyproject.toml").status_code == 404
+    assert server.font("/etc/passwd").status_code == 404
+    assert server.font("web/fonts/PIMMSans.woff2").status_code == 200
+
+
+def test_postprocessing_modules_are_served_from_web_vendor() -> None:
+    """인트로의 빛 번짐 · 구석 그늘은 three.js 확장을 우리 서버에서 받는다(망 없이 뜬다)."""
+    page = client.get("/").text
+    for rel in (
+        "postprocessing/EffectComposer.js",
+        "postprocessing/GTAOPass.js",
+        "shaders/GTAOShader.js",
+    ):
+        response = client.get("/vendor/three/addons/" + rel)
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/javascript")
+    # 확장이 부르는 "three" 는 인트로와 같은 파일로 — 모듈 스크립트보다 먼저 정한다
+    assert '"three": "/assets/three.module.min.js"' in page
+    assert page.index('type="importmap"') < page.index('type="module"')
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../index.html",
+        "../../pyproject.toml",
+        "three/addons/postprocessing/없는파일.js",
+        "three/addons/README.md",
+    ],
+    ids=["escapes-one-level", "escapes-to-repo-root", "missing", "not-javascript"],
+)
+def test_vendor_route_serves_only_js_inside_web_vendor(path: str) -> None:
+    assert client.get("/vendor/" + path).status_code == 404
+
+
+def test_vendor_route_resolves_escapes_itself() -> None:
+    """httpx 가 `../` 를 먼저 정리해 버리지 않도록 핸들러를 직접 부른다."""
+    assert server.vendor("../index.html").status_code == 404
+    assert server.vendor("../../pyproject.toml").status_code == 404
+    assert server.vendor("three/addons/postprocessing/Pass.js").status_code == 200
